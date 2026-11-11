@@ -3,6 +3,7 @@ import { BrowserWindow, app, shell } from 'electron';
 import { NsaCore } from '@nsa/core';
 import { registerIpc } from './ipc';
 import { setupAutoUpdate } from './updater';
+import icon from '../../resources/icon.png?asset';
 
 const core = new NsaCore();
 
@@ -13,6 +14,7 @@ function createWindow(): BrowserWindow {
     title: 'NSA',
     show: false,
     autoHideMenuBar: true,
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

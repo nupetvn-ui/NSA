@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AppInfo, PingResult } from '@nsa/core';
+import logo from '../../../resources/icon.png';
 
 type PingState =
   | { status: 'waiting' }
@@ -21,6 +22,7 @@ export function App() {
 
   return (
     <main className="shell">
+      <img className="logo" src={logo} alt="" width={112} height={112} />
       <h1>NSA</h1>
       <p className="muted" data-testid="version">
         {info ? `Phiên bản ${info.version}` : '…'}

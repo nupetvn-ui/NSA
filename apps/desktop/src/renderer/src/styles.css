@@ -35,6 +35,11 @@ body {
   gap: 0.25rem;
 }
 
+.logo {
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 6px 18px rgb(67 56 202 / 0.35));
+}
+
 h1 {
   font-size: 3rem;
   letter-spacing: 0.2em;

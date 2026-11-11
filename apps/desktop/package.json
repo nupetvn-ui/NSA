@@ -14,13 +14,15 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "dist:win": "electron-vite build && electron-builder --win --publish never",
-    "release:win": "electron-vite build && electron-builder --win --publish always"
+    "release:win": "electron-vite build && electron-builder --win --publish always",
+    "icons": "node scripts/render-icons.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "@nsa/core": "workspace:*",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.3.0",

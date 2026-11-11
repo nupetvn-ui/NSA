@@ -43,6 +43,12 @@ Lần chạy đầu, Electron tự tải file chạy của nó (~100 MB).
 | `pnpm build`     | Build mọi gói thư viện và app desktop                                         |
 | `pnpm dist:win`  | Tạo bộ cài Windows ở `apps/desktop/release/<version>/NSA-Setup-<version>.exe` |
 
+Logo gốc ở [`apps/desktop/build/icon.svg`](apps/desktop/build/icon.svg). Sửa xong thì xuất lại các file PNG:
+
+```bash
+pnpm --filter @nsa/desktop icons
+```
+
 ## Cấu trúc
 
 ```
