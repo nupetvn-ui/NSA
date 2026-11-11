@@ -1,0 +1,22 @@
+{
+  "name": "@nsa/mcp-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cổng MCP gom tool của mọi plugin",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@nsa/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  }
+}

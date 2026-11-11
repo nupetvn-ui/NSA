@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/adapters/*
+  - plugins/*
+
+onlyBuiltDependencies:
+  - esbuild
+
+# Bộ cài Squirrel không dùng (NSA đóng gói bằng NSIS).
+ignoredBuiltDependencies:
+  - electron-winstaller
