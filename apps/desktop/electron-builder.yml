@@ -1,0 +1,43 @@
+# Cấu hình đóng gói NSA — xem docs/adr/0003-dong-goi-va-tu-cap-nhat.md
+appId: vn.nupet.nsa
+productName: NSA
+copyright: Copyright © 2026 nupetvn-ui
+
+directories:
+  output: release/${version}
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: NSA-Setup-${version}.${ext}
+  # Ký mã: electron-builder tự đọc chứng chỉ từ biến môi trường
+  # CSC_LINK / CSC_KEY_PASSWORD (hoặc WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD).
+  # Không có biến nào thì bộ cài được tạo nhưng không ký.
+  # Khi chuyển sang Azure Trusted Signing, thêm khối `azureSignOptions` ở đây.
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: NSA
+  deleteAppDataOnUninstall: false
+
+# Tự cập nhật: electron-updater đọc latest.yml trong GitHub Releases của repo.
+# Workflow phát hành tạo release ở dạng nháp (draft); người duyệt bấm Publish
+# thì máy người dùng mới nhận bản cập nhật.
+publish:
+  provider: github
+  owner: nupetvn-ui
+  repo: NSA
+  releaseType: draft

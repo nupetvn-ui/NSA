@@ -1,0 +1,56 @@
+name: Release Windows
+
+# Gắn tag dạng v1.2.3 (trùng version trong apps/desktop/package.json) để chạy.
+# Kết quả: một GitHub Release dạng nháp chứa bộ cài NSIS + latest.yml cho tự cập nhật.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build bộ cài Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Kiểm tra tag khớp version
+        shell: bash
+        run: |
+          app_version=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "v${app_version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} không khớp version v${app_version} trong apps/desktop/package.json"
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: Đóng gói và đăng lên GitHub Releases (nháp)
+        run: pnpm --filter @nsa/desktop release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ký mã (tuỳ chọn): đặt hai secret này khi đã có chứng chỉ.
+          # Chưa đặt thì bộ cài vẫn được tạo nhưng không ký.
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nsa-windows-installer
+          path: |
+            apps/desktop/release/*/*.exe
+            apps/desktop/release/*/*.blockmap
+            apps/desktop/release/*/latest.yml
+          if-no-files-found: error

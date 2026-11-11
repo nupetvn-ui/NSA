@@ -1,0 +1,34 @@
+{
+  "name": "@nsa/desktop",
+  "productName": "NSA",
+  "version": "0.0.1",
+  "private": true,
+  "description": "NSA — điều phối nhiều agent AI chạy qua CLI",
+  "author": "nupetvn-ui",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/nupetvn-ui/NSA",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "dist:win": "electron-vite build && electron-builder --win --publish never",
+    "release:win": "electron-vite build && electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "@nsa/core": "workspace:*",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.0",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "vite": "^8.3.8"
+  }
+}

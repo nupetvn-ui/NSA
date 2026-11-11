@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+release
+coverage
+pnpm-lock.yaml
+# Kế hoạch đã duyệt, giữ nguyên định dạng gốc
+docs/PLAN.md
