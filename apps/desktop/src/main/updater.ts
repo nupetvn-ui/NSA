@@ -21,7 +21,6 @@ export function setupAutoUpdate(): void {
     console.info('[auto-update] đã tải xong bản', info.version, '— sẽ cài khi thoát app'),
   );
 
-  autoUpdater.checkForUpdates().catch((err: unknown) => {
-    console.error('[auto-update] không kiểm tra được bản mới:', err);
-  });
+  // Lỗi đã được sự kiện 'error' ở trên ghi lại; chặn ở đây để không thành lỗi chưa xử lý.
+  autoUpdater.checkForUpdates().catch(() => undefined);
 }
