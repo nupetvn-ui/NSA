@@ -1,7 +1,7 @@
 {
   "name": "@nsa/desktop",
   "productName": "NSA",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "NSA — điều phối nhiều agent AI chạy qua CLI",
   "author": "nupetvn-ui",
