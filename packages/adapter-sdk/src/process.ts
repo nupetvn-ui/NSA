@@ -62,7 +62,8 @@ export function runJsonLinesProcess(
   try {
     child = crossSpawn(options.command, options.args, {
       cwd: options.cwd,
-      env: { ...process.env, ...options.env },
+      // PWD phải khớp cwd: một số CLI (OpenCode) lấy thư mục làm việc từ PWD thừa hưởng.
+      env: { ...process.env, PWD: options.cwd, ...options.env },
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     });

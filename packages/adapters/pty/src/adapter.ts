@@ -124,7 +124,7 @@ function runPlain(
   try {
     child = crossSpawn(profile.command, args, {
       cwd: options.cwd,
-      env: { ...process.env, ...profile.env, NO_COLOR: '1' },
+      env: { ...process.env, PWD: options.cwd, ...profile.env, NO_COLOR: '1' },
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     });
@@ -268,7 +268,7 @@ function runTyped(
         cols: 120,
         rows: 40,
         cwd: options.cwd,
-        env: { ...process.env, ...profile.env },
+        env: { ...process.env, PWD: options.cwd, ...profile.env },
         name: 'xterm-256color',
       });
     } catch (err) {
