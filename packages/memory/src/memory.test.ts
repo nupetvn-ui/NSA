@@ -229,6 +229,23 @@ describe('hộp duyệt', () => {
     expect(service.listEntries()).toHaveLength(0);
   });
 
+  it('nhận đề xuất mâu thuẫn và thay mục cũ; đề xuất trùng với điều vừa nhận tự bỏ', async () => {
+    const { service } = await open();
+    const first = await service.propose(draft());
+    const a = await service.propose(draft({ body: 'Người dùng thích màu đỏ.' }));
+    const b = await service.propose(draft({ body: 'Người dùng thích màu đỏ.', title: 'Màu khác' }));
+    expect([a.status, b.status]).toEqual(['pending', 'pending']);
+    const entry = await service.accept(a.id, {}, { replace: first.entryId ?? '' });
+    expect(entry.id).toBe(first.entryId);
+    expect(service.listEntries().map((e) => e.body)).toEqual(['Người dùng thích màu đỏ.']);
+    expect(service.listProposals('pending')).toHaveLength(0);
+    expect(service.listProposals('rejected')[0]?.reasons.join()).toMatch(/Trùng với mục vừa nhận/);
+    // Mục cũ khôi phục được.
+    const [latest] = await service.history({ entryId: entry.id });
+    await service.undo(latest?.commit ?? '');
+    expect(service.get(entry.id)?.body).toBe('Người dùng thích màu xanh lá.');
+  });
+
   it('đề xuất trùng y hệt → tự từ chối', async () => {
     const { service } = await open();
     await service.propose(draft());

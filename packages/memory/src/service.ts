@@ -804,18 +804,26 @@ export class MemoryService {
     });
   }
 
-  /** Người dùng nhận đề xuất (có thể sửa nội dung trước khi nhận). */
+  /**
+   * Người dùng nhận đề xuất (có thể sửa nội dung trước khi nhận). `replace`: thay luôn mục đã
+   * có (thường là mục mâu thuẫn) thay vì tạo mục mới — mục cũ vẫn khôi phục được qua Lịch sử.
+   */
   accept(
     proposalId: string,
     edits: Partial<Omit<MemoryDraft, 'source'>> = {},
+    options: { replace?: string } = {},
   ): Promise<MemoryEntry> {
     return this.#serial(async () => {
       const proposal = this.#proposals.find((p) => p.id === proposalId);
       if (!proposal || proposal.status !== 'pending')
         throw new Error('Đề xuất không còn chờ duyệt');
       const draft: MemoryDraft = { ...proposal.draft, ...edits, source: proposal.draft.source };
+      if (options.replace && !this.get(options.replace)) {
+        throw new Error('Không tìm thấy mục cần thay');
+      }
       const targetId =
-        proposal.targetId && this.#index.get(proposal.targetId) ? proposal.targetId : undefined;
+        options.replace ??
+        (proposal.targetId && this.#index.get(proposal.targetId) ? proposal.targetId : undefined);
       const entry = await this.#save(draft, 'user', targetId);
       Object.assign(proposal, {
         draft,
@@ -833,6 +841,20 @@ export class MemoryService {
         title: entry.title,
         decision: 'allow',
       });
+      // Đề xuất khác giờ trùng y hệt điều vừa nhận thì tự bỏ.
+      const readable = this.#readable();
+      for (const other of this.#proposals) {
+        if (other.status !== 'pending') continue;
+        const report = findConflicts(other.draft, readable, other.targetId);
+        if (report.duplicate?.id === entry.id) {
+          Object.assign(other, {
+            status: 'rejected',
+            decidedAt: this.#now().toISOString(),
+            decidedBy: 'auto',
+            reasons: [...other.reasons, `Trùng với mục vừa nhận: "${entry.title}"`],
+          });
+        }
+      }
       this.#saveProposals();
       this.#onChange();
       return entry;

@@ -329,7 +329,9 @@ export function MemoryView({ agents, status, version }: Props) {
         <Inbox
           proposals={proposals}
           branches={branches}
-          onAccept={(id, edits) => run(() => window.nsa.invoke('mem:accept', id, edits))}
+          onAccept={(id, edits, replaceId) =>
+            run(() => window.nsa.invoke('mem:accept', id, edits, replaceId))
+          }
           onReject={(id) => run(() => window.nsa.invoke('mem:reject', id))}
         />
       )}
@@ -613,7 +615,7 @@ function Inbox({
 }: {
   proposals: MemoryProposal[];
   branches: MemoryBranch[];
-  onAccept: (id: string, edits?: DraftFields) => Promise<unknown>;
+  onAccept: (id: string, edits?: DraftFields, replaceId?: string) => Promise<unknown>;
   onReject: (id: string) => Promise<unknown>;
 }) {
   const [showDecided, setShowDecided] = useState(false);
@@ -640,10 +642,16 @@ function Inbox({
                 kind: p.draft.kind,
                 sensitive: p.draft.sensitive ?? false,
               }}
-              submitLabel="Nhận bản đã sửa"
+              submitLabel={
+                p.conflicts.length === 1 ? 'Nhận bản đã sửa, thay mục cũ' : 'Nhận bản đã sửa'
+              }
               onCancel={() => setEditing(null)}
               onSubmit={async (draft) => {
-                await onAccept(p.id, draft);
+                await onAccept(
+                  p.id,
+                  draft,
+                  p.conflicts.length === 1 ? p.conflicts[0]?.id : undefined,
+                );
                 setEditing(null);
               }}
             />
@@ -657,13 +665,29 @@ function Inbox({
               <button type="button" className="push-btn" onClick={() => setEditing(p.id)}>
                 Sửa rồi nhận
               </button>
-              <button
-                type="button"
-                className="push-btn primary"
-                onClick={() => void onAccept(p.id)}
-              >
-                Nhận
-              </button>
+              {p.conflicts.length === 1 ? (
+                <>
+                  <button type="button" className="push-btn" onClick={() => void onAccept(p.id)}>
+                    Nhận thêm
+                  </button>
+                  <button
+                    type="button"
+                    className="push-btn primary"
+                    title="Mục cũ được thay bằng nội dung mới — khôi phục được trong Lịch sử"
+                    onClick={() => void onAccept(p.id, undefined, p.conflicts[0]?.id)}
+                  >
+                    Nhận, thay mục cũ
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="push-btn primary"
+                  onClick={() => void onAccept(p.id)}
+                >
+                  Nhận
+                </button>
+              )}
             </div>
           </ProposalCard>
         ),

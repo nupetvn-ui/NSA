@@ -89,7 +89,11 @@ export interface IpcContract {
   'mem:history': { args: [entryId?: string]; result: MemoryHistoryItem[] };
   'mem:undo': { args: [commit: string]; result: MemoryHistoryItem };
   'mem:proposals': { args: [status?: MemoryProposal['status']]; result: MemoryProposal[] };
-  'mem:accept': { args: [proposalId: string, edits?: MemoryPatch]; result: MemoryEntry };
+  /** `replaceId`: thay mục đã có (mục mâu thuẫn) thay vì tạo mục mới. */
+  'mem:accept': {
+    args: [proposalId: string, edits?: MemoryPatch, replaceId?: string];
+    result: MemoryEntry;
+  };
   'mem:reject': { args: [proposalId: string]; result: void };
   'mem:reindex': { args: []; result: number };
   'mem:settings': { args: []; result: MemorySettings };

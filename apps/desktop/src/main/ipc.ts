@@ -71,7 +71,12 @@ export function registerIpc(
       mem.listProposals(
         status === 'pending' || status === 'accepted' || status === 'rejected' ? status : undefined,
       ),
-    'mem:accept': (id, edits) => mem.accept(String(id), cleanPatch(edits)),
+    'mem:accept': (id, edits, replaceId) =>
+      mem.accept(
+        String(id),
+        cleanPatch(edits),
+        typeof replaceId === 'string' ? { replace: replaceId } : {},
+      ),
     'mem:reject': (id) => mem.reject(String(id)),
     'mem:reindex': () => mem.rebuildIndex(),
     'mem:settings': () => runtime.settings(),
