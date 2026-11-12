@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import type { AppInfo, PermissionLevel, SendRequest } from '@nsa/core';
+import { AUTO_AGENT, type AppInfo, type PermissionLevel, type SendRequest } from '@nsa/core';
+import { AgentsPanel } from './AgentsPanel';
 import logo from '../../../resources/icon.png';
 import { ConfirmSheet } from './ConfirmSheet';
 import { TurnView } from './TurnView';
@@ -7,7 +8,18 @@ import { UpdateBanner } from './UpdateBanner';
 import { useChat } from './useChat';
 
 export function App() {
-  const { conversations, agents, checkingAgents, checkAgents, send, cancel, remove } = useChat();
+  const {
+    conversations,
+    agents,
+    checkingAgents,
+    checkAgents,
+    cliChanges,
+    dismissChanges,
+    send,
+    cancel,
+    answerPermission,
+    remove,
+  } = useChat();
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   /** Agent người dùng bấm chọn; chưa chọn thì dùng agent đầu tiên đã sẵn sàng. */
@@ -41,6 +53,8 @@ export function App() {
     [agents],
   );
   const selectedAgent = agents?.find((a) => a.id === agentId);
+  const selectedName =
+    agentId === AUTO_AGENT ? 'agent NSA tự chọn' : (selectedAgent?.name ?? 'agent');
 
   // Tự cuộn xuống cuối khi có nội dung mới.
   const lastTurn = active?.turns.at(-1);
@@ -86,6 +100,8 @@ export function App() {
         return;
       }
       setActiveId(result.conversationId);
+      // "Tự chọn" thì giữ nguyên; còn lại ghi nhớ agent đã thật sự nhận việc.
+      if (request.agentId !== AUTO_AGENT) setAgentId(request.agentId);
       setDraft('');
       if (inputRef.current) {
         inputRef.current.value = '';
@@ -186,28 +202,13 @@ export function App() {
 
         <UpdateBanner />
 
-        <div className="agents-panel">
-          <div className="agents-head">
-            <span className="section-label flat">Agent trên máy</span>
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => void checkAgents()}
-              disabled={checkingAgents}
-            >
-              {checkingAgents ? 'Đang kiểm…' : 'Kiểm lại'}
-            </button>
-          </div>
-          {!agents && <p className="hint">Đang dò tìm CLI…</p>}
-          {agents?.map((a) => (
-            <div key={a.id} className="agent-row" title={a.note ?? ''}>
-              <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
-              <span className="agent-row-name">{a.name}</span>
-              <span className="hint">{a.version ?? (a.installed ? '' : 'chưa cài')}</span>
-              {a.note && <div className="agent-note">{a.note}</div>}
-            </div>
-          ))}
-        </div>
+        <AgentsPanel
+          agents={agents}
+          checking={checkingAgents}
+          onCheck={() => void checkAgents()}
+          changes={cliChanges}
+          onDismissChanges={dismissChanges}
+        />
       </aside>
 
       <main className="chat">
@@ -268,6 +269,7 @@ export function App() {
               turn={turn}
               agentName={names[turn.agentId] ?? turn.agentId}
               onCancel={() => void cancel(turn.id)}
+              onAnswer={(id, allowed) => void answerPermission(id, allowed)}
             />
           ))}
         </div>
@@ -275,20 +277,32 @@ export function App() {
         <form className="composer" onSubmit={(e) => void submit(e)}>
           <div className="composer-bar">
             <div className="segmented" role="radiogroup" aria-label="Chọn agent">
-              {(agents ?? []).map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={a.id === agentId}
-                  className={a.id === agentId ? 'on' : ''}
-                  onClick={() => setAgentId(a.id)}
-                  title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
-                >
-                  <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
-                  {a.name}
-                </button>
-              ))}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={agentId === AUTO_AGENT}
+                className={agentId === AUTO_AGENT ? 'on' : ''}
+                onClick={() => setAgentId(AUTO_AGENT)}
+                title="NSA chọn agent đủ năng lực cho việc này"
+              >
+                Tự chọn
+              </button>
+              {(agents ?? [])
+                .filter((a) => a.installed)
+                .map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={a.id === agentId}
+                    className={a.id === agentId ? 'on' : ''}
+                    onClick={() => setAgentId(a.id)}
+                    title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
+                  >
+                    <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
+                    {a.name}
+                  </button>
+                ))}
             </div>
             {selectedAgent && !selectedAgent.ready && (
               <span className="hint warn-text">{selectedAgent.note}</span>
@@ -304,7 +318,7 @@ export function App() {
                 autoGrow(e.target);
               }}
               onKeyDown={onKeyDown}
-              placeholder={`Nhắn cho ${selectedAgent?.name ?? 'agent'}`}
+              placeholder={`Nhắn cho ${selectedName}`}
               rows={1}
             />
             {runningTurn ? (

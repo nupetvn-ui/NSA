@@ -41,16 +41,31 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@lydell/node-pty':
+        specifier: 1.2.0-beta.18
+        version: 1.2.0-beta.18
       electron-updater:
         specifier: ^6.8.11
         version: 6.8.11
     devDependencies:
+      '@nsa/adapter-antigravity':
+        specifier: workspace:*
+        version: link:../../packages/adapters/antigravity
       '@nsa/adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapters/claude
       '@nsa/adapter-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/codex
+      '@nsa/adapter-gemini':
+        specifier: workspace:*
+        version: link:../../packages/adapters/gemini
+      '@nsa/adapter-opencode':
+        specifier: workspace:*
+        version: link:../../packages/adapters/opencode
+      '@nsa/adapter-pty':
+        specifier: workspace:*
+        version: link:../../packages/adapters/pty
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../../packages/adapter-sdk
@@ -2614,7 +2629,6 @@ snapshots:
       '@lydell/node-pty-linux-x64': 1.2.0-beta.18
       '@lydell/node-pty-win32-arm64': 1.2.0-beta.18
       '@lydell/node-pty-win32-x64': 1.2.0-beta.18
-    optional: true
 
   '@malept/cross-spawn-promise@2.0.0':
     dependencies:

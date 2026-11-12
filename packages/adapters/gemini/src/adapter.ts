@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import {
   probeCli,
   runCommand,
@@ -43,6 +46,17 @@ export function buildGeminiArgs(options: Pick<RunOptions, 'sessionId' | 'permiss
   return args;
 }
 
+/** Có khoá API trong biến môi trường, hoặc đã đăng nhập Google (file oauth_creds.json). */
+export function geminiLooksLoggedIn(
+  env: NodeJS.ProcessEnv = process.env,
+  home: string = homedir(),
+): boolean {
+  if (env['GEMINI_API_KEY'] || env['GOOGLE_API_KEY'] || env['GOOGLE_GENAI_USE_VERTEXAI']) {
+    return true;
+  }
+  return existsSync(join(home, '.gemini', 'oauth_creds.json'));
+}
+
 /** Hiểu lỗi khi Gemini thoát mà không in JSON (ví dụ chưa đăng nhập). */
 export function geminiExitEvents(code: number | null, stderr: string): AgentEvent[] {
   if (code === EXIT_AUTH || /set an auth method|GEMINI_API_KEY/i.test(stderr)) {
@@ -86,12 +100,15 @@ export function createGeminiAdapter(options: GeminiAdapterOptions = {}): AgentAd
     async detect(): Promise<DetectResult> {
       const version = await runCommand(command, [...prefix, '--version']);
       if (!version || version.code !== 0) return { installed: false, ready: false, note: INSTALL };
-      // Gemini không có lệnh kiểm đăng nhập riêng; lượt đầu sẽ báo lỗi `auth` nếu chưa đăng nhập.
+      // Gemini không có lệnh kiểm đăng nhập riêng: xem có khoá API hoặc file đăng nhập không.
+      const loggedIn = geminiLooksLoggedIn();
       return {
         installed: true,
         version: version.stdout.trim(),
-        ready: true,
-        note: 'Adapter Gemini chưa được chạy thật với tài khoản đã đăng nhập.',
+        ready: loggedIn,
+        note: loggedIn
+          ? 'Adapter Gemini chưa được chạy thật với tài khoản đã đăng nhập.'
+          : AUTH_HINT,
       };
     },
 

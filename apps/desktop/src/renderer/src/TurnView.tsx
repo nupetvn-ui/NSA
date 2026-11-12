@@ -5,9 +5,10 @@ interface Props {
   turn: Turn;
   agentName: string;
   onCancel: () => void;
+  onAnswer: (permissionId: string, allowed: boolean) => void;
 }
 
-export function TurnView({ turn, agentName, onCancel }: Props) {
+export function TurnView({ turn, agentName, onCancel, onAnswer }: Props) {
   const running = turn.status === 'running';
   return (
     <section className="turn">
@@ -44,6 +45,36 @@ export function TurnView({ turn, agentName, onCancel }: Props) {
         {turn.parts.map((part) =>
           part.kind === 'text' ? (
             <Markdown key={part.id} text={part.text} />
+          ) : part.kind === 'notice' ? (
+            <div key={part.id} className="notice-box">
+              {part.text}
+            </div>
+          ) : part.kind === 'permission' ? (
+            <div key={part.id} className={`permission-box ${part.state}`}>
+              <div className="permission-text">{part.description}</div>
+              {part.state === 'pending' ? (
+                <div className="permission-actions">
+                  <button
+                    type="button"
+                    className="push-btn"
+                    onClick={() => onAnswer(part.id, false)}
+                  >
+                    Từ chối
+                  </button>
+                  <button
+                    type="button"
+                    className="push-btn primary"
+                    onClick={() => onAnswer(part.id, true)}
+                  >
+                    Cho phép
+                  </button>
+                </div>
+              ) : (
+                <span className="hint">
+                  {part.state === 'allowed' ? 'đã cho phép' : 'đã từ chối'}
+                </span>
+              )}
+            </div>
           ) : (
             <details key={part.id} className={`tool ${part.isError ? 'tool-error' : ''}`}>
               <summary>

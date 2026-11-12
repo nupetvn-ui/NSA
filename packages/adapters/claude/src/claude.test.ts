@@ -59,6 +59,31 @@ describe('createClaudeParser', () => {
     ]);
   });
 
+  it('không lặp khi tin nhắn đầy đủ tới với số thứ tự khối khác lúc stream (lỗi thấy khi chạy thật)', () => {
+    const events = parseAll([
+      {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: { type: 'message_start', message: { id: 'msg_9' } },
+      },
+      {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: {
+          type: 'content_block_delta',
+          index: 1,
+          delta: { type: 'text_delta', text: 'Đã nhớ.' },
+        },
+      },
+      {
+        type: 'assistant',
+        parent_tool_use_id: null,
+        message: { id: 'msg_9', content: [{ type: 'text', text: 'Đã nhớ.' }] },
+      },
+    ]);
+    expect(events).toEqual([{ type: 'text', id: 'msg_9:1', text: 'Đã nhớ.' }]);
+  });
+
   it('chuyển tool_use / tool_result và tổng kết lượt', () => {
     const events = parseAll([
       {

@@ -16,6 +16,8 @@ files:
 asar: true
 asarUnpack:
   - resources/**
+  # Terminal giả (tầng PTY) là module native, phải nằm ngoài asar.
+  - node_modules/@lydell/**
 
 # Icon NSIS và NSA.exe lấy từ build/icon.png (sinh từ build/icon.svg bằng `pnpm icons`).
 icon: build/icon.png

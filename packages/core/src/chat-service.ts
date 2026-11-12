@@ -90,7 +90,7 @@ export interface ChatServiceOptions {
   onEvent?: (event: ChatEvent) => void;
   now?: () => Date;
   newId?: () => string;
-  /** Thời gian chờ người dùng trả lời một yêu cầu cho phép lệnh (mặc định 5 phút). */
+  /** Thời gian chờ người dùng trả lời một yêu cầu cho phép lệnh (mặc định 4 phút). */
   permissionTimeoutMs?: number;
 }
 
@@ -149,7 +149,8 @@ export class ChatService {
     this.#onEvent = options.onEvent ?? (() => undefined);
     this.#now = options.now ?? (() => new Date());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
-    this.#permissionTimeoutMs = options.permissionTimeoutMs ?? 5 * 60_000;
+    // Dưới 5 phút: fetch của script móc tự hết giờ sau 5 phút (khi đó lệnh cũng bị chặn).
+    this.#permissionTimeoutMs = options.permissionTimeoutMs ?? 4 * 60_000;
 
     for (const conversation of this.#store?.load() ?? []) {
       // Lượt đang chạy khi app tắt thì coi như đã bị huỷ.

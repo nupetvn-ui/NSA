@@ -18,11 +18,16 @@
     "icons": "node scripts/render-icons.mjs"
   },
   "dependencies": {
+    "@lydell/node-pty": "1.2.0-beta.18",
     "electron-updater": "^6.8.11"
   },
   "devDependencies": {
+    "@nsa/adapter-antigravity": "workspace:*",
     "@nsa/adapter-claude": "workspace:*",
     "@nsa/adapter-codex": "workspace:*",
+    "@nsa/adapter-gemini": "workspace:*",
+    "@nsa/adapter-opencode": "workspace:*",
+    "@nsa/adapter-pty": "workspace:*",
     "@nsa/adapter-sdk": "workspace:*",
     "@nsa/core": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
