@@ -20,7 +20,8 @@ export function serializeFrontmatter(fields: Record<string, unknown>, body: stri
 }
 
 export function parseFrontmatter(text: string): { fields: Record<string, unknown>; body: string } {
-  const normalized = text.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const unbommed = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const normalized = unbommed.replace(/\r\n/g, '\n');
   const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(normalized);
   if (!match) return { fields: {}, body: normalized.trim() };
   const fields: Record<string, unknown> = {};
