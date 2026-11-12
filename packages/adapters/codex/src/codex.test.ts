@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentEvent } from '@nsa/adapter-sdk';
-import { buildCodexArgs, createCodexParser } from './index.js';
+import { prepareFakeCli, runContract } from '@nsa/adapter-sdk';
+import { buildCodexArgs, createCodexAdapter, createCodexParser } from './index.js';
 
 // Ghi từ `codex exec --json` thật (codex-cli 0.167.2) khi yêu cầu chạy một lệnh shell.
 const RECORDED = [
@@ -37,7 +38,7 @@ describe('createCodexParser', () => {
 
   it('báo lỗi khi lượt thất bại', () => {
     const events = parseAll(['{"type":"turn.failed","error":{"message":"stream disconnected"}}']);
-    expect(events).toEqual([{ type: 'error', message: 'stream disconnected' }]);
+    expect(events).toEqual([{ type: 'error', code: 'cli', message: 'stream disconnected' }]);
   });
 
   it('gợi ý đăng nhập khi lỗi xác thực', () => {
@@ -74,4 +75,22 @@ describe('buildCodexArgs', () => {
       buildCodexArgs({ permission: 'edit', sessionId: '--dangerously-bypass' }),
     ).toThrow();
   });
+});
+
+describe('hợp đồng adapter (CLI giả phát lại đầu ra thật)', () => {
+  it('gửi, stdin, resume, huỷ', async () => {
+    const fake = prepareFakeCli(
+      'codex',
+      RECORDED.map((l) => l.split('01a1cd85-cd58-7d83-8048-ce256e30a64b').join('{{SESSION}}')),
+    );
+    Object.assign(process.env, fake.env);
+    const adapter = createCodexAdapter({ command: fake.command, prefixArgs: fake.prefixArgs });
+    const results = await runContract(adapter, {
+      mode: 'fake',
+      cwd: process.cwd(),
+      fakeLog: fake.log,
+    });
+    expect(results.filter((r) => r.status === 'failed')).toEqual([]);
+    expect(results.find((r) => r.step === 'gate')?.status).toBe('skipped');
+  }, 30_000);
 });

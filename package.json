@@ -16,7 +16,8 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:live": "vitest run packages/adapters/contract-live"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

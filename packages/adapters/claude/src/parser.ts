@@ -93,7 +93,12 @@ export function createClaudeParser(): (json: unknown) => AgentEvent[] {
           });
         }
         if (json['is_error'] === true) {
-          events.push({ type: 'error', message: explainError(String(json['result'] ?? '')) });
+          const raw = String(json['result'] ?? '');
+          events.push({
+            type: 'error',
+            code: /not logged in|\/login|invalid api key/i.test(raw) ? 'auth' : 'cli',
+            message: explainError(raw),
+          });
         }
         break;
       }

@@ -1,16 +1,18 @@
 import {
+  probeCli,
   runCommand,
   runJsonLinesProcess,
   type AgentAdapter,
+  type CliAdapterOptions,
   type DetectResult,
   type RunOptions,
 } from '@nsa/adapter-sdk';
+import { createPtyAdapter } from '@nsa/adapter-pty';
 import { createCodexParser } from './parser.js';
 
-export interface CodexAdapterOptions {
-  /** Lệnh gọi Codex CLI, mặc định `codex` (tìm trong PATH). */
-  command?: string;
-}
+export type CodexAdapterOptions = CliAdapterOptions;
+
+const INSTALL = 'Chưa cài Codex CLI. Cài bằng: npm install -g @openai/codex';
 
 // Bắt đầu bằng chữ/số để không bao giờ bị hiểu thành cờ dòng lệnh (--xxx).
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9-]{7,63}$/;
@@ -28,22 +30,38 @@ export function buildCodexArgs(options: Pick<RunOptions, 'sessionId' | 'permissi
 
 export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdapter {
   const command = options.command ?? 'codex';
+  const prefix = options.prefixArgs ?? [];
+
+  // Tầng lùi: `codex exec` không có --json, đọc văn bản thô; prompt vẫn qua stdin.
+  const fallback = createPtyAdapter({
+    id: 'codex',
+    displayName: 'Codex',
+    command,
+    prefixArgs: prefix,
+    input: 'stdin',
+    editFiles: true,
+    installHint: INSTALL,
+    args: (o) => [
+      'exec',
+      '--skip-git-repo-check',
+      '-c',
+      `sandbox_mode="${o.permission === 'edit' ? 'workspace-write' : 'read-only'}"`,
+      '-',
+    ],
+  });
 
   return {
     id: 'codex',
     displayName: 'Codex',
+    fallback,
 
     async detect(): Promise<DetectResult> {
-      const version = await runCommand(command, ['--version']);
+      const version = await runCommand(command, [...prefix, '--version']);
       if (!version || version.code !== 0) {
-        return {
-          installed: false,
-          ready: false,
-          note: 'Chưa cài Codex CLI. Cài bằng: npm install -g @openai/codex',
-        };
+        return { installed: false, ready: false, note: INSTALL };
       }
       const versionText = version.stdout.trim().split(/\s+/).pop() ?? '';
-      const status = await runCommand(command, ['login', 'status']);
+      const status = await runCommand(command, [...prefix, 'login', 'status']);
       const text = `${status?.stdout ?? ''}${status?.stderr ?? ''}`;
       const loggedIn =
         status?.code === 0 && /logged in/i.test(text) && !/not logged in/i.test(text);
@@ -56,22 +74,38 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
     },
 
     capabilities() {
-      return { streaming: false, resume: true, tools: true, images: true, mcp: true };
+      return {
+        streaming: false,
+        resume: true,
+        tools: true,
+        editFiles: true,
+        images: true,
+        mcp: true,
+        subagents: false,
+        // Móc PreToolUse của Codex chỉ chạy khi người dùng đã "tin" móc đó (đã thử thật:
+        // móc truyền qua -c bị bỏ qua im lặng). Xem ADR-0007.
+        toolGate: false,
+        tier: 'headless',
+      };
     },
+
+    fingerprint: () => probeCli(command, { prefixArgs: prefix, helpArgs: ['exec', '--help'] }),
 
     run(runOptions, onEvent) {
       return runJsonLinesProcess(
         {
           command,
-          args: buildCodexArgs(runOptions),
+          label: 'Codex',
+          args: [...prefix, ...buildCodexArgs(runOptions)],
           cwd: runOptions.cwd,
           stdin: runOptions.prompt,
           parseLine: createCodexParser(),
-          onExit: ({ code, stderr, sawError }) =>
-            code !== 0 && !sawError
+          onExit: ({ code, stderr, sawError, jsonLines }) =>
+            code !== 0 && !sawError && jsonLines > 0
               ? [
                   {
                     type: 'error',
+                    code: 'cli',
                     message: lastErrorLine(stderr) || `Codex CLI thoát với mã ${code}`,
                   },
                 ]

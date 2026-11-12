@@ -1,0 +1,20 @@
+{
+  "name": "@nsa/contract-live",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bộ test hợp đồng chạy với CLI thật (máy phát triển, CI hằng đêm)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/adapter-claude": "workspace:*",
+    "@nsa/adapter-codex": "workspace:*",
+    "@nsa/adapter-opencode": "workspace:*",
+    "@nsa/adapter-gemini": "workspace:*",
+    "@nsa/adapter-antigravity": "workspace:*",
+    "@nsa/adapter-pty": "workspace:*"
+  }
+}
