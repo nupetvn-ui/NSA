@@ -148,6 +148,9 @@ importers:
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../../adapter-sdk
+      '@nsa/core':
+        specifier: workspace:*
+        version: link:../../core
 
   packages/adapters/gemini:
     dependencies:

@@ -3,7 +3,17 @@ import type { AgentEvent, PermissionLevel } from '@nsa/adapter-sdk';
 /** Một phần trong câu trả lời của agent: đoạn văn hoặc một lần gọi công cụ. */
 export type TurnPart =
   | { kind: 'text'; id: string; text: string }
-  | { kind: 'tool'; id: string; name: string; input: string; output?: string; isError?: boolean };
+  | { kind: 'tool'; id: string; name: string; input: string; output?: string; isError?: boolean }
+  /** NSA báo cho người dùng (lùi tầng, đổi agent…). */
+  | { kind: 'notice'; id: string; text: string }
+  /** Một lệnh trong lượt chờ / đã được người dùng cho phép hoặc từ chối. */
+  | {
+      kind: 'permission';
+      id: string;
+      description: string;
+      state: 'pending' | 'allowed' | 'denied';
+      reason?: string;
+    };
 
 export type TurnStatus = 'running' | 'done' | 'error' | 'cancelled';
 
@@ -75,13 +85,46 @@ export function applyEvent(turn: Turn, event: AgentEvent): Turn {
       };
     case 'error':
       return { ...turn, errors: [...turn.errors, event.message] };
+    case 'notice':
+      return {
+        ...turn,
+        parts: [
+          ...turn.parts,
+          { kind: 'notice', id: `n${turn.parts.length}`, text: event.message },
+        ],
+      };
+    case 'ask_permission':
+      if (turn.parts.some((p) => p.kind === 'permission' && p.id === event.id)) return turn;
+      return {
+        ...turn,
+        parts: [
+          ...turn.parts,
+          { kind: 'permission', id: event.id, description: event.description, state: 'pending' },
+        ],
+      };
+    case 'permission_result':
+      return {
+        ...turn,
+        parts: turn.parts.map((p) =>
+          p.kind === 'permission' && p.id === event.id
+            ? {
+                ...p,
+                state: event.allowed ? 'allowed' : 'denied',
+                ...(event.reason ? { reason: event.reason } : {}),
+              }
+            : p,
+        ),
+      };
     case 'done':
       return {
         ...turn,
         status: event.cancelled ? 'cancelled' : turn.errors.length > 0 ? 'error' : 'done',
+        // Lệnh còn chờ trả lời khi lượt đã xong thì coi như bị từ chối.
+        parts: turn.parts.map((p) =>
+          p.kind === 'permission' && p.state === 'pending' ? { ...p, state: 'denied' as const } : p,
+        ),
       };
     case 'session':
-    case 'ask_permission':
       return turn;
   }
 }

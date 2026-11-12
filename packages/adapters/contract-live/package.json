@@ -15,6 +15,7 @@
     "@nsa/adapter-opencode": "workspace:*",
     "@nsa/adapter-gemini": "workspace:*",
     "@nsa/adapter-antigravity": "workspace:*",
-    "@nsa/adapter-pty": "workspace:*"
+    "@nsa/adapter-pty": "workspace:*",
+    "@nsa/core": "workspace:*"
   }
 }
