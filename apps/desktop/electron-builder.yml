@@ -9,10 +9,16 @@ directories:
 
 files:
   - out/**
+  - resources/**
   - package.json
   - '!**/*.map'
 
 asar: true
+asarUnpack:
+  - resources/**
+
+# Icon NSIS và NSA.exe lấy từ build/icon.png (sinh từ build/icon.svg bằng `pnpm icons`).
+icon: build/icon.png
 
 win:
   target:

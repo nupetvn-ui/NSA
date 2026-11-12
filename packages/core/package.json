@@ -18,5 +18,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsa/adapter-sdk": "workspace:*"
   }
 }
