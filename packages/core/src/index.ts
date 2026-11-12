@@ -13,3 +13,5 @@ export type {
   PermissionLevel,
   Tier,
 } from '@nsa/adapter-sdk';
+export * from './model-tasks.js';
+export * from './model-policy.js';

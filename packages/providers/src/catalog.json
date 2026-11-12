@@ -1,0 +1,945 @@
+{
+  "schema": 1,
+  "version": "2026.11.12",
+  "checkedAt": "2026-11-12",
+  "note": "Địa chỉ, tên model, giá (USD / 1 triệu token) và thông tin dữ liệu lấy từ tài liệu chính thức đọc ngày checkedAt. Trường null = tài liệu không ghi hoặc chưa đọc được (chưa xác minh). toolCalling: 'stable' = NSA đã chạy thật việc gọi tool; 'documented' = tài liệu nói hỗ trợ nhưng NSA chưa thử; 'none' = không hỗ trợ. cli.*.status: 'documented' = tài liệu của hãng/CLI hướng dẫn ghép; 'tested-fake' = đã chạy CLI thật với máy chủ giả; 'tested' = đã chạy thật với hãng; 'unsupported' = không ghép được.",
+  "providers": [
+    {
+      "id": "google",
+      "name": "Google AI Studio (Gemini)",
+      "group": "major",
+      "keyRequired": true,
+      "keyUrl": "https://aistudio.google.com/apikey",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://generativelanguage.googleapis.com/v1beta/openai"
+      },
+      "data": {
+        "serverLocation": "Không chọn được vùng; điều khoản gói trả phí ghi dữ liệu có thể được lưu tạm hoặc cache ở bất kỳ nước nào Google có cơ sở.",
+        "training": "Gói miễn phí: Google dùng nội dung để cải thiện sản phẩm và người duyệt có thể đọc. Gói trả phí (dự án Cloud có bật thanh toán): không dùng để cải thiện sản phẩm, chỉ lưu nhật ký một thời gian để chống lạm dụng.",
+        "tier": "both",
+        "warning": "Gói miễn phí dùng dữ liệu để huấn luyện và có người đọc. Không gửi dữ liệu nhạy cảm khi dùng key miễn phí.",
+        "sources": [
+          "https://aistudio.google.com/docs/openai",
+          "https://aistudio.google.com/docs/pricing",
+          "https://aistudio.google.com/docs/terms",
+          "https://aistudio.google.com/docs/models"
+        ]
+      },
+      "cli": {
+        "opencode": {
+          "status": "unverified",
+          "note": "Tài liệu OpenCode chưa ghi tên biến môi trường cho Google; NSA khai báo nhà cung cấp tương thích OpenAI riêng."
+        },
+        "claude": {
+          "status": "unsupported",
+          "note": "Không có địa chỉ chuẩn Anthropic."
+        },
+        "codex": {
+          "status": "unsupported",
+          "note": "Codex chỉ nhận wire_api \"responses\"; tài liệu Gemini chỉ xác nhận chat completions."
+        }
+      },
+      "models": [
+        {
+          "id": "gemini-3.5-flash-lite",
+          "name": "Gemini 3.5 Flash-Lite",
+          "kind": "chat",
+          "tasks": ["background", "channel", "vision"],
+          "inputUsdPer1M": 0.3,
+          "outputUsdPer1M": 2.5,
+          "freeTier": true,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": null
+        },
+        {
+          "id": "gemini-3.8-flash",
+          "name": "Gemini 3.8 Flash",
+          "kind": "chat",
+          "tasks": ["main", "vision", "channel"],
+          "inputUsdPer1M": 0.75,
+          "outputUsdPer1M": 3.75,
+          "freeTier": true,
+          "vision": null,
+          "toolCalling": "documented",
+          "note": "Giá tăng lên 1.50 / 7.50 từ 01/01/2027 (theo trang giá)."
+        },
+        {
+          "id": "gemini-4-carbon",
+          "name": "Gemini 4 Carbon",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 2,
+          "outputUsdPer1M": 10,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000,
+          "note": "Giá tăng lên 4.00 / 20.00 từ 01/12/2026 (theo trang giá)."
+        },
+        {
+          "id": "gemini-embedding-2",
+          "name": "Gemini Embedding 2",
+          "kind": "embedding",
+          "tasks": ["embedding"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": null,
+          "vision": false,
+          "toolCalling": "none",
+          "note": "Giá chưa xác minh (trang giá đọc bị cắt)."
+        }
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "group": "major",
+      "keyRequired": true,
+      "keyUrl": "https://platform.openai.com/api-keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.openai.com/v1"
+      },
+      "data": {
+        "serverLocation": "Vùng mặc định chưa xác minh; có lưu trữ/xử lý theo vùng (Mỹ, EU…) khi tạo dự án, cần liên hệ OpenAI.",
+        "training": "Không dùng dữ liệu gửi qua API để huấn luyện (trừ khi chủ động đồng ý). Nhật ký chống lạm dụng giữ tối đa 30 ngày.",
+        "tier": "paid",
+        "sources": [
+          "https://developers.openai.com/api/docs/models",
+          "https://developers.openai.com/api/docs/pricing",
+          "https://developers.openai.com/api/docs/guides/your-data"
+        ]
+      },
+      "cli": {
+        "codex": {
+          "status": "documented",
+          "note": "codex exec nhận key qua biến CODEX_API_KEY cho một lần chạy. NSA chưa thử với key thật."
+        },
+        "opencode": {
+          "status": "unverified"
+        },
+        "claude": {
+          "status": "unsupported",
+          "note": "Không có địa chỉ chuẩn Anthropic."
+        }
+      },
+      "models": [
+        {
+          "id": "gpt-6-luna",
+          "name": "GPT-6 Luna",
+          "kind": "chat",
+          "tasks": ["background", "channel", "vision"],
+          "inputUsdPer1M": 0.1,
+          "outputUsdPer1M": 0.5,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1050000
+        },
+        {
+          "id": "gpt-6.1-sol",
+          "name": "GPT-6.1 Sol",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 2,
+          "outputUsdPer1M": 10,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented"
+        },
+        {
+          "id": "gpt-6-astra",
+          "name": "GPT-6 Astra",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 10,
+          "outputUsdPer1M": 50,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1050000
+        },
+        {
+          "id": "text-embedding-3-small",
+          "name": "Embedding 3 Small",
+          "kind": "embedding",
+          "tasks": ["embedding"],
+          "inputUsdPer1M": 0.02,
+          "outputUsdPer1M": 0,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "none"
+        }
+      ]
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic (Claude)",
+      "group": "major",
+      "keyRequired": true,
+      "keyUrl": "https://platform.claude.com/settings/keys",
+      "standard": "anthropic",
+      "endpoints": {
+        "anthropic": "https://api.anthropic.com"
+      },
+      "data": {
+        "serverLocation": "Mặc định suy luận ở bất kỳ vùng nào (\"global\"); chọn chỉ Mỹ thì giá ×1.1. Nơi lưu trữ mặc định chưa xác minh.",
+        "training": "Mặc định không dùng dữ liệu API để huấn luyện (trừ phản hồi chủ động gửi hoặc khi đồng ý).",
+        "tier": "paid",
+        "sources": [
+          "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "https://platform.claude.com/docs/en/about-claude/pricing",
+          "https://platform.claude.com/docs/en/manage-claude/data-residency",
+          "https://privacy.claude.com/en/articles/7996868-is-my-data-used-for-model-training"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "tested-fake",
+          "note": "Chạy với CLAUDE_CONFIG_DIR riêng của NSA (không dùng đăng nhập gói thuê bao). Đã chạy thật Claude Code với máy chủ giả; chưa thử với key Anthropic thật."
+        },
+        "opencode": {
+          "status": "unverified"
+        },
+        "codex": {
+          "status": "unsupported"
+        }
+      },
+      "models": [
+        {
+          "id": "claude-haiku-5-5",
+          "name": "Claude Haiku 5.5",
+          "kind": "chat",
+          "tasks": ["background", "channel", "vision"],
+          "inputUsdPer1M": 0.1,
+          "outputUsdPer1M": 0.5,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "stable",
+          "note": "Giá cho prompt tới 100.000 token; dài hơn: 0.50 / 2.50. Gọi tool ổn định: Claude Code đã chạy thật sửa file / chạy lệnh với model Claude ở giai đoạn 1."
+        },
+        {
+          "id": "claude-sonnet-5-5",
+          "name": "Claude Sonnet 5.5",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 2,
+          "outputUsdPer1M": 10,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "stable",
+          "contextTokens": 1000000,
+          "note": "Gọi tool ổn định: Claude Code đã chạy thật sửa file / chạy lệnh với model Claude ở giai đoạn 1."
+        },
+        {
+          "id": "claude-opus-5-5",
+          "name": "Claude Opus 5.5",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 4,
+          "outputUsdPer1M": 20,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "stable",
+          "contextTokens": 1000000,
+          "note": "Gọi tool ổn định: Claude Code đã chạy thật sửa file / chạy lệnh với model Claude ở giai đoạn 1."
+        }
+      ]
+    },
+    {
+      "id": "xai",
+      "name": "xAI (Grok)",
+      "group": "major",
+      "keyRequired": true,
+      "keyUrl": "https://console.x.ai",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.x.ai/v1"
+      },
+      "data": {
+        "serverLocation": "Mỹ (us-east-1, us-west-2, us-central-1); grok-4.3 có thêm eu-west-1.",
+        "training": null,
+        "tier": "paid",
+        "warning": "Chưa xác minh được chính sách dùng dữ liệu để huấn luyện.",
+        "sources": [
+          "https://docs.x.ai/developers/quickstart",
+          "https://docs.x.ai/developers/pricing",
+          "https://docs.x.ai/developers/models/grok-4.3"
+        ]
+      },
+      "cli": {
+        "opencode": {
+          "status": "unverified"
+        },
+        "claude": {
+          "status": "unsupported"
+        },
+        "codex": {
+          "status": "unverified",
+          "note": "Chưa xác minh hỗ trợ Responses API cho Codex."
+        }
+      },
+      "models": [
+        {
+          "id": "grok-4.3",
+          "name": "Grok 4.3",
+          "kind": "chat",
+          "tasks": ["background", "channel", "vision", "main"],
+          "inputUsdPer1M": 1.25,
+          "outputUsdPer1M": 2.5,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000
+        },
+        {
+          "id": "grok-4.7",
+          "name": "Grok 4.7",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 2,
+          "outputUsdPer1M": 6,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 500000
+        }
+      ]
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "group": "budget",
+      "keyRequired": true,
+      "keyUrl": "https://platform.deepseek.com/api_keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.deepseek.com",
+        "anthropic": "https://api.deepseek.com/anthropic"
+      },
+      "data": {
+        "serverLocation": "Trung Quốc (chính sách quyền riêng tư: thu thập, xử lý và lưu trữ tại CHND Trung Hoa).",
+        "training": "Chính sách quyền riêng tư ghi có dùng dữ liệu để huấn luyện, có thể từ chối (opt-out). Chưa xác minh chính sách này có áp cho API hay không.",
+        "tier": "paid",
+        "warning": "Máy chủ đặt ở Trung Quốc và có thể dùng dữ liệu để huấn luyện.",
+        "sources": [
+          "https://api-docs.deepseek.com/quick_start/pricing",
+          "https://api-docs.deepseek.com/guides/anthropic_api",
+          "https://api-docs.deepseek.com/quick_start/agent_integrations/claude_code",
+          "https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Hướng dẫn chính thức: ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN + ANTHROPIC_MODEL.",
+          "models": {
+            "default": "deepseek-flash",
+            "haiku": "deepseek-flash"
+          }
+        },
+        "opencode": {
+          "status": "unverified"
+        },
+        "codex": {
+          "status": "unsupported",
+          "note": "Không có Responses API trong tài liệu."
+        }
+      },
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek Flash (V4.1)",
+          "kind": "chat",
+          "tasks": ["background", "channel", "main", "vision"],
+          "inputUsdPer1M": 0.3,
+          "outputUsdPer1M": 1.2,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000,
+          "note": "Giá giờ cao điểm (an toàn khi ước tính); ngoài giờ cao điểm rẻ bằng một nửa."
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro",
+          "kind": "chat",
+          "tasks": ["main"],
+          "inputUsdPer1M": 1.32,
+          "outputUsdPer1M": 3.96,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "documented",
+          "contextTokens": 1000000,
+          "note": "Giá giờ cao điểm; ngoài giờ cao điểm rẻ bằng một nửa."
+        }
+      ]
+    },
+    {
+      "id": "qwen",
+      "name": "Qwen (Alibaba Model Studio)",
+      "group": "budget",
+      "keyRequired": true,
+      "keyUrl": "https://modelstudio.console.alibabacloud.com",
+      "standard": "openai",
+      "fields": [
+        {
+          "id": "workspaceId",
+          "label": "Workspace ID",
+          "hint": "Mã workspace trong Model Studio (vùng Singapore)."
+        }
+      ],
+      "endpoints": {
+        "openai": "https://{workspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+      },
+      "data": {
+        "serverLocation": "Singapore (endpoint quốc tế). Key gắn với vùng tạo key.",
+        "training": null,
+        "tier": "paid",
+        "warning": "Chưa xác minh chính sách huấn luyện và giá theo token.",
+        "sources": [
+          "https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope",
+          "https://www.alibabacloud.com/help/en/model-studio/models",
+          "https://www.alibabacloud.com/help/en/model-studio/text-generation-model"
+        ]
+      },
+      "cli": {
+        "opencode": {
+          "status": "unverified"
+        },
+        "claude": {
+          "status": "unsupported",
+          "note": "Tài liệu không có địa chỉ chuẩn Anthropic cho gói trả theo token."
+        },
+        "codex": {
+          "status": "unsupported"
+        }
+      },
+      "models": [
+        {
+          "id": "qwen3.8-flash",
+          "name": "Qwen 3.8 Flash",
+          "kind": "chat",
+          "tasks": ["background", "channel", "vision"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented"
+        },
+        {
+          "id": "qwen3.8-max",
+          "name": "Qwen 3.8 Max",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000
+        },
+        {
+          "id": "text-embedding-v4",
+          "name": "Text Embedding v4",
+          "kind": "embedding",
+          "tasks": ["embedding"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "none"
+        }
+      ]
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi (Moonshot)",
+      "group": "budget",
+      "keyRequired": true,
+      "keyUrl": "https://platform.kimi.ai/console/api-keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.moonshot.ai/v1",
+        "anthropic": "https://api.moonshot.ai/anthropic"
+      },
+      "data": {
+        "serverLocation": null,
+        "training": null,
+        "tier": "paid",
+        "warning": "Chưa xác minh nơi đặt máy chủ, chính sách huấn luyện và giá.",
+        "sources": [
+          "https://platform.kimi.ai/docs",
+          "https://platform.kimi.ai/docs/models.md",
+          "https://platform.kimi.ai/docs/guide/claude-code-kimi.md"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Hướng dẫn chính thức dùng Claude Code với địa chỉ chuẩn Anthropic.",
+          "models": {
+            "default": "kimi-k3.1-pro"
+          }
+        },
+        "opencode": {
+          "status": "unverified"
+        },
+        "codex": {
+          "status": "unsupported"
+        }
+      },
+      "models": [
+        {
+          "id": "kimi-k3.1-pro",
+          "name": "Kimi K3.1 Pro",
+          "kind": "chat",
+          "tasks": ["main", "vision", "channel"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000
+        }
+      ]
+    },
+    {
+      "id": "glm",
+      "name": "GLM (Z.ai)",
+      "group": "budget",
+      "keyRequired": true,
+      "keyUrl": "https://z.ai/manage-apikey/apikey-list",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.z.ai/api/paas/v4",
+        "anthropic": "https://api.z.ai/api/anthropic"
+      },
+      "data": {
+        "serverLocation": null,
+        "training": null,
+        "tier": "both",
+        "warning": "Chưa xác minh nơi đặt máy chủ và chính sách huấn luyện. Địa chỉ chuẩn Anthropic được tài liệu ghi cho gói GLM Coding Plan (key riêng, không dùng lẫn key trả theo token).",
+        "sources": [
+          "https://docs.z.ai/guides/overview/pricing",
+          "https://docs.z.ai/devpack/quick-start.md",
+          "https://docs.z.ai/devpack/tool/claude",
+          "https://docs.z.ai/devpack/tool/opencode"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Tài liệu hướng dẫn cho key GLM Coding Plan; key trả theo token chưa xác minh.",
+          "models": {
+            "default": "glm-5.3",
+            "haiku": "glm-5.3-flash"
+          }
+        },
+        "opencode": {
+          "status": "documented",
+          "note": "Tài liệu Z.ai hướng dẫn dùng OpenCode (đăng nhập bằng opencode auth login)."
+        },
+        "codex": {
+          "status": "unverified"
+        }
+      },
+      "models": [
+        {
+          "id": "glm-5.3-flash",
+          "name": "GLM-5.3 Flash",
+          "kind": "chat",
+          "tasks": ["background", "channel"],
+          "inputUsdPer1M": 0.15,
+          "outputUsdPer1M": 0.5,
+          "freeTier": false,
+          "vision": null,
+          "toolCalling": "documented"
+        },
+        {
+          "id": "glm-5.3",
+          "name": "GLM-5.3",
+          "kind": "chat",
+          "tasks": ["main"],
+          "inputUsdPer1M": 1.4,
+          "outputUsdPer1M": 4.4,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "documented",
+          "contextTokens": 1000000
+        },
+        {
+          "id": "glm-4.7-flash",
+          "name": "GLM-4.7 Flash (miễn phí)",
+          "kind": "chat",
+          "tasks": ["background", "channel"],
+          "inputUsdPer1M": 0,
+          "outputUsdPer1M": 0,
+          "freeTier": true,
+          "vision": false,
+          "toolCalling": "documented"
+        }
+      ]
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "group": "budget",
+      "keyRequired": true,
+      "keyUrl": "https://platform.minimax.io",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.minimax.io/v1",
+        "anthropic": "https://api.minimax.io/anthropic"
+      },
+      "data": {
+        "serverLocation": null,
+        "training": null,
+        "tier": "paid",
+        "warning": "Chưa đọc được chính sách quyền riêng tư (nơi đặt máy chủ, huấn luyện).",
+        "sources": [
+          "https://platform.minimax.io/docs/api-reference/text-openai-api.md",
+          "https://platform.minimax.io/docs/api-reference/text-anthropic-api.md",
+          "https://platform.minimax.io/docs/pricing/overview.md",
+          "https://platform.minimax.io/docs/m-plan/claude-code.md"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Tài liệu hướng dẫn cho key gói M Plan; key trả theo token chưa xác minh.",
+          "models": {
+            "default": "MiniMax-M3",
+            "haiku": "MiniMax-M3.1-Flash"
+          }
+        },
+        "opencode": {
+          "status": "unverified"
+        },
+        "codex": {
+          "status": "unsupported"
+        }
+      },
+      "models": [
+        {
+          "id": "MiniMax-M3.1-Flash",
+          "name": "MiniMax M3.1 Flash",
+          "kind": "chat",
+          "tasks": ["background", "channel", "vision"],
+          "inputUsdPer1M": 0.15,
+          "outputUsdPer1M": 0.6,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000
+        },
+        {
+          "id": "MiniMax-M3",
+          "name": "MiniMax M3",
+          "kind": "chat",
+          "tasks": ["main", "vision"],
+          "inputUsdPer1M": 0.3,
+          "outputUsdPer1M": 1.2,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "contextTokens": 1000000,
+          "note": "Giá cho đầu vào tới 512k token; dài hơn: 0.60 / 2.40."
+        }
+      ]
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "group": "gateway",
+      "keyRequired": true,
+      "keyUrl": "https://openrouter.ai/settings/keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://openrouter.ai/api/v1",
+        "anthropic": "https://openrouter.ai/api"
+      },
+      "data": {
+        "serverLocation": "Chưa xác minh vùng mặc định (định tuyến trong EU chỉ cho gói Business/Enterprise). Dữ liệu còn đi qua hãng chạy model phía sau.",
+        "training": "OpenRouter mặc định không ghi lại prompt. Hãng phía sau có thể huấn luyện tuỳ cài đặt tài khoản; model \":free\" có thể dùng dữ liệu để huấn luyện.",
+        "tier": "both",
+        "warning": "Model miễn phí (\":free\") có thể dùng dữ liệu để huấn luyện.",
+        "sources": [
+          "https://openrouter.ai/docs/quickstart",
+          "https://openrouter.ai/docs/features/privacy-and-logging",
+          "https://openrouter.ai/docs/faq.md",
+          "https://openrouter.ai/docs/cookbook/coding-agents/claude-code-integration.md"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Hướng dẫn chính thức; chỉ bảo đảm chạy với model của Anthropic."
+        },
+        "opencode": {
+          "status": "documented",
+          "note": "Tài liệu OpenCode: cung cấp OPENROUTER_API_KEY.",
+          "env": "OPENROUTER_API_KEY"
+        },
+        "codex": {
+          "status": "unverified"
+        }
+      },
+      "modelsFromServer": true,
+      "models": [
+        {
+          "id": "anthropic/claude-haiku-5-5",
+          "name": "Claude Haiku 5.5 (qua OpenRouter)",
+          "kind": "chat",
+          "tasks": ["background", "channel"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": false,
+          "vision": true,
+          "toolCalling": "documented",
+          "note": "Tên model theo dạng hãng/model; giá xem trang openrouter.ai/models."
+        }
+      ]
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "group": "gateway",
+      "keyRequired": true,
+      "keyUrl": "https://console.groq.com/keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.groq.com/openai/v1"
+      },
+      "data": {
+        "serverLocation": "Mỹ (dữ liệu khách hàng lưu trên Google Cloud ở Mỹ).",
+        "training": "Mặc định không giữ nội dung vào/ra; có thể ghi tới 30 ngày để chống lạm dụng (tắt được). Chưa xác minh điều khoản huấn luyện.",
+        "tier": "paid",
+        "sources": [
+          "https://console.groq.com/docs/openai",
+          "https://console.groq.com/docs/models",
+          "https://console.groq.com/docs/your-data"
+        ]
+      },
+      "cli": {
+        "opencode": {
+          "status": "unverified"
+        },
+        "claude": {
+          "status": "unsupported"
+        },
+        "codex": {
+          "status": "unverified"
+        }
+      },
+      "models": [
+        {
+          "id": "openai/gpt-oss-20b",
+          "name": "GPT-OSS 20B",
+          "kind": "chat",
+          "tasks": ["background", "channel"],
+          "inputUsdPer1M": 0.075,
+          "outputUsdPer1M": 0.3,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "documented"
+        },
+        {
+          "id": "openai/gpt-oss-120b",
+          "name": "GPT-OSS 120B",
+          "kind": "chat",
+          "tasks": ["main", "channel"],
+          "inputUsdPer1M": 0.15,
+          "outputUsdPer1M": 0.6,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "documented",
+          "contextTokens": 131072
+        }
+      ]
+    },
+    {
+      "id": "together",
+      "name": "Together AI",
+      "group": "gateway",
+      "keyRequired": true,
+      "keyUrl": "https://api.together.ai/settings/api-keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.together.ai/v1",
+        "anthropic": "https://api.together.ai"
+      },
+      "data": {
+        "serverLocation": "Chưa xác minh vùng mặc định; có endpoint chỉ-Mỹ (us-api.together.ai, đắt hơn 25%).",
+        "training": null,
+        "tier": "paid",
+        "warning": "Chưa đọc được chính sách quyền riêng tư.",
+        "sources": [
+          "https://docs.together.ai/docs/openai-api-compatibility",
+          "https://docs.together.ai/docs/serverless/models.md",
+          "https://docs.together.ai/docs/inference/messages-api.md"
+        ]
+      },
+      "cli": {
+        "opencode": {
+          "status": "unverified"
+        },
+        "claude": {
+          "status": "unverified",
+          "note": "Có địa chỉ chuẩn Anthropic (chỉ cho model GLM-5.x) nhưng chưa có hướng dẫn Claude Code."
+        },
+        "codex": {
+          "status": "unverified"
+        }
+      },
+      "models": [
+        {
+          "id": "zai-org/GLM-5.3-Flash",
+          "name": "GLM-5.3 Flash (Together)",
+          "kind": "chat",
+          "tasks": ["background", "channel"],
+          "inputUsdPer1M": 0.15,
+          "outputUsdPer1M": 0.5,
+          "freeTier": false,
+          "vision": null,
+          "toolCalling": "documented"
+        },
+        {
+          "id": "openai/gpt-oss-120b",
+          "name": "GPT-OSS 120B (Together)",
+          "kind": "chat",
+          "tasks": ["main"],
+          "inputUsdPer1M": 0.15,
+          "outputUsdPer1M": 0.6,
+          "freeTier": false,
+          "vision": false,
+          "toolCalling": "documented"
+        }
+      ]
+    },
+    {
+      "id": "fireworks",
+      "name": "Fireworks AI",
+      "group": "gateway",
+      "keyRequired": true,
+      "keyUrl": "https://fireworks.ai/account/api-keys",
+      "standard": "openai",
+      "endpoints": {
+        "openai": "https://api.fireworks.ai/inference/v1",
+        "anthropic": "https://api.fireworks.ai/inference"
+      },
+      "data": {
+        "serverLocation": "Mỹ.",
+        "training": "Không dùng prompt để huấn luyện nếu không đồng ý; không lưu prompt/kết quả với model mở (trừ khi bật).",
+        "tier": "paid",
+        "sources": [
+          "https://docs.fireworks.ai/tools-sdks/openai-compatibility",
+          "https://docs.fireworks.ai/tools-sdks/anthropic-compatibility.md",
+          "https://fireworks.ai/privacy-policy",
+          "https://fireworks.ai/models"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Hướng dẫn chính thức dùng Claude Code với địa chỉ chuẩn Anthropic."
+        },
+        "opencode": {
+          "status": "unverified"
+        },
+        "codex": {
+          "status": "unverified"
+        }
+      },
+      "models": [
+        {
+          "id": "accounts/fireworks/models/kimi-k2p5",
+          "name": "Kimi K2.5 (Fireworks)",
+          "kind": "chat",
+          "tasks": ["main"],
+          "inputUsdPer1M": null,
+          "outputUsdPer1M": null,
+          "freeTier": false,
+          "vision": null,
+          "toolCalling": "documented",
+          "note": "Tên model lấy từ ví dụ trong tài liệu; giá chưa xác minh."
+        }
+      ]
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama (chạy trên máy)",
+      "group": "local",
+      "keyRequired": false,
+      "standard": "openai",
+      "endpoints": {
+        "openai": "http://127.0.0.1:11434/v1",
+        "anthropic": "http://127.0.0.1:11434"
+      },
+      "data": {
+        "serverLocation": "Trên máy của bạn.",
+        "training": "Không gửi ra ngoài (model chạy cục bộ).",
+        "tier": "local",
+        "sources": [
+          "https://docs.ollama.com/api/openai-compatibility",
+          "https://docs.ollama.com/api/anthropic-compatibility",
+          "https://docs.ollama.com/integrations/claude-code.md"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Hướng dẫn chính thức: ANTHROPIC_AUTH_TOKEN=ollama, ANTHROPIC_BASE_URL=http://localhost:11434."
+        },
+        "opencode": {
+          "status": "documented",
+          "note": "OpenCode có sẵn nhà cung cấp Ollama."
+        },
+        "codex": {
+          "status": "unverified",
+          "note": "Codex có nhà cung cấp dựng sẵn 'ollama' (--oss)."
+        }
+      },
+      "modelsFromServer": true,
+      "models": []
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio (chạy trên máy)",
+      "group": "local",
+      "keyRequired": false,
+      "standard": "openai",
+      "endpoints": {
+        "openai": "http://127.0.0.1:1234/v1",
+        "anthropic": "http://127.0.0.1:1234"
+      },
+      "data": {
+        "serverLocation": "Trên máy của bạn.",
+        "training": "Không gửi ra ngoài (model chạy cục bộ).",
+        "tier": "local",
+        "sources": [
+          "https://lmstudio.ai/docs/developer/openai-compat",
+          "https://lmstudio.ai/docs/developer/anthropic-compat"
+        ]
+      },
+      "cli": {
+        "claude": {
+          "status": "documented",
+          "note": "Hướng dẫn chính thức: ANTHROPIC_BASE_URL=http://localhost:1234, ANTHROPIC_AUTH_TOKEN=lmstudio."
+        },
+        "opencode": {
+          "status": "documented",
+          "note": "OpenCode có sẵn nhà cung cấp LM Studio."
+        },
+        "codex": {
+          "status": "documented",
+          "note": "LM Studio có POST /v1/responses nên Codex dùng được (nhà cung cấp dựng sẵn 'lmstudio')."
+        }
+      },
+      "modelsFromServer": true,
+      "models": []
+    }
+  ]
+}

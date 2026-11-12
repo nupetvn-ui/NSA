@@ -13,6 +13,8 @@ const PACKAGES: Record<string, string> = {
   '@nsa/adapter-gemini': 'packages/adapters/gemini',
   '@nsa/adapter-antigravity': 'packages/adapters/antigravity',
   '@nsa/adapter-pty': 'packages/adapters/pty',
+  '@nsa/adapter-api': 'packages/adapters/api',
+  '@nsa/providers': 'packages/providers',
   '@nsa/mcp-gateway': 'packages/mcp-gateway',
   '@nsa/memory': 'packages/memory',
   '@nsa/plugin-sdk': 'packages/plugin-sdk',

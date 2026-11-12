@@ -1,0 +1,29 @@
+{
+  "name": "@nsa/providers",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Nhà cung cấp model qua API key: file dữ liệu hãng/model, kho khoá, chọn model theo việc, chi phí",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@nsa/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/adapter-api": "workspace:*",
+    "@nsa/adapter-claude": "workspace:*",
+    "@nsa/adapter-codex": "workspace:*",
+    "@nsa/adapter-opencode": "workspace:*"
+  }
+}

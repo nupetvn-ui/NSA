@@ -144,9 +144,13 @@ export function createClaudeAdapter(options: ClaudeAdapterOptions = {}): AgentAd
 
     run(runOptions, onEvent) {
       const settings = runOptions.gate ? gateSettingsFile() : undefined;
-      const env = runOptions.gate
-        ? { ...gateEnv(runOptions.gate), ...nodeRuntime().env }
-        : undefined;
+      const env =
+        runOptions.gate || runOptions.env
+          ? {
+              ...runOptions.env,
+              ...(runOptions.gate ? { ...gateEnv(runOptions.gate), ...nodeRuntime().env } : {}),
+            }
+          : undefined;
       return runJsonLinesProcess(
         {
           command,

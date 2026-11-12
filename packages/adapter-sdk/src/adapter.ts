@@ -68,6 +68,11 @@ export interface RunOptions {
    * và móc phải "lỗi là chặn". Chỉ truyền khi `capabilities().toolGate` là true.
    */
   gate?: ToolGateEndpoint;
+  /**
+   * Biến môi trường riêng của lượt này (ví dụ key của hãng khi NSA cấp key cho CLI — ADR-0008).
+   * Có thể chứa bí mật: adapter chỉ được truyền cho tiến trình con, không ghi ra đâu cả.
+   */
+  env?: Record<string, string>;
 }
 
 export interface AgentRun {
