@@ -90,6 +90,12 @@ docs/                 kế hoạch, ADR
 1. Tăng `version` trong `apps/desktop/package.json`, commit, merge vào `main`.
 2. Gắn tag trùng version, ví dụ `v0.1.0`, và push tag.
 3. Workflow **Release Windows** build bộ cài và tạo GitHub Release dạng **nháp**.
-4. Kiểm tra rồi bấm **Publish** trên GitHub — từ lúc đó app đã cài sẽ tự tải bản mới và cài khi thoát.
+4. Kiểm tra rồi bấm **Publish** trên GitHub. Từ lúc đó, app đã cài sẽ tự tải bản mới (kiểm khi mở app và mỗi 4 giờ). Thanh bên hiện **Khởi động lại** để cài ngay; nếu không bấm thì app tự cài khi thoát.
+
+Thử tự cập nhật mà không phát hành lên GitHub:
+
+1. Build bản cũ, cài thử.
+2. Tăng version, build lại. Đặt `latest.yml`, bộ cài mới và file `.blockmap` của cả hai bản vào một thư mục, rồi phục vụ thư mục đó qua HTTP.
+3. Mở bản cũ với biến môi trường `NSA_UPDATE_URL` trỏ tới thư mục đó (ví dụ `http://127.0.0.1:8765/`).
 
 Ký mã: đặt secret `WIN_CSC_LINK` (file `.pfx` mã hoá base64 hoặc URL) và `WIN_CSC_KEY_PASSWORD` trong repo. Chưa đặt thì bộ cài vẫn tạo được nhưng không ký (Windows sẽ cảnh báo khi cài). Chi tiết: [ADR-0003](docs/adr/0003-dong-goi-va-tu-cap-nhat.md).
