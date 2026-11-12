@@ -21,6 +21,9 @@
     "electron-updater": "^6.8.11"
   },
   "devDependencies": {
+    "@nsa/adapter-claude": "workspace:*",
+    "@nsa/adapter-codex": "workspace:*",
+    "@nsa/adapter-sdk": "workspace:*",
     "@nsa/core": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19.3.0",
