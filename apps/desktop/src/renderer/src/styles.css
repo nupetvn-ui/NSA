@@ -823,3 +823,113 @@ textarea::placeholder {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---------- Hộp xác nhận kiểu macOS ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.25);
+  display: grid;
+  place-items: center;
+  z-index: 10;
+  animation: fade-in 0.12s ease-out;
+}
+
+.alert {
+  width: 300px;
+  padding: 20px 16px 16px;
+  border-radius: 12px;
+  background: var(--window);
+  box-shadow:
+    0 0 0 0.5px var(--separator),
+    0 20px 50px rgb(0 0 0 / 0.3);
+  text-align: center;
+  animation: pop-in 0.16s ease-out;
+}
+
+.alert h2 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 10px 0 6px;
+}
+
+.alert p {
+  font-size: 11.5px;
+  color: var(--secondary);
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.alert-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.alert-btn {
+  flex: 1;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--fill-strong);
+  font-size: 13px;
+}
+
+.alert-btn.primary,
+.push-btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: none;
+}
+
+.alert-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* ---------- Báo bản cập nhật ---------- */
+.update-banner {
+  margin: 0 8px 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--window);
+  box-shadow: var(--shadow-control);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-banner .push-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.update-title {
+  font-weight: 600;
+}
+
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--fill-strong);
+  overflow: hidden;
+}
+
+.progress > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
