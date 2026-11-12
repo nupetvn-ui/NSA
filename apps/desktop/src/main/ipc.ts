@@ -1,5 +1,7 @@
-import { BrowserWindow, app, dialog, ipcMain } from 'electron';
+import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
 import type { ChatService, CliChange, IpcArgs, IpcChannel, IpcResult, NsaCore } from '@nsa/core';
+import type { MemoryRuntime } from '@nsa/memory';
+import { cleanCommit, cleanIds, cleanPatch, cleanSource, cleanTeach } from './memory';
 import { getUpdateStatus, installUpdate } from './updater';
 
 type Handlers = {
@@ -7,7 +9,14 @@ type Handlers = {
 };
 
 /** Đăng ký trình xử lý cho mọi kênh trong hợp đồng IPC — thiếu kênh nào TypeScript báo lỗi. */
-export function registerIpc(core: NsaCore, chat: ChatService, cliChanges: () => CliChange[]): void {
+export function registerIpc(
+  core: NsaCore,
+  chat: ChatService,
+  cliChanges: () => CliChange[],
+  memory: { runtime: MemoryRuntime; mcpUrl: string | null },
+): void {
+  const mem = memory.runtime.service;
+  const runtime = memory.runtime;
   const handlers: Handlers = {
     'core:ping': (message) => core.ping(message),
     'app:info': () => ({ name: app.getName(), version: app.getVersion() }),
@@ -31,6 +40,49 @@ export function registerIpc(core: NsaCore, chat: ChatService, cliChanges: () => 
         ? await dialog.showOpenDialog(win, options)
         : await dialog.showOpenDialog(options);
       return result.canceled ? null : (result.filePaths[0] ?? null);
+    },
+    'mem:info': () => ({
+      root: mem.root,
+      entries: mem.listEntries().length,
+      pending: mem.listProposals('pending').length,
+      vector: mem.vectorAvailable,
+      mcpUrl: memory.mcpUrl,
+    }),
+    'mem:branches': () => mem.listBranches(),
+    'mem:saveBranch': (path, input) =>
+      mem.saveBranch(String(path), {
+        ...(typeof input?.title === 'string' ? { title: input.title } : {}),
+        ...(typeof input?.description === 'string' ? { description: input.description } : {}),
+        ...(typeof input?.autoApprove === 'boolean' ? { autoApprove: input.autoApprove } : {}),
+        ...(typeof input?.minConfidence === 'number'
+          ? { minConfidence: Math.min(1, Math.max(0, input.minConfidence)) }
+          : {}),
+        ...(typeof input?.hidden === 'boolean' ? { hidden: input.hidden } : {}),
+      }),
+    'mem:list': (branch) => mem.listEntries(typeof branch === 'string' ? branch : undefined),
+    'mem:search': (query) => mem.search(String(query), { limit: 30 }),
+    'mem:teach': (input) => mem.teach(cleanTeach(input)),
+    'mem:update': (id, patch) => mem.update(String(id), cleanPatch(patch)),
+    'mem:delete': (id) => mem.delete(String(id)),
+    'mem:history': (entryId) =>
+      mem.history(typeof entryId === 'string' ? { entryId } : { limit: 100 }),
+    'mem:undo': (commit) => mem.undo(cleanCommit(commit)),
+    'mem:proposals': (status) =>
+      mem.listProposals(
+        status === 'pending' || status === 'accepted' || status === 'rejected' ? status : undefined,
+      ),
+    'mem:accept': (id, edits) => mem.accept(String(id), cleanPatch(edits)),
+    'mem:reject': (id) => mem.reject(String(id)),
+    'mem:reindex': () => mem.rebuildIndex(),
+    'mem:settings': () => runtime.settings(),
+    'mem:saveSettings': (patch) => runtime.saveSettings(patch ?? {}),
+    'mem:status': () => runtime.status(),
+    'mem:distill': (conversationId) => runtime.distillConversation(String(conversationId)),
+    'mem:importSources': () => runtime.importer.sources(),
+    'mem:importList': (source) => runtime.importer.list(cleanSource(source)),
+    'mem:import': (source, ids) => runtime.importSessions(cleanSource(source), cleanIds(ids)),
+    'mem:openFolder': async () => {
+      await shell.openPath(mem.root);
     },
   };
 

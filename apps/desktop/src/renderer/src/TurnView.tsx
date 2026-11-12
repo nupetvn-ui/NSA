@@ -39,6 +39,17 @@ export function TurnView({ turn, agentName, onCancel, onAnswer }: Props) {
               </button>
             </>
           )}
+          {turn.memory && turn.memory.length > 0 && (
+            <span
+              className="hint mem-used"
+              title={[
+                'Bộ nhớ NSA đã chèn vào đầu lượt:',
+                ...turn.memory.map((m) => `• ${m.title}`),
+              ].join(String.fromCharCode(10))}
+            >
+              dùng {turn.memory.length} mục nhớ
+            </span>
+          )}
           {turn.status === 'cancelled' && <span className="hint">đã dừng</span>}
         </header>
 

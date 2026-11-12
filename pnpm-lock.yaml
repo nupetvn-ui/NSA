@@ -72,6 +72,9 @@ importers:
       '@nsa/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@nsa/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2

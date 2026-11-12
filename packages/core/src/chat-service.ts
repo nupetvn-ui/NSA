@@ -83,6 +83,8 @@ export interface ChatExtension {
     agentId: string;
     conversationId?: string;
     cwd: string;
+    /** Agent nhận lượt này gắn được MCP (để báo nó có tool của NSA). */
+    mcp: boolean;
   }): MemoryContext | null | Promise<MemoryContext | null>;
   /** Server MCP gắn cho một lần chạy (chỉ với agent có năng lực `mcp`). */
   mcpFor?(input: {
@@ -300,7 +302,13 @@ export class ChatService {
       throw new Error('Không tìm thấy cuộc trò chuyện');
     }
 
-    const memory = await this.#gatherContext(prompt, adapter.id, existing?.id, cwd);
+    const memory = await this.#gatherContext(
+      prompt,
+      adapter.id,
+      existing?.id,
+      cwd,
+      adapter.capabilities().mcp,
+    );
     if (existing && !this.#conversations.has(existing.id)) {
       throw new Error('Không tìm thấy cuộc trò chuyện');
     }
@@ -322,6 +330,7 @@ export class ChatService {
     agentId: string,
     conversationId: string | undefined,
     cwd: string,
+    mcp: boolean,
   ): Promise<MemoryContext | null> {
     const parts: MemoryContext[] = [];
     for (const ext of this.#extensions) {
@@ -331,6 +340,7 @@ export class ChatService {
           prompt,
           agentId,
           cwd,
+          mcp,
           ...(conversationId ? { conversationId } : {}),
         });
         if (ctx) parts.push(ctx);

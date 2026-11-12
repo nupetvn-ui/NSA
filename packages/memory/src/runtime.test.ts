@@ -119,6 +119,8 @@ describe('Agent B nhớ điều đã dạy agent A', () => {
     ref.chat = chat;
 
     await chat.send({ agentId: 'claude', prompt: 'Hãy nhớ: tôi thích màu xanh lá', cwd: 'D:/p' });
+    // Kho còn trống nhưng A có MCP → vẫn được báo dùng mem_propose.
+    expect(a.runs[0]?.prompt).toContain('mem_propose');
     const attached = a.runs[0]?.mcpServers?.[0];
     expect(attached?.name).toBe('nsa_mem');
     const call = await fetch(attached?.url ?? '', {

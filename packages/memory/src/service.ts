@@ -868,10 +868,22 @@ export class MemoryService {
    * Phần ngữ cảnh chèn vào đầu một lượt: quy tắc hành vi (luôn có), các mục liên quan đến câu
    * hỏi (FTS5), rồi — nếu kho còn nhỏ — các mục mới nhất cho tới khi hết giới hạn ký tự.
    */
-  contextFor(prompt: string, options: { maxChars?: number } = {}): MemoryContext | null {
+  contextFor(
+    prompt: string,
+    options: { maxChars?: number; tools?: boolean } = {},
+  ): MemoryContext | null {
     const maxChars = options.maxChars ?? 4000;
+    // Agent có tool mem_* thì luôn được báo, kể cả khi kho còn trống — để khi người dùng dặn
+    // nhớ, agent đề xuất vào NSA Mem thay vì ghi vào bộ nhớ riêng của CLI (đã thấy khi chạy thật).
+    const toolsHint = options.tools
+      ? 'Bạn có tool MCP của NSA (server nsa_mem): mem_search / mem_read để tra bộ nhớ của người ' +
+        'dùng; mem_propose để đề xuất ghi nhớ khi người dùng dặn nhớ hoặc khi có điều đáng nhớ lâu ' +
+        'dài. Dùng mem_propose thay cho file nhớ hay bộ nhớ riêng của bạn — bộ nhớ NSA dùng chung cho mọi agent.'
+      : null;
     const readable = this.#readable();
-    if (readable.length === 0) return null;
+    if (readable.length === 0) {
+      return toolsHint ? { text: `[Bộ nhớ NSA] ${toolsHint}`, entries: [] } : null;
+    }
     const branches = new Map(this.listBranches().map((b) => [b.path, b]));
     const picked = new Map<string, MemoryEntry>();
     for (const e of readable) if (e.kind === 'rule') picked.set(e.id, e);
@@ -904,8 +916,13 @@ export class MemoryService {
       used.push({ id: e.id, title: e.title });
       size += line.length + 1;
     }
-    if (lines.length === 0) return null;
-    return { text: [header, ...lines, footer].join('\n'), entries: used };
+    if (lines.length === 0) {
+      return toolsHint ? { text: `[Bộ nhớ NSA] ${toolsHint}`, entries: [] } : null;
+    }
+    return {
+      text: [header, ...(toolsHint ? [toolsHint] : []), ...lines, footer].join('\n'),
+      entries: used,
+    };
   }
 
   /** Ba thao tác cho agent: `mem_search` / `mem_read` / `mem_propose`. */

@@ -106,9 +106,12 @@ export class MemoryRuntime implements ChatExtension {
 
   // ------------------------------------------------------------ ChatExtension
 
-  contextFor(input: { prompt: string }): MemoryContext | null {
+  contextFor(input: { prompt: string; mcp: boolean }): MemoryContext | null {
     if (!this.#settings.inject.enabled) return null;
-    return this.service.contextFor(input.prompt, { maxChars: this.#settings.inject.maxChars });
+    return this.service.contextFor(input.prompt, {
+      maxChars: this.#settings.inject.maxChars,
+      tools: input.mcp && this.#settings.agentTools && this.#options.mcp !== undefined,
+    });
   }
 
   mcpFor(input: { agentId: string; conversationId: string; turnId: string }) {

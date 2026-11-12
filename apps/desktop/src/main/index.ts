@@ -17,11 +17,16 @@ import { createAgents } from './agents';
 import { createFileAuditLog } from './audit';
 import { createFingerprintStore } from './cli-changes';
 import { registerIpc } from './ipc';
+import { setupMemory } from './memory';
 import { createFileStore } from './store';
 import { setupAutoUpdate } from './updater';
 import icon from '../../resources/icon.png?asset';
 
 const core = new NsaCore();
+
+// Chạy thử / test tự động trong thư mục dữ liệu riêng, không đụng dữ liệu thật của người dùng.
+const userDataOverride = process.env['NSA_USER_DATA'];
+if (userDataOverride) app.setPath('userData', userDataOverride);
 
 function broadcast<E extends IpcEventChannel>(channel: E, payload: IpcEventContract[E]): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -112,14 +117,32 @@ if (!app.requestSingleInstanceLock()) {
     }
     app.on('will-quit', () => void gate?.close());
 
-    // Bản Cá nhân: cắm bộ mặc định vào ba ổ cắm của lõi (danh tính, chính sách, nhật ký).
-    const chat = new ChatService({
+    // Bản Cá nhân: cắm bộ mặc định vào bốn ổ cắm của lõi (danh tính, chính sách, nhật ký,
+    // bộ nhớ có chủ sở hữu + phạm vi — MemoryService mặc định dùng personalMemoryAccess).
+    const policy = personalPolicy({ homeDir: homedir() });
+    let chat: ChatService | null = null;
+    const memory = await setupMemory({
+      userData,
+      identity,
+      policy,
+      audit,
+      chat: () => {
+        if (!chat) throw new Error('Lõi chat chưa sẵn sàng');
+        return chat;
+      },
+      onChanged: (pending) => broadcast('mem:changed', { pending }),
+      onStatus: (status) => broadcast('mem:status', status),
+    });
+    app.on('will-quit', () => void memory.close());
+
+    chat = new ChatService({
       adapters,
       identity,
-      policy: personalPolicy({ homeDir: homedir() }),
+      policy,
       audit,
       ...(gate ? { gate } : {}),
       store: createFileStore(join(userData, 'conversations.json')),
+      extensions: [memory.runtime],
       onEvent: (event) => broadcast('chat:event', event),
     });
 
@@ -142,7 +165,10 @@ if (!app.requestSingleInstanceLock()) {
       })
       .catch((err: unknown) => console.error('[cli-watch]', err));
 
-    registerIpc(core, chat, () => cliChanges);
+    registerIpc(core, chat, () => cliChanges, {
+      runtime: memory.runtime,
+      mcpUrl: memory.mcp?.url ?? null,
+    });
     createWindow();
     setupAutoUpdate((status) => broadcast('app:update', status));
 

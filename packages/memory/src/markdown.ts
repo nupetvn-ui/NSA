@@ -145,7 +145,7 @@ export function slugify(text: string): string {
 export function foldText(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{Mn}/gu, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'D')
     .toLowerCase();

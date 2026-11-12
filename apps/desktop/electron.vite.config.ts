@@ -11,8 +11,9 @@ const exclude = Object.keys(alias);
 export default defineConfig({
   main: {
     resolve: { alias },
-    // cross-spawn (dùng trong adapter) cũng được gộp vào bundle.
-    build: { externalizeDeps: { exclude: [...exclude, 'cross-spawn'] } },
+    // cross-spawn (dùng trong adapter) và isomorphic-git (lịch sử kho nhớ) cũng được gộp vào
+    // bundle — chúng không phải phụ thuộc trực tiếp của app nên electron-builder không đóng gói.
+    build: { externalizeDeps: { exclude: [...exclude, 'cross-spawn', 'isomorphic-git'] } },
   },
   preload: {
     resolve: { alias },

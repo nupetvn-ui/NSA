@@ -317,5 +317,6 @@ describe('ngữ cảnh cho agent', () => {
   it('kho trống → không chèn gì', async () => {
     const { service } = await open();
     expect(service.contextFor('xin chào')).toBeNull();
+    expect(service.contextFor('xin chào', { tools: true })).toMatchObject({ entries: [] });
   });
 });
