@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import type { AppInfo, PermissionLevel } from '@nsa/core';
+import type { AppInfo, PermissionLevel, SendRequest } from '@nsa/core';
 import logo from '../../../resources/icon.png';
+import { ConfirmSheet } from './ConfirmSheet';
 import { TurnView } from './TurnView';
+import { UpdateBanner } from './UpdateBanner';
 import { useChat } from './useChat';
 
 export function App() {
@@ -15,6 +17,8 @@ export function App() {
   const [newPermission, setNewPermission] = useState<PermissionLevel>('read-only');
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  /** Yêu cầu đang chờ người dùng xác nhận (chính sách trả lời "hỏi"). */
+  const [confirm, setConfirm] = useState<{ reason: string; request: SendRequest } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -58,16 +62,29 @@ export function App() {
       setSendError('Chọn thư mục làm việc trước khi gửi.');
       return;
     }
+    await dispatch({
+      agentId,
+      prompt,
+      ...(active
+        ? { conversationId: active.id }
+        : { cwd: newCwd ?? '', permission: newPermission }),
+    });
+  }
+
+  /** Gửi qua lõi; lõi hỏi chính sách trước khi cho agent chạy. */
+  async function dispatch(request: SendRequest) {
     setSending(true);
     setSendError(null);
     try {
-      const result = await send({
-        agentId,
-        prompt,
-        ...(active
-          ? { conversationId: active.id }
-          : { cwd: newCwd ?? '', permission: newPermission }),
-      });
+      const result = await send(request);
+      if (result.status === 'needs_confirmation') {
+        setConfirm({ reason: result.reason, request });
+        return;
+      }
+      if (result.status === 'denied') {
+        setSendError(`Chính sách không cho phép: ${result.reason}`);
+        return;
+      }
       setActiveId(result.conversationId);
       setDraft('');
       if (inputRef.current) {
@@ -166,6 +183,8 @@ export function App() {
             );
           })}
         </nav>
+
+        <UpdateBanner />
 
         <div className="agents-panel">
           <div className="agents-head">
@@ -324,6 +343,20 @@ export function App() {
           <div className="composer-hint hint">Enter để gửi · Shift+Enter xuống dòng</div>
         </form>
       </main>
+
+      {confirm && (
+        <ConfirmSheet
+          title="Cho phép agent sửa file?"
+          message={confirm.reason}
+          confirmLabel="Cho phép"
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            const request = { ...confirm.request, confirmed: true };
+            setConfirm(null);
+            void dispatch(request);
+          }}
+        />
+      )}
     </div>
   );
 }

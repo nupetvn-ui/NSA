@@ -27,6 +27,8 @@ export interface Conversation {
   permission: PermissionLevel;
   createdAt: string;
   updatedAt: string;
+  /** Người dùng đã đồng ý cho agent sửa file trong cuộc trò chuyện này. */
+  editConfirmed?: boolean;
   /** Mã phiên CLI theo từng agent, để lượt sau tiếp tục đúng phiên. */
   sessions: Record<string, string>;
   turns: Turn[];

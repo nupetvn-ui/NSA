@@ -22,10 +22,20 @@ export interface AppInfo {
   version: string;
 }
 
+/** Trạng thái tự cập nhật, hiển thị trên giao diện. */
+export type UpdateStatus =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string };
+
 /** Lệnh renderer gọi xuống main (yêu cầu → trả lời). */
 export interface IpcContract {
   'core:ping': { args: [message: string]; result: PingResult };
   'app:info': { args: []; result: AppInfo };
+  'app:updateStatus': { args: []; result: UpdateStatus };
+  'app:installUpdate': { args: []; result: void };
   'agents:list': { args: []; result: AgentInfo[] };
   'chat:list': { args: []; result: Conversation[] };
   'chat:send': { args: [request: SendRequest]; result: SendResult };
@@ -37,6 +47,7 @@ export interface IpcContract {
 /** Sự kiện main đẩy lên renderer. */
 export interface IpcEventContract {
   'chat:event': ChatEvent;
+  'app:update': UpdateStatus;
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -48,6 +59,8 @@ export type IpcEventChannel = keyof IpcEventContract;
 export const IPC_CHANNELS = [
   'core:ping',
   'app:info',
+  'app:updateStatus',
+  'app:installUpdate',
   'agents:list',
   'chat:list',
   'chat:send',
@@ -56,7 +69,10 @@ export const IPC_CHANNELS = [
   'dialog:pickFolder',
 ] as const satisfies readonly IpcChannel[];
 
-export const IPC_EVENT_CHANNELS = ['chat:event'] as const satisfies readonly IpcEventChannel[];
+export const IPC_EVENT_CHANNELS = [
+  'chat:event',
+  'app:update',
+] as const satisfies readonly IpcEventChannel[];
 
 // Bắt lỗi khi khai báo kênh trong contract mà quên thêm vào danh sách ở trên.
 type Missing<A, B> = Exclude<A, B> extends never ? true : Exclude<A, B>;

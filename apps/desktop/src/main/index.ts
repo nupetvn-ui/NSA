@@ -1,8 +1,17 @@
+import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, app, nativeTheme, shell } from 'electron';
-import { ChatService, NsaCore, type IpcEventChannel, type IpcEventContract } from '@nsa/core';
+import {
+  ChatService,
+  NsaCore,
+  localIdentity,
+  personalPolicy,
+  type IpcEventChannel,
+  type IpcEventContract,
+} from '@nsa/core';
 import { createClaudeAdapter } from '@nsa/adapter-claude';
 import { createCodexAdapter } from '@nsa/adapter-codex';
+import { createFileAuditLog } from './audit';
 import { registerIpc } from './ipc';
 import { createFileStore } from './store';
 import { setupAutoUpdate } from './updater';
@@ -85,15 +94,19 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     app.setAppUserModelId('vn.nupet.nsa');
 
+    // Bản Cá nhân: cắm bộ mặc định vào ba ổ cắm của lõi (danh tính, chính sách, nhật ký).
     const chat = new ChatService({
       adapters: [createClaudeAdapter(), createCodexAdapter()],
+      identity: localIdentity(userInfo().username),
+      policy: personalPolicy({ homeDir: homedir() }),
+      audit: createFileAuditLog(join(app.getPath('userData'), 'audit')),
       store: createFileStore(join(app.getPath('userData'), 'conversations.json')),
       onEvent: (event) => broadcast('chat:event', event),
     });
 
     registerIpc(core, chat);
     createWindow();
-    setupAutoUpdate();
+    setupAutoUpdate((status) => broadcast('app:update', status));
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
