@@ -1,0 +1,86 @@
+name: Test hợp đồng hằng đêm
+
+# Nguyên tắc 6 của docs/PLAN.md: mỗi đêm cài bản CLI MỚI NHẤT của từng nhà cung cấp,
+# ghi phiên bản + --help, rồi chạy bộ test hợp đồng (gửi prompt, resume, huỷ, chặn lệnh)
+# với CLI thật. CLI nào cần đăng nhập mà CI không có thì các bước của nó bị BỎ QUA kèm
+# lý do trong bảng tóm tắt — không bao giờ được tính là đã qua.
+# OpenCode dùng model miễn phí nên chạy thật được mà không cần khoá nào.
+
+on:
+  schedule:
+    - cron: '0 19 * * *' # 02:00 giờ Việt Nam
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Hợp đồng adapter × CLI mới nhất
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cài bản mới nhất của các CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest \
+            opencode-ai@latest @google/gemini-cli@latest || true
+
+      - name: Ghi phiên bản và --help
+        run: |
+          mkdir -p cli-fingerprints
+          for cli in claude codex opencode gemini agy; do
+            if command -v "$cli" >/dev/null; then
+              { "$cli" --version; echo; "$cli" --help; } > "cli-fingerprints/$cli.txt" 2>&1 || true
+              echo "$cli: $($cli --version 2>&1 | head -1)"
+            else
+              echo "$cli: chưa cài trên máy CI" | tee "cli-fingerprints/$cli.txt"
+            fi
+          done
+
+      - name: Bộ test hợp đồng với CLI thật
+        env:
+          NSA_LIVE_CONTRACT: '1'
+          # Có secret thì các CLI này chạy thật; không có thì bị bỏ qua (có ghi chú).
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        # shell: bash bật pipefail — bước hỏng thì workflow đỏ, không bị `tee` che mất.
+        shell: bash
+        run: pnpm test:live --reporter=verbose 2>&1 | tee contract.log
+
+      - name: Bảng tóm tắt
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs");
+            const lines = fs.existsSync("contract.log") ? fs.readFileSync("contract.log", "utf8").split("\n") : [];
+            const icon = { passed: "✅ qua", failed: "❌ hỏng", skipped: "⏭️ bỏ qua" };
+            let out = "## Test hợp đồng hằng đêm\n\n| CLI | Bước | Kết quả | Ghi chú |\n|---|---|---|---|\n";
+            for (const line of lines) {
+              const m = line.match(/\[contract\] (\S+) (\[.*\])$/);
+              if (!m) continue;
+              for (const r of JSON.parse(m[2])) {
+                out += `| ${m[1]} | ${r.step} | ${icon[r.status]} | ${r.detail.replace(/\|/g, "/")} |\n`;
+              }
+            }
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out);
+          '
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cli-fingerprints
+          path: |
+            cli-fingerprints/
+            contract.log

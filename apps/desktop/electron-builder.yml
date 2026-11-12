@@ -16,6 +16,8 @@ files:
 asar: true
 asarUnpack:
   - resources/**
+  # Terminal giả (tầng PTY) là module native, phải nằm ngoài asar.
+  - node_modules/@lydell/**
 
 # Icon NSIS và NSA.exe lấy từ build/icon.png (sinh từ build/icon.svg bằng `pnpm icons`).
 icon: build/icon.png
@@ -31,6 +33,8 @@ win:
   # Khi chuyển sang Azure Trusted Signing, thêm khối `azureSignOptions` ở đây.
 
 nsis:
+  # Mở lại app bằng NSA.exe sau khi cập nhật im lặng — xem build/installer.nsh.
+  include: build/installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true

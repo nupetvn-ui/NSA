@@ -1,5 +1,5 @@
 import { BrowserWindow, app, dialog, ipcMain } from 'electron';
-import type { ChatService, IpcArgs, IpcChannel, IpcResult, NsaCore } from '@nsa/core';
+import type { ChatService, CliChange, IpcArgs, IpcChannel, IpcResult, NsaCore } from '@nsa/core';
 import { getUpdateStatus, installUpdate } from './updater';
 
 type Handlers = {
@@ -7,7 +7,7 @@ type Handlers = {
 };
 
 /** Đăng ký trình xử lý cho mọi kênh trong hợp đồng IPC — thiếu kênh nào TypeScript báo lỗi. */
-export function registerIpc(core: NsaCore, chat: ChatService): void {
+export function registerIpc(core: NsaCore, chat: ChatService, cliChanges: () => CliChange[]): void {
   const handlers: Handlers = {
     'core:ping': (message) => core.ping(message),
     'app:info': () => ({ name: app.getName(), version: app.getVersion() }),
@@ -18,6 +18,9 @@ export function registerIpc(core: NsaCore, chat: ChatService): void {
     'chat:send': (request) => chat.send(request),
     'chat:cancel': (turnId) => chat.cancel(turnId),
     'chat:delete': (conversationId) => chat.deleteConversation(conversationId),
+    'chat:answerPermission': (permissionId, allowed) =>
+      chat.answerPermission(String(permissionId), allowed === true),
+    'agents:changes': () => cliChanges(),
     'dialog:pickFolder': async () => {
       const win = BrowserWindow.getFocusedWindow();
       const options = {

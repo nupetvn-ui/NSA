@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
 import type { AgentEvent } from './events.js';
 import { runJsonLinesProcess, truncate } from './process.js';
 
@@ -57,6 +58,23 @@ describe('runJsonLinesProcess', () => {
     ).finished;
     expect(events.at(-1)).toEqual({ type: 'done', cancelled: false });
     expect(events.some((e) => e.type === 'error')).toBe(true);
+  });
+
+  it('đặt PWD = thư mục làm việc (OpenCode lấy thư mục từ PWD — lỗi thấy khi chạy thật)', async () => {
+    const events: AgentEvent[] = [];
+    const cwd = tmpdir();
+    await runJsonLinesProcess(
+      {
+        command: process.execPath,
+        args: ['-e', 'console.log(JSON.stringify({ pwd: process.env.PWD }))'],
+        cwd,
+        parseLine: (json) => [
+          { type: 'text', id: 'p', text: String((json as { pwd: string }).pwd) },
+        ],
+      },
+      (e) => events.push(e),
+    ).finished;
+    expect(events[0]).toEqual({ type: 'text', id: 'p', text: cwd });
   });
 
   it('huỷ được lượt đang chạy', async () => {

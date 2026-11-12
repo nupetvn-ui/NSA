@@ -10,14 +10,14 @@ Ba trụ cột:
 
 Kế hoạch tổng thể: [docs/PLAN.md](docs/PLAN.md) · Quyết định kỹ thuật: [docs/adr/](docs/adr/README.md)
 
-Trạng thái: **dùng được** — chat với Claude Code và Codex trong cùng một app, đổi agent giữa chừng (NSA tự chuyển ngữ cảnh), xem agent chạy lệnh/sửa file theo thời gian thực. Nền: monorepo, đóng gói Windows, khung tự cập nhật, CI.
+Trạng thái: **giai đoạn 1 (Điều phối)** — chat với Claude Code, Codex, OpenCode (đã chạy thật), Gemini CLI và Antigravity (viết theo tài liệu, chưa chạy thật) hoặc CLI bất kỳ qua tầng PTY, trong cùng một app. Đổi agent giữa chừng vẫn giữ ngữ cảnh. Agent hỏng thì NSA tự lùi tầng hoặc đổi agent. Lệnh nguy hiểm bên trong một lượt bị chặn hoặc phải hỏi (Claude Code, OpenCode). Nền: monorepo, đóng gói Windows, tự cập nhật, CI, test hợp đồng hằng đêm.
 
 ## Dùng NSA
 
 1. Cài CLI của agent muốn dùng (một lần), rồi đăng nhập từng cái:
 
 ```bash
-npm install -g @anthropic-ai/claude-code @openai/codex
+npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai
 ```
 
 ```bash
@@ -28,11 +28,17 @@ claude auth login
 codex login
 ```
 
-2. Mở NSA, bấm biểu tượng soạn tin ở thanh bên, chọn thư mục dự án và bật/tắt **Cho sửa file** (tắt = agent chỉ đọc và lập kế hoạch).
-3. Chọn agent (Claude Code / Codex) ngay trên ô nhập, gõ yêu cầu, Enter để gửi. Lượt sau có thể đổi agent — agent mới nhận tóm tắt những gì agent trước đã làm.
-4. Góc dưới thanh bên cho biết agent nào đã cài / đã đăng nhập; bấm **Kiểm lại** sau khi cài hoặc đăng nhập.
+OpenCode dùng được ngay với model miễn phí của OpenCode Zen (cần bản 1.18 trở lên); muốn dùng khoá riêng thì chạy `opencode auth login`. Gemini CLI (`npm install -g @google/gemini-cli`) và Antigravity CLI (`agy`, cài theo antigravity.google/docs/cli) cũng được hỗ trợ.
 
-Cuộc trò chuyện được lưu ở `%APPDATA%\NSA\conversations.json`.
+2. Mở NSA, bấm biểu tượng soạn tin ở thanh bên, chọn thư mục dự án và bật/tắt **Cho sửa file** (tắt = agent chỉ đọc và lập kế hoạch).
+3. Chọn agent ngay trên ô nhập (hoặc **Tự chọn** để NSA chọn agent đủ năng lực), gõ yêu cầu, Enter để gửi. Lượt sau có thể đổi agent — agent mới nhận tóm tắt những gì agent trước đã làm.
+4. Góc dưới thanh bên cho biết agent nào đã cài / đã đăng nhập, phiên bản, tầng giao tiếp và năng lực (bấm vào tên để xem); bấm **Kiểm lại** sau khi cài hoặc đăng nhập. Khi một CLI vừa cập nhật (đổi phiên bản hoặc `--help`), NSA báo ở đây.
+5. Agent được chọn hỏng hoặc chưa cài: NSA tự lùi xuống tầng văn bản thô / PTY hoặc chuyển sang agent khác, và ghi rõ trong lượt trả lời.
+6. Khi agent định chạy lệnh rủi ro (`git push`, `npm publish`…), lượt dừng lại và hiện **Cho phép / Từ chối**. Lệnh phá huỷ hiển nhiên (`rm -rf /`, định dạng ổ đĩa…) luôn bị chặn. Hiện áp dụng cho Claude Code và OpenCode — xem [ADR-0007](docs/adr/0007-chan-tung-lenh-qua-cong-chinh-sach.md).
+
+CLI chưa có adapter riêng: khai báo trong `%APPDATA%\NSA\custom-clis.json`, ví dụ `[{"id":"aider","displayName":"Aider","command":"aider","args":["--yes","--message-file","-"],"input":"stdin"}]`, rồi mở lại NSA.
+
+Cuộc trò chuyện được lưu ở `%APPDATA%\NSA\conversations.json`, nhật ký (ai ra lệnh, chính sách quyết gì, agent làm gì, lùi tầng / đổi agent) ở `%APPDATA%\NSA\audit\`.
 
 ## Cài đặt môi trường (cho lập trình viên)
 
@@ -62,6 +68,7 @@ Lần chạy đầu, Electron tự tải file chạy của nó (~100 MB).
 | `pnpm format`    | Tự định dạng lại mã                                                           |
 | `pnpm typecheck` | Kiểm kiểu TypeScript cho mọi gói                                              |
 | `pnpm test`      | Chạy test (Vitest)                                                            |
+| `pnpm test:live` | Test hợp đồng với CLI thật — cần `NSA_LIVE_CONTRACT=1` (tốn token)            |
 | `pnpm build`     | Build mọi gói thư viện và app desktop                                         |
 | `pnpm dist:win`  | Tạo bộ cài Windows ở `apps/desktop/release/<version>/NSA-Setup-<version>.exe` |
 
@@ -75,9 +82,9 @@ pnpm --filter @nsa/desktop icons
 
 ```
 apps/desktop          Electron + React (main / preload / renderer)
-packages/core         lõi NSA: hợp đồng IPC, orchestrator (sẽ làm)
-packages/adapter-sdk  hợp đồng adapter CLI (khung)
-packages/adapters/*   adapter từng CLI (giai đoạn 1)
+packages/core         lõi NSA: hợp đồng IPC, ChatService, định tuyến, ổ cắm, phát hiện thay đổi CLI
+packages/adapter-sdk  hợp đồng adapter, trình chạy CLI, cổng chặn lệnh, bộ test hợp đồng
+packages/adapters/*   claude, codex, opencode, gemini, antigravity, pty; contract-live (test với CLI thật)
 packages/mcp-gateway  cổng MCP (khung)
 packages/memory       NSA Mem (khung)
 packages/plugin-sdk   SDK plugin (khung)
@@ -96,6 +103,10 @@ Thử tự cập nhật mà không phát hành lên GitHub:
 
 1. Build bản cũ, cài thử.
 2. Tăng version, build lại. Đặt `latest.yml`, bộ cài mới và file `.blockmap` của cả hai bản vào một thư mục, rồi phục vụ thư mục đó qua HTTP.
-3. Mở bản cũ với biến môi trường `NSA_UPDATE_URL` trỏ tới thư mục đó (ví dụ `http://127.0.0.1:8765/`).
+3. Mở bản cũ với biến môi trường `NSA_UPDATE_URL` trỏ tới thư mục đó (ví dụ `http://127.0.0.1:8765/`). Muốn thử đúng như khi mở từ Start Menu (không có biến môi trường) thì sửa `resources\app-update.yml` của bản đã cài thành `provider: generic` + `url: http://127.0.0.1:8765/`.
+
+Sau khi bấm **Khởi động lại**, bộ cài cài im lặng rồi mở lại `NSA.exe` (xem `apps/desktop/build/installer.nsh` — mặc định electron-builder mở qua lối tắt Start Menu và Windows báo không tìm thấy lối tắt).
+
+Thử đường lùi tầng / đổi agent mà không phá CLI thật: mở app với `NSA_SIMULATE_BROKEN=claude` (tầng JSON của Claude hỏng → lùi xuống tầng văn bản thô) hoặc `NSA_SIMULATE_BROKEN=claude:missing` (như chưa cài → đổi agent).
 
 Ký mã: đặt secret `WIN_CSC_LINK` (file `.pfx` mã hoá base64 hoặc URL) và `WIN_CSC_KEY_PASSWORD` trong repo. Chưa đặt thì bộ cài vẫn tạo được nhưng không ký (Windows sẽ cảnh báo khi cài). Chi tiết: [ADR-0003](docs/adr/0003-dong-goi-va-tu-cap-nhat.md).

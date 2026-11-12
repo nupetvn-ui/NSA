@@ -81,8 +81,12 @@ function fakeAdapter(id: string, reply: string, calls: RunOptions[]): AgentAdapt
       streaming: false,
       resume: true,
       tools: true,
+      editFiles: true,
       images: false,
       mcp: false,
+      subagents: false,
+      toolGate: false,
+      tier: 'headless' as const,
     }),
     run(options, onEvent) {
       calls.push(options);

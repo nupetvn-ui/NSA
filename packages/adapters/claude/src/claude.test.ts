@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentEvent } from '@nsa/adapter-sdk';
-import { buildClaudeArgs, createClaudeParser } from './index.js';
+import { prepareFakeCli, runContract } from '@nsa/adapter-sdk';
+import {
+  buildClaudeArgs,
+  claudeGateSettings,
+  createClaudeAdapter,
+  createClaudeParser,
+} from './index.js';
 
 function parseAll(lines: unknown[]): AgentEvent[] {
   const parse = createClaudeParser();
@@ -51,6 +57,31 @@ describe('createClaudeParser', () => {
       { type: 'text', id: 'msg_1:0', text: 'Xin ' },
       { type: 'text', id: 'msg_1:0', text: 'chào' },
     ]);
+  });
+
+  it('không lặp khi tin nhắn đầy đủ tới với số thứ tự khối khác lúc stream (lỗi thấy khi chạy thật)', () => {
+    const events = parseAll([
+      {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: { type: 'message_start', message: { id: 'msg_9' } },
+      },
+      {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: {
+          type: 'content_block_delta',
+          index: 1,
+          delta: { type: 'text_delta', text: 'Đã nhớ.' },
+        },
+      },
+      {
+        type: 'assistant',
+        parent_tool_use_id: null,
+        message: { id: 'msg_9', content: [{ type: 'text', text: 'Đã nhớ.' }] },
+      },
+    ]);
+    expect(events).toEqual([{ type: 'text', id: 'msg_9:1', text: 'Đã nhớ.' }]);
   });
 
   it('chuyển tool_use / tool_result và tổng kết lượt', () => {
@@ -132,6 +163,7 @@ describe('createClaudeParser', () => {
     const error = events.find((e) => e.type === 'error');
     expect(error).toEqual({
       type: 'error',
+      code: 'auth',
       message: 'Claude CLI chưa đăng nhập. Mở terminal, chạy "claude auth login" rồi thử lại.',
     });
   });
@@ -148,4 +180,43 @@ describe('buildClaudeArgs', () => {
   it('từ chối mã phiên lạ', () => {
     expect(() => buildClaudeArgs({ permission: 'edit', sessionId: 'x; rm -rf /' })).toThrow();
   });
+});
+
+describe('cổng chính sách + hợp đồng', () => {
+  it('settings gắn móc PreToolUse cho mọi công cụ', () => {
+    const settings = JSON.parse(claudeGateSettings('C:/t/gate-hook.cjs')) as {
+      hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
+    };
+    const group = settings.hooks.PreToolUse[0];
+    expect(group?.matcher).toBe('*');
+    expect(group?.hooks[0]?.command).toContain('"C:/t/gate-hook.cjs"');
+  });
+
+  it('gửi, stdin, resume, huỷ, cổng (CLI giả phát lại đầu ra thật)', async () => {
+    const recorded = [
+      { type: 'system', subtype: 'init', session_id: '{{SESSION}}' },
+      {
+        type: 'assistant',
+        session_id: '{{SESSION}}',
+        parent_tool_use_id: null,
+        message: { id: 'msg_1', content: [{ type: 'text', text: 'Xin chào' }] },
+      },
+      {
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        session_id: '{{SESSION}}',
+        usage: { input_tokens: 3, output_tokens: 2 },
+      },
+    ].map((l) => JSON.stringify(l));
+    const fake = prepareFakeCli('claude', recorded);
+    Object.assign(process.env, fake.env);
+    const adapter = createClaudeAdapter({ command: fake.command, prefixArgs: fake.prefixArgs });
+    const results = await runContract(adapter, {
+      mode: 'fake',
+      cwd: process.cwd(),
+      fakeLog: fake.log,
+    });
+    expect(results.filter((r) => r.status !== 'passed')).toEqual([]);
+  }, 30_000);
 });

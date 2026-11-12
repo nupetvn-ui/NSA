@@ -1,17 +1,21 @@
 import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, app, nativeTheme, shell } from 'electron';
+import { ToolGateServer } from '@nsa/adapter-sdk';
 import {
   ChatService,
   NsaCore,
+  describeChange,
+  detectCliChanges,
   localIdentity,
   personalPolicy,
+  type CliChange,
   type IpcEventChannel,
   type IpcEventContract,
 } from '@nsa/core';
-import { createClaudeAdapter } from '@nsa/adapter-claude';
-import { createCodexAdapter } from '@nsa/adapter-codex';
+import { createAgents } from './agents';
 import { createFileAuditLog } from './audit';
+import { createFingerprintStore } from './cli-changes';
 import { registerIpc } from './ipc';
 import { createFileStore } from './store';
 import { setupAutoUpdate } from './updater';
@@ -91,20 +95,54 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     app.setAppUserModelId('vn.nupet.nsa');
+    const userData = app.getPath('userData');
+    const identity = localIdentity(userInfo().username);
+    const audit = createFileAuditLog(join(userData, 'audit'));
+    const adapters = createAgents(userData);
+
+    // Cổng chính sách từng lệnh (127.0.0.1, cổng ngẫu nhiên). Mở không được thì vẫn chạy,
+    // chỉ là không chặn được từng lệnh bên trong lượt.
+    let gate: ToolGateServer | undefined;
+    try {
+      gate = await ToolGateServer.start();
+    } catch (err) {
+      console.error('[gate] không mở được cổng chính sách:', err);
+    }
+    app.on('will-quit', () => void gate?.close());
 
     // Bản Cá nhân: cắm bộ mặc định vào ba ổ cắm của lõi (danh tính, chính sách, nhật ký).
     const chat = new ChatService({
-      adapters: [createClaudeAdapter(), createCodexAdapter()],
-      identity: localIdentity(userInfo().username),
+      adapters,
+      identity,
       policy: personalPolicy({ homeDir: homedir() }),
-      audit: createFileAuditLog(join(app.getPath('userData'), 'audit')),
-      store: createFileStore(join(app.getPath('userData'), 'conversations.json')),
+      audit,
+      ...(gate ? { gate } : {}),
+      store: createFileStore(join(userData, 'conversations.json')),
       onEvent: (event) => broadcast('chat:event', event),
     });
 
-    registerIpc(core, chat);
+    // Tự phát hiện thay đổi: so phiên bản + --help của từng CLI với lần khởi động trước.
+    let cliChanges: CliChange[] = [];
+    void detectCliChanges(adapters, createFingerprintStore(join(userData, 'cli-fingerprints.json')))
+      .then((changes) => {
+        cliChanges = changes;
+        const actor = identity.current();
+        for (const change of changes) {
+          audit.record({
+            at: new Date().toISOString(),
+            actor: { id: actor.id, displayName: actor.displayName },
+            agentId: change.agentId,
+            type: 'cli_change',
+            summary: describeChange(change),
+          });
+        }
+        if (changes.length) broadcast('agents:changes', changes);
+      })
+      .catch((err: unknown) => console.error('[cli-watch]', err));
+
+    registerIpc(core, chat, () => cliChanges);
     createWindow();
     setupAutoUpdate((status) => broadcast('app:update', status));
 

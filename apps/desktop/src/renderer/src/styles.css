@@ -31,6 +31,9 @@
   --red-bg: rgb(255 59 48 / 0.08);
   --claude: #d97757;
   --codex: #30b0c7;
+  --opencode: #8e8e93;
+  --gemini: #4285f4;
+  --antigravity: #a259ff;
   --shadow-control: 0 0.5px 1px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.08);
   --focus-ring: 0 0 0 3.5px rgb(0 122 255 / 0.35);
   --radius: 10px;
@@ -267,11 +270,28 @@ button {
 }
 
 .agent-row {
+  padding: 1px 0;
+}
+
+.agent-row summary {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
-  padding: 3px 0;
+  padding: 2px 0;
+  list-style: none;
+  cursor: default;
+}
+
+.agent-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.agent-row-name.muted {
+  color: var(--secondary);
+}
+
+.agent-detail {
+  padding: 2px 0 6px 14px;
 }
 
 .agent-row-name {
@@ -279,10 +299,8 @@ button {
 }
 
 .agent-note {
-  flex-basis: 100%;
   color: var(--orange);
   font-size: 11px;
-  padding-left: 14px;
   user-select: text;
 }
 
@@ -932,4 +950,110 @@ textarea::placeholder {
   height: 100%;
   background: var(--accent);
   transition: width 0.2s;
+}
+
+/* ---------- Agent thêm ở giai đoạn 1 ---------- */
+.dot.agent-opencode,
+.agent-badge.agent-opencode::before {
+  background: var(--opencode);
+}
+
+.dot.agent-gemini,
+.agent-badge.agent-gemini::before {
+  background: var(--gemini);
+}
+
+.dot.agent-antigravity,
+.agent-badge.agent-antigravity::before {
+  background: var(--antigravity);
+}
+
+.caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cap {
+  font-size: 10.5px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--fill);
+  color: var(--secondary);
+}
+
+.cap.tier {
+  background: var(--fill-strong);
+  color: var(--label);
+}
+
+.cli-changes {
+  margin: 0 0 10px;
+}
+
+.cli-changes details summary {
+  cursor: default;
+}
+
+.code.small {
+  font-size: 10.5px;
+  max-height: 160px;
+  overflow: auto;
+  margin: 4px 0;
+}
+
+/* Thông báo của NSA trong lượt (lùi tầng, đổi agent). */
+.notice-box {
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--secondary);
+  background: var(--fill);
+  box-shadow: inset 2px 0 0 var(--orange);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+/* Một lệnh chờ người dùng cho phép. */
+.permission-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 0 0 8px;
+  background: var(--window);
+  box-shadow: var(--shadow-control);
+}
+
+.permission-box.pending {
+  box-shadow:
+    var(--shadow-control),
+    inset 2px 0 0 var(--accent);
+}
+
+.permission-box.denied {
+  box-shadow:
+    var(--shadow-control),
+    inset 2px 0 0 var(--red);
+}
+
+.permission-text {
+  flex: 1;
+  font-size: 12px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.permission-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cli-changes .link-btn {
+  align-self: flex-start;
 }

@@ -7,7 +7,8 @@ import { truncate, type AgentEvent } from '@nsa/adapter-sdk';
  */
 export function createClaudeParser(): (json: unknown) => AgentEvent[] {
   let currentMessageId = '';
-  const streamedBlocks = new Set<string>();
+  /** Văn bản đã stream theo từng khối `messageId:index`. */
+  const streamed = new Map<string, string>();
   let sessionAnnounced = false;
 
   return (json) => {
@@ -33,7 +34,7 @@ export function createClaudeParser(): (json: unknown) => AgentEvent[] {
           const delta = ev['delta'];
           if (delta['type'] === 'text_delta' && typeof delta['text'] === 'string') {
             const id = `${currentMessageId}:${String(ev['index'])}`;
-            streamedBlocks.add(id);
+            streamed.set(id, (streamed.get(id) ?? '') + delta['text']);
             events.push({ type: 'text', id, text: delta['text'] });
           }
         }
@@ -48,9 +49,13 @@ export function createClaudeParser(): (json: unknown) => AgentEvent[] {
           if (!isRecord(block)) return;
           if (block['type'] === 'text' && typeof block['text'] === 'string') {
             const id = `${messageId}:${index}`;
-            if (!streamedBlocks.has(id) && block['text']) {
-              events.push({ type: 'text', id, text: block['text'] });
-            }
+            // Claude Code 2.1.x gửi lại tin nhắn đầy đủ theo TỪNG khối, nên số thứ tự khối ở đây
+            // có thể khác lúc stream (khối suy nghĩ đứng trước). So theo nội dung đã stream.
+            const text = block['text'];
+            const already = [...streamed].some(
+              ([key, value]) => key.startsWith(`${messageId}:`) && value.trim() === text.trim(),
+            );
+            if (!already && text) events.push({ type: 'text', id, text });
           } else if (block['type'] === 'tool_use') {
             events.push({
               type: 'tool_call',
@@ -93,7 +98,12 @@ export function createClaudeParser(): (json: unknown) => AgentEvent[] {
           });
         }
         if (json['is_error'] === true) {
-          events.push({ type: 'error', message: explainError(String(json['result'] ?? '')) });
+          const raw = String(json['result'] ?? '');
+          events.push({
+            type: 'error',
+            code: /not logged in|\/login|invalid api key/i.test(raw) ? 'auth' : 'cli',
+            message: explainError(raw),
+          });
         }
         break;
       }

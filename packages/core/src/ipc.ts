@@ -5,6 +5,7 @@
  */
 import type { Conversation } from './chat.js';
 import type { AgentInfo, ChatEvent, SendRequest, SendResult } from './chat-service.js';
+import type { CliChange } from './cli-watch.js';
 
 export interface PingResult {
   /** Luôn là 'pong' khi lõi trả lời. */
@@ -41,6 +42,10 @@ export interface IpcContract {
   'chat:send': { args: [request: SendRequest]; result: SendResult };
   'chat:cancel': { args: [turnId: string]; result: void };
   'chat:delete': { args: [conversationId: string]; result: void };
+  /** Người dùng trả lời yêu cầu cho phép một lệnh giữa lượt. */
+  'chat:answerPermission': { args: [permissionId: string, allowed: boolean]; result: void };
+  /** Các CLI thay đổi so với lần khởi động trước (phiên bản, --help). */
+  'agents:changes': { args: []; result: CliChange[] };
   'dialog:pickFolder': { args: []; result: string | null };
 }
 
@@ -48,6 +53,7 @@ export interface IpcContract {
 export interface IpcEventContract {
   'chat:event': ChatEvent;
   'app:update': UpdateStatus;
+  'agents:changes': CliChange[];
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -66,12 +72,15 @@ export const IPC_CHANNELS = [
   'chat:send',
   'chat:cancel',
   'chat:delete',
+  'chat:answerPermission',
+  'agents:changes',
   'dialog:pickFolder',
 ] as const satisfies readonly IpcChannel[];
 
 export const IPC_EVENT_CHANNELS = [
   'chat:event',
   'app:update',
+  'agents:changes',
 ] as const satisfies readonly IpcEventChannel[];
 
 // Bắt lỗi khi khai báo kênh trong contract mà quên thêm vào danh sách ở trên.

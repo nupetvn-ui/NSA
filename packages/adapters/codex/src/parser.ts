@@ -32,11 +32,17 @@ export function createCodexParser(): (json: unknown) => AgentEvent[] {
       case 'turn.failed': {
         const error = json['error'];
         const message = isRecord(error) ? String(error['message'] ?? '') : '';
-        return [{ type: 'error', message: explainError(message) }];
+        return [{ type: 'error', code: errorCode(message), message: explainError(message) }];
       }
 
       case 'error':
-        return [{ type: 'error', message: explainError(String(json['message'] ?? '')) }];
+        return [
+          {
+            type: 'error',
+            code: errorCode(String(json['message'] ?? '')),
+            message: explainError(String(json['message'] ?? '')),
+          },
+        ];
 
       default:
         return [];
@@ -98,6 +104,10 @@ function itemEvents(item: Record<string, unknown>, completed: boolean): AgentEve
       // reasoning, todo_list… chưa hiển thị.
       return [];
   }
+}
+
+function errorCode(raw: string): 'auth' | 'cli' {
+  return /login|unauthori[sz]ed|401/i.test(raw) ? 'auth' : 'cli';
 }
 
 function explainError(raw: string): string {
