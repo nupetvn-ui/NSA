@@ -13,7 +13,8 @@ export function getUpdateStatus(): UpdateStatus {
 /** Thoát app và cài bản mới đã tải xong. */
 export function installUpdate(): void {
   if (status.state !== 'downloaded') return;
-  electronUpdater.autoUpdater.quitAndInstall(false, true);
+  // Cài im lặng (không hiện trình cài đặt) rồi tự mở lại app.
+  electronUpdater.autoUpdater.quitAndInstall(true, true);
 }
 
 /**
@@ -38,6 +39,8 @@ export function setupAutoUpdate(onStatus: (status: UpdateStatus) => void): void 
   const { autoUpdater } = electronUpdater;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  // NSA chỉ phát hành bộ cài đầy đủ, không dùng web installer.
+  autoUpdater.disableWebInstaller = true;
 
   const feed = process.env['NSA_UPDATE_URL'];
   if (feed) {
