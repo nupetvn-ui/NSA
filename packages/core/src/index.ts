@@ -5,6 +5,7 @@ export * from './chat-service.js';
 export * from './sockets.js';
 export * from './router.js';
 export * from './cli-watch.js';
+export * from './memory.js';
 // Kiểu dùng chung với giao diện, để renderer chỉ cần phụ thuộc vào @nsa/core.
 export type {
   AgentEvent,

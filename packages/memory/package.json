@@ -18,5 +18,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/core": "workspace:*",
+    "isomorphic-git": "^1.44.13"
   }
 }

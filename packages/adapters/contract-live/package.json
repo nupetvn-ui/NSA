@@ -9,13 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/adapter-antigravity": "workspace:*",
     "@nsa/adapter-claude": "workspace:*",
     "@nsa/adapter-codex": "workspace:*",
-    "@nsa/adapter-opencode": "workspace:*",
     "@nsa/adapter-gemini": "workspace:*",
-    "@nsa/adapter-antigravity": "workspace:*",
+    "@nsa/adapter-opencode": "workspace:*",
     "@nsa/adapter-pty": "workspace:*",
-    "@nsa/core": "workspace:*"
+    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/core": "workspace:*",
+    "@nsa/memory": "workspace:*"
   }
 }
