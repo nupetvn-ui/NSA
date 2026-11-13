@@ -59,6 +59,10 @@ Cài từ **App Store → Quản lý → Cài từ thư mục…** (bật Chế 
 
 **Zalo cá nhân là API không chính thức** — có thể bị khoá nick, vi phạm điều khoản Zalo; chỉ có ở bản Cá nhân và phải xác nhận cảnh báo khi cài; cần một "cầu nối" tự chọn chạy trên máy (xem `plugins/zalo-ca-nhan/BRIDGE.md`), NSA không đi kèm. Zalo OA là kênh chính thức. **Chưa chạy thật với Telegram / Discord / Lark / Zalo thật.**
 
+### Google Workspace (qua gws)
+
+Plugin `plugins/google-workspace` cho agent (Claude Code, Codex, OpenCode) dùng Drive, Gmail, Calendar, Sheets, Docs, Chat qua [`gws`](https://github.com/googleworkspace/cli) — chương trình dòng lệnh **không phải sản phẩm chính thức của Google**. Cần tự cài `gws.exe` (bản Windows ở GitHub Releases, đặt vào thư mục có trong PATH) và chạy `gws auth login` một lần; NSA không cài hộ và không thấy token Google. Cài plugin như các plugin khác (Chế độ nhà phát triển → Cài từ thư mục), rồi bật quyền **Chạy chương trình gws** (hộp cài liệt kê từng lệnh con được phép). Đọc thì không hỏi; **gửi Gmail, gửi Google Chat, xoá file Drive luôn hỏi bạn**. Nội dung thư / tài liệu có thể chứa lời dụ agent (prompt injection) — xem [ADR-0012](docs/adr/0012-quyen-cli-va-plugin-google-workspace.md). **Chưa chạy thật với `gws` và tài khoản Google thật.**
+
 ### Bộ nhớ (NSA Mem)
 
 Bấm **Bộ nhớ** ở thanh bên (số bên cạnh là đề xuất đang chờ duyệt).
