@@ -1,4 +1,5 @@
 import type { AgentInfo, CapabilityFlag, CliChange } from '@nsa/core';
+import { VendorLogo, vendorOfAgent } from './VendorLogo';
 
 interface Props {
   agents: AgentInfo[] | null;
@@ -64,6 +65,7 @@ export function AgentsPanel({ agents, checking, onCheck, changes, onDismissChang
         <details key={a.id} className="agent-row">
           <summary>
             <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
+            <VendorLogo vendor={vendorOfAgent(a.id)} name={a.name} />
             <span className={`agent-row-name ${a.installed ? '' : 'muted'}`}>{a.name}</span>
             <span className="hint">{a.installed ? (a.version ?? '') : 'chưa cài'}</span>
           </summary>

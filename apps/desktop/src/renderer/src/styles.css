@@ -2168,3 +2168,27 @@ textarea::placeholder {
 .secret-input .text-input {
   min-width: 220px;
 }
+
+/* Logo hãng cạnh tên agent / nhà cung cấp */
+.vendor-logo {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 5px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* Ô chữ cái trung tính cho hãng chưa có logo chính thức */
+.vendor-mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--fill-strong);
+  color: var(--secondary);
+  font-weight: 600;
+  line-height: 1;
+}
+.vendor-logo-pic {
+  display: inline-flex;
+}
