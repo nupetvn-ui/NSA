@@ -3,6 +3,7 @@
  * test quét key chạy được bằng Vitest: bộ mã hoá của hệ điều hành (`safeStorage`) được truyền vào.
  */
 import { readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AgentAdapter } from '@nsa/adapter-sdk';
 import {
@@ -157,6 +158,7 @@ export function setupProviders(options: ProvidersSetupOptions): ProvidersSetup {
     identity: options.identity,
     policy,
     audit,
+    defaultCwd: () => tmpdir(),
     candidates: (task) =>
       hub.taskChain(task as Parameters<ProviderHub['taskChain']>[0]).flatMap((e) => {
         const adapter = hub.apiAdapter(e.ref);
