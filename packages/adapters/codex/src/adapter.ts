@@ -1,4 +1,6 @@
 import {
+  codexMcpArgs,
+  mcpEnv,
   probeCli,
   runCommand,
   runJsonLinesProcess,
@@ -18,9 +20,17 @@ const INSTALL = 'Chưa cài Codex CLI. Cài bằng: npm install -g @openai/codex
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9-]{7,63}$/;
 
 /** Dựng tham số dòng lệnh — tách riêng để test. Prompt đi qua stdin (tham số `-`). */
-export function buildCodexArgs(options: Pick<RunOptions, 'sessionId' | 'permission'>): string[] {
+export function buildCodexArgs(
+  options: Pick<RunOptions, 'sessionId' | 'permission' | 'mcpServers'>,
+): string[] {
   const sandbox = options.permission === 'edit' ? 'workspace-write' : 'read-only';
-  const common = ['--json', '--skip-git-repo-check', '-c', `sandbox_mode="${sandbox}"`];
+  const common = [
+    '--json',
+    '--skip-git-repo-check',
+    '-c',
+    `sandbox_mode="${sandbox}"`,
+    ...codexMcpArgs(options.mcpServers ?? []),
+  ];
   if (options.sessionId) {
     if (!SESSION_ID.test(options.sessionId)) throw new Error('Mã phiên Codex không hợp lệ');
     return ['exec', 'resume', ...common, options.sessionId, '-'];
@@ -92,10 +102,12 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
     fingerprint: () => probeCli(command, { prefixArgs: prefix, helpArgs: ['exec', '--help'] }),
 
     run(runOptions, onEvent) {
+      const mcp = runOptions.mcpServers ?? [];
       return runJsonLinesProcess(
         {
           command,
           label: 'Codex',
+          ...(mcp.length ? { env: mcpEnv(mcp) } : {}),
           args: [...prefix, ...buildCodexArgs(runOptions)],
           cwd: runOptions.cwd,
           stdin: runOptions.prompt,

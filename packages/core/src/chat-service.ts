@@ -5,6 +5,7 @@ import type {
   AgentRun,
   Capabilities,
   DetectResult,
+  McpServerSpec,
   PermissionLevel,
   ToolCallRequest,
   ToolGateServer,
@@ -18,6 +19,7 @@ import {
   type Conversation,
   type Turn,
 } from './chat.js';
+import type { MemoryContext } from './memory.js';
 import { needsFor, planRoute } from './router.js';
 import {
   personalPolicy,
@@ -70,6 +72,45 @@ export interface ChatEvent {
   agentId: string;
 }
 
+/**
+ * Phần mở rộng cắm vào từng lượt (NSA Mem dùng): chèn ngữ cảnh, gắn server MCP, được báo khi
+ * lượt bắt đầu / kết thúc. Lỗi của phần mở rộng không bao giờ làm hỏng lượt.
+ */
+export interface ChatExtension {
+  /** Ngữ cảnh chèn trước yêu cầu của người dùng (một lần mỗi lượt, mọi agent đều nhận). */
+  contextFor?(input: {
+    prompt: string;
+    agentId: string;
+    conversationId?: string;
+    cwd: string;
+    /** Agent nhận lượt này gắn được MCP (để báo nó có tool của NSA). */
+    mcp: boolean;
+  }): MemoryContext | null | Promise<MemoryContext | null>;
+  /** Server MCP gắn cho một lần chạy (chỉ với agent có năng lực `mcp`). */
+  mcpFor?(input: {
+    agentId: string;
+    conversationId: string;
+    turnId: string;
+  }): { server: McpServerSpec; dispose: () => void } | null;
+  turnStarted?(conversation: Conversation, turn: Turn): void;
+  turnFinished?(conversation: Conversation, turn: Turn): void;
+}
+
+/** Một việc nền giao cho agent (chắt lọc bộ nhớ…) — không tạo cuộc trò chuyện. */
+export interface TaskRequest {
+  /** Mã agent hoặc `auto`. */
+  agentId: string;
+  prompt: string;
+  cwd: string;
+  /** Mô tả việc, ghi vào nhật ký. */
+  purpose: string;
+}
+
+export interface TaskResult {
+  agentId: string;
+  text: string;
+}
+
 /** Nơi lưu cuộc trò chuyện (desktop dùng file JSON; test dùng bộ nhớ). */
 export interface ConversationStore {
   load(): Conversation[];
@@ -87,6 +128,7 @@ export interface ChatServiceOptions {
   /** Cổng chính sách từng lệnh; có thì agent khai báo `toolGate` bị kiểm từng lệnh. */
   gate?: ToolGateServer;
   store?: ConversationStore;
+  extensions?: ChatExtension[];
   onEvent?: (event: ChatEvent) => void;
   now?: () => Date;
   newId?: () => string;
@@ -111,6 +153,9 @@ interface TurnRun {
   confirmed: boolean;
   autoSwitch: boolean;
   disposeGate?: () => void;
+  disposeMcp?: () => void;
+  /** Ngữ cảnh bộ nhớ của lượt (tính một lần, dùng lại khi lùi tầng / đổi agent). */
+  memory: MemoryContext | null;
 }
 
 const MAX_ATTEMPTS = 4;
@@ -123,6 +168,7 @@ export class ChatService {
   readonly #audit: AuditLog | undefined;
   readonly #gate: ToolGateServer | undefined;
   readonly #store: ConversationStore | undefined;
+  readonly #extensions: ChatExtension[];
   readonly #onEvent: (event: ChatEvent) => void;
   readonly #now: () => Date;
   readonly #newId: () => string;
@@ -146,6 +192,7 @@ export class ChatService {
     this.#audit = options.audit;
     this.#gate = options.gate;
     this.#store = options.store;
+    this.#extensions = options.extensions ?? [];
     this.#onEvent = options.onEvent ?? (() => undefined);
     this.#now = options.now ?? (() => new Date());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
@@ -255,7 +302,136 @@ export class ChatService {
       throw new Error('Không tìm thấy cuộc trò chuyện');
     }
 
-    return this.#start(adapter, prompt, cwd, permission, confirmed, existing, request.autoSwitch);
+    const memory = await this.#gatherContext(
+      prompt,
+      adapter.id,
+      existing?.id,
+      cwd,
+      adapter.capabilities().mcp,
+    );
+    if (existing && !this.#conversations.has(existing.id)) {
+      throw new Error('Không tìm thấy cuộc trò chuyện');
+    }
+    return this.#start(
+      adapter,
+      prompt,
+      cwd,
+      permission,
+      confirmed,
+      existing,
+      request.autoSwitch,
+      memory,
+    );
+  }
+
+  /** Hỏi các phần mở rộng ngữ cảnh cần chèn (bộ nhớ). Lỗi thì bỏ qua. */
+  async #gatherContext(
+    prompt: string,
+    agentId: string,
+    conversationId: string | undefined,
+    cwd: string,
+    mcp: boolean,
+  ): Promise<MemoryContext | null> {
+    const parts: MemoryContext[] = [];
+    for (const ext of this.#extensions) {
+      if (!ext.contextFor) continue;
+      try {
+        const ctx = await ext.contextFor({
+          prompt,
+          agentId,
+          cwd,
+          mcp,
+          ...(conversationId ? { conversationId } : {}),
+        });
+        if (ctx) parts.push(ctx);
+      } catch (err) {
+        console.error('[chat] phần mở rộng lỗi khi lấy ngữ cảnh:', err);
+      }
+    }
+    if (parts.length === 0) return null;
+    return {
+      text: parts.map((p) => p.text).join('\n\n'),
+      entries: parts.flatMap((p) => p.entries),
+    };
+  }
+
+  #notifyExtensions(
+    kind: 'turnStarted' | 'turnFinished',
+    conversationId: string,
+    turnId: string,
+  ): void {
+    const conversation = this.#conversations.get(conversationId);
+    const turn = conversation?.turns.find((t) => t.id === turnId);
+    if (!conversation || !turn) return;
+    for (const ext of this.#extensions) {
+      try {
+        ext[kind]?.(conversation, turn);
+      } catch (err) {
+        console.error(`[chat] phần mở rộng lỗi (${kind}):`, err);
+      }
+    }
+  }
+
+  /**
+   * Giao một việc nền cho agent (ví dụ chắt lọc bộ nhớ): luôn chỉ đọc, hỏi `Policy` trước,
+   * ghi `AuditLog`, không lưu thành cuộc trò chuyện. Agent hỏng thì thử agent kế tiếp.
+   */
+  async runTask(request: TaskRequest): Promise<TaskResult> {
+    if (this.#status.size === 0) await this.listAgents();
+    const permission: PermissionLevel = 'read-only';
+    const candidates =
+      request.agentId === AUTO_AGENT
+        ? this.#route(undefined, permission, []).candidates
+        : [request.agentId, ...this.#route(undefined, permission, [request.agentId]).candidates];
+    const errors: string[] = [];
+    for (const id of candidates.slice(0, MAX_ATTEMPTS)) {
+      const adapter = this.#adapters.get(id);
+      if (!adapter) continue;
+      this.#log({
+        agentId: id,
+        type: 'request',
+        prompt: `[${request.purpose}]`,
+        cwd: request.cwd,
+        permission,
+      });
+      const verdict = await this.#checkRun(
+        id,
+        request.cwd,
+        permission,
+        request.prompt,
+        undefined,
+        false,
+      );
+      if (verdict.decision !== 'allow') {
+        errors.push(`${adapter.displayName}: ${verdict.reason}`);
+        continue;
+      }
+      let text = '';
+      const runErrors: string[] = [];
+      try {
+        const run = adapter.run(
+          { prompt: request.prompt, cwd: request.cwd, permission },
+          (event) => {
+            if (event.type === 'text') text += event.text;
+            else {
+              if (event.type === 'error') runErrors.push(event.message);
+              this.#log({ agentId: id, type: 'agent_event', event });
+            }
+          },
+        );
+        await run.finished;
+      } catch (err) {
+        runErrors.push(String(err));
+      }
+      if (text.trim()) {
+        this.#log({ agentId: id, type: 'reply', text });
+        return { agentId: id, text };
+      }
+      errors.push(`${adapter.displayName}: ${runErrors.join('; ') || 'không trả lời'}`);
+    }
+    throw new Error(
+      `Không agent nào làm được việc "${request.purpose}": ${errors.join(' | ') || 'không có agent sẵn sàng'}`,
+    );
   }
 
   /** Hỏi chính sách cho một lượt chạy và ghi nhật ký. Chính sách lỗi = chặn. */
@@ -300,6 +476,7 @@ export class ChatService {
     confirmed: boolean,
     existing: Conversation | undefined,
     autoSwitch = true,
+    memory: MemoryContext | null = null,
   ): SendResult {
     const now = this.#now().toISOString();
     let conversation: Conversation = existing
@@ -324,6 +501,7 @@ export class ChatService {
       status: 'running',
       parts: [],
       errors: [],
+      ...(memory?.entries.length ? { memory: memory.entries } : {}),
     };
     conversation = { ...conversation, updatedAt: now, turns: [...conversation.turns, turn] };
     this.#conversations.set(conversation.id, conversation);
@@ -337,8 +515,10 @@ export class ChatService {
       tried: [],
       confirmed,
       autoSwitch,
+      memory,
     };
     this.#running.set(turn.id, state);
+    this.#notifyExtensions('turnStarted', conversation.id, turn.id);
     this.#attempt(state, adapter, adapter);
     return {
       status: 'started',
@@ -368,7 +548,8 @@ export class ChatService {
     const handoff = buildHandoffContext(previous, isFallbackTier ? '\u0000' : agent.id, names);
     const turn = conversation.turns.find((t) => t.id === state.turnId);
     const prompt = turn?.prompt ?? '';
-    const fullPrompt = handoff ? `${handoff}\n\nYêu cầu mới của người dùng:\n${prompt}` : prompt;
+    const preamble = [state.memory?.text, handoff].filter(Boolean).join('\n\n');
+    const fullPrompt = preamble ? `${preamble}\n\nYêu cầu mới của người dùng:\n${prompt}` : prompt;
     if (handoff) this.#patchTurn(state, (t) => ({ ...t, handoff: true }));
     const sessionId = isFallbackTier ? undefined : conversation.sessions[agent.id];
 
@@ -382,6 +563,30 @@ export class ChatService {
       );
       gate = registration.endpoint;
       state.disposeGate = registration.dispose;
+    }
+
+    // Server MCP của NSA (bộ nhớ) — chỉ với agent gắn được MCP.
+    state.disposeMcp?.();
+    delete state.disposeMcp;
+    const mcpServers: McpServerSpec[] = [];
+    if (runner.capabilities().mcp) {
+      const disposers: (() => void)[] = [];
+      for (const ext of this.#extensions) {
+        try {
+          const attached = ext.mcpFor?.({
+            agentId: agent.id,
+            conversationId: state.conversationId,
+            turnId: state.turnId,
+          });
+          if (attached) {
+            mcpServers.push(attached.server);
+            disposers.push(attached.dispose);
+          }
+        } catch (err) {
+          console.error('[chat] phần mở rộng lỗi khi gắn MCP:', err);
+        }
+      }
+      if (disposers.length) state.disposeMcp = () => disposers.forEach((d) => d());
     }
 
     const errors: Extract<AgentEvent, { type: 'error' }>[] = [];
@@ -410,6 +615,7 @@ export class ChatService {
           permission: conversation.permission,
           ...(sessionId ? { sessionId } : {}),
           ...(gate ? { gate } : {}),
+          ...(mcpServers.length ? { mcpServers } : {}),
         },
         onEvent,
       );
@@ -431,9 +637,11 @@ export class ChatService {
     const finish = (): void => {
       for (const error of errors) this.#handle(state.conversationId, state.turnId, agent.id, error);
       state.disposeGate?.();
+      state.disposeMcp?.();
       this.#denyPendingPermissions(state.turnId);
       this.#running.delete(state.turnId);
       this.#handle(state.conversationId, state.turnId, agent.id, { type: 'done', cancelled });
+      this.#notifyExtensions('turnFinished', state.conversationId, state.turnId);
     };
 
     // Thành công, bị huỷ, hoặc đã trả lời được một phần (thử lại sẽ làm lại việc) → kết thúc.
@@ -616,6 +824,7 @@ export class ChatService {
         this.#denyPendingPermissions(turnId);
         state.run?.cancel();
         state.disposeGate?.();
+        state.disposeMcp?.();
         this.#running.delete(turnId);
       }
     }

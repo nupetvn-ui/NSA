@@ -4,6 +4,7 @@
  * File này kèm bộ cắm mặc định của bản Cá nhân — đơn giản, không chứa nghiệp vụ doanh nghiệp.
  */
 import type { AgentEvent, PermissionLevel } from '@nsa/adapter-sdk';
+import type { MemoryKind, MemoryOp } from './memory.js';
 
 // ---------------------------------------------------------------- Danh tính
 
@@ -59,6 +60,30 @@ export type PolicyAction =
       tool: string;
       /** Tham số của công cụ, dạng văn bản (lệnh shell, đường dẫn…). */
       input: string;
+    }
+  /**
+   * Ghi / sửa / xoá / hoàn tác một mục nhớ (NSA Mem). `by`: người dùng bấm, bộ tự duyệt,
+   * hay agent (agent chỉ được đề xuất — xem `memory.propose`).
+   */
+  | {
+      kind: 'memory.write';
+      op: MemoryOp;
+      /** Mục nhớ hay nhánh (tạo / sửa cấu hình nhánh). */
+      target: 'entry' | 'branch';
+      by: 'user' | 'auto';
+      branch: string;
+      entryId?: string;
+      title: string;
+      memoryKind: MemoryKind;
+      sensitive: boolean;
+    }
+  /** Agent (qua `mem_propose`) hoặc bộ chắt lọc đưa một đề xuất vào hộp duyệt. */
+  | {
+      kind: 'memory.propose';
+      agentId: string;
+      branch: string;
+      title: string;
+      conversationId?: string;
     };
 
 export interface PolicyRequest {
@@ -124,6 +149,11 @@ export function personalPolicy(options: { homeDir?: string } = {}): Policy {
   const home = options.homeDir ? normalizePath(options.homeDir) : null;
   return {
     check({ action, confirmed }) {
+      // Bộ nhớ của chính người dùng trên máy họ: cho phép. Đề xuất của agent chỉ vào hộp
+      // duyệt; quy tắc hành vi / nhạy cảm / mâu thuẫn do hộp duyệt giữ lại chờ người duyệt.
+      if (action.kind === 'memory.write' || action.kind === 'memory.propose') {
+        return { decision: 'allow' };
+      }
       if (action.kind === 'agent.tool') {
         const destructive = DESTRUCTIVE.find((r) => r.pattern.test(action.input));
         if (destructive) {
@@ -188,6 +218,18 @@ export type AuditEntry = {
   /** Sự kiện của agent (trừ từng mẩu văn bản — văn bản trả lời được ghi gộp khi lượt kết thúc). */
   | { type: 'agent_event'; event: Exclude<AgentEvent, { type: 'text' }> }
   | { type: 'reply'; text: string }
+  /** Mọi thay đổi bộ nhớ (kể cả bị chính sách chặn) và mọi quyết định của hộp duyệt. */
+  | {
+      type: 'memory';
+      op: MemoryOp | 'propose' | 'accept' | 'reject' | 'reindex';
+      by: 'user' | 'auto' | 'agent';
+      branch?: string;
+      entryId?: string;
+      proposalId?: string;
+      title?: string;
+      decision: PolicyDecision['decision'];
+      reason?: string;
+    }
 );
 
 /** Ổ cắm nhật ký: nhận mọi việc đã xảy ra (ai ra lệnh, agent làm gì, sửa gì). */

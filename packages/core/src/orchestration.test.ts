@@ -142,7 +142,7 @@ describe('ba tầng tự lùi + đổi agent', () => {
     const checked: string[] = [];
     const policy: Policy = {
       check: ({ action }) => {
-        checked.push(action.agentId);
+        if ('agentId' in action) checked.push(action.agentId);
         return { decision: 'allow' };
       },
     };
@@ -168,7 +168,7 @@ describe('ba tầng tự lùi + đổi agent', () => {
     const other = scripted('codex', reply('x'));
     const policy: Policy = {
       check: ({ action }) =>
-        action.agentId === 'codex'
+        'agentId' in action && action.agentId === 'codex'
           ? { decision: 'deny', reason: 'cấm codex' }
           : { decision: 'allow' },
     };

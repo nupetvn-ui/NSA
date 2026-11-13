@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { AUTO_AGENT, type AppInfo, type PermissionLevel, type SendRequest } from '@nsa/core';
+import {
+  AUTO_AGENT,
+  type AppInfo,
+  type DistillStatus,
+  type PermissionLevel,
+  type SendRequest,
+} from '@nsa/core';
 import { AgentsPanel } from './AgentsPanel';
 import logo from '../../../resources/icon.png';
 import { ConfirmSheet } from './ConfirmSheet';
+import { MemoryView } from './MemoryView';
 import { TurnView } from './TurnView';
 import { UpdateBanner } from './UpdateBanner';
 import { useChat } from './useChat';
@@ -31,12 +38,43 @@ export function App() {
   const [sending, setSending] = useState(false);
   /** Yêu cầu đang chờ người dùng xác nhận (chính sách trả lời "hỏi"). */
   const [confirm, setConfirm] = useState<{ reason: string; request: SendRequest } | null>(null);
+  const [view, setView] = useState<'chat' | 'memory'>('chat');
+  /** Số đề xuất ghi nhớ chờ duyệt + bộ đếm để màn hình Bộ nhớ tải lại. */
+  const [memPending, setMemPending] = useState(0);
+  const [memVersion, setMemVersion] = useState(0);
+  const [memStatus, setMemStatus] = useState<DistillStatus | null>(null);
+  const [distilling, setDistilling] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     void window.nsa.invoke('app:info').then(setInfo);
+    void window.nsa.invoke('mem:info').then((i) => setMemPending(i.pending));
+    void window.nsa.invoke('mem:status').then(setMemStatus);
+    const offChanged = window.nsa.on('mem:changed', ({ pending }) => {
+      setMemPending(pending);
+      setMemVersion((v) => v + 1);
+    });
+    const offStatus = window.nsa.on('mem:status', setMemStatus);
+    return () => {
+      offChanged();
+      offStatus();
+    };
   }, []);
+
+  /** Chắt lọc ngay cuộc trò chuyện đang mở thành đề xuất ghi nhớ. */
+  async function distillActive() {
+    if (!active || distilling) return;
+    setDistilling(true);
+    setSendError(null);
+    try {
+      await window.nsa.invoke('mem:distill', active.id);
+    } catch (err) {
+      setSendError(cleanError(err));
+    } finally {
+      setDistilling(false);
+    }
+  }
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const lastAgentId = active?.turns.at(-1)?.agentId;
@@ -122,12 +160,14 @@ export function App() {
   }
 
   function openConversation(id: string) {
+    setView('chat');
     setActiveId(id);
     setAgentId(null);
     setSendError(null);
   }
 
   function startNew() {
+    setView('chat');
     setActiveId(null);
     setSendError(null);
   }
@@ -160,6 +200,27 @@ export function App() {
         </div>
 
         <nav className="conv-list">
+          <button
+            type="button"
+            className={`nav-item ${view === 'memory' ? 'active' : ''}`}
+            onClick={() => setView('memory')}
+          >
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M10 3.5c-1.6-1.3-4.6-.6-4.9 1.8C3.3 5.6 2.6 7.9 3.8 9.2c-1 1.4-.4 3.6 1.4 4 .2 2 2.6 3 4.8 1.8V3.5Zm0 0c1.6-1.3 4.6-.6 4.9 1.8 1.8.3 2.5 2.6 1.3 3.9 1 1.4.4 3.6-1.4 4-.2 2-2.6 3-4.8 1.8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Bộ nhớ</span>
+            {memPending > 0 && (
+              <span className="badge" title="Đề xuất ghi nhớ chờ duyệt">
+                {memPending}
+              </span>
+            )}
+          </button>
           <div className="section-label">Cuộc trò chuyện</div>
           {conversations.length === 0 && <p className="hint pad">Chưa có cuộc trò chuyện nào.</p>}
           {conversations.map((c) => {
@@ -167,7 +228,7 @@ export function App() {
             return (
               <div
                 key={c.id}
-                className={`conv-item ${c.id === activeId ? 'active' : ''}`}
+                className={`conv-item ${c.id === activeId && view === 'chat' ? 'active' : ''}`}
                 onClick={() => openConversation(c.id)}
                 role="button"
                 tabIndex={0}
@@ -211,152 +272,165 @@ export function App() {
         />
       </aside>
 
-      <main className="chat">
-        <header className="chat-head drag">
-          <h1 className="chat-title">{active ? active.title : 'Cuộc trò chuyện mới'}</h1>
-          {active && (
-            <div className="chat-sub">
-              <span className="cwd" title={active.cwd}>
-                {active.cwd}
-              </span>
-              <span className={`tag perm-${active.permission}`}>
-                {active.permission === 'edit' ? 'Được sửa file' : 'Chỉ đọc'}
-              </span>
-            </div>
-          )}
-        </header>
-
-        <div className="messages" ref={scrollRef}>
-          {!active && (
-            <div className="setup">
-              <img src={logo} alt="" width={64} height={64} />
-              <h2>Giao việc cho agent</h2>
-              <p className="hint">
-                Chọn thư mục dự án, chọn agent bên dưới rồi gõ yêu cầu. Có thể đổi agent giữa chừng
-                — NSA tự chuyển ngữ cảnh cho agent mới.
-              </p>
-              <div className="form-group">
-                <div className="form-row">
-                  <span className="form-label">Thư mục</span>
-                  <span className="cwd form-value" title={newCwd ?? ''}>
-                    {newCwd ?? 'Chưa chọn'}
-                  </span>
-                  <button type="button" className="push-btn" onClick={() => void pickFolder()}>
-                    {newCwd ? 'Đổi…' : 'Chọn…'}
-                  </button>
-                </div>
-                <label className="form-row">
-                  <span className="form-label">Cho sửa file</span>
-                  <span className="form-value hint">
-                    {newPermission === 'edit'
-                      ? 'Agent được sửa file trong thư mục này'
-                      : 'Chỉ đọc và lập kế hoạch'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="switch"
-                    checked={newPermission === 'edit'}
-                    onChange={(e) => setNewPermission(e.target.checked ? 'edit' : 'read-only')}
-                  />
-                </label>
+      {view === 'memory' ? (
+        <MemoryView agents={agents} status={memStatus} version={memVersion} />
+      ) : (
+        <main className="chat">
+          <header className="chat-head drag">
+            <h1 className="chat-title">{active ? active.title : 'Cuộc trò chuyện mới'}</h1>
+            {active && (
+              <div className="chat-sub">
+                <button
+                  type="button"
+                  className="link-btn"
+                  disabled={distilling || active.turns.length === 0}
+                  onClick={() => void distillActive()}
+                  title="Giao một agent đọc cuộc trò chuyện này và đề xuất điều đáng nhớ vào hộp duyệt"
+                >
+                  {distilling ? 'Đang chắt lọc…' : 'Ghi nhớ cuộc trò chuyện'}
+                </button>
+                <span className="cwd" title={active.cwd}>
+                  {active.cwd}
+                </span>
+                <span className={`tag perm-${active.permission}`}>
+                  {active.permission === 'edit' ? 'Được sửa file' : 'Chỉ đọc'}
+                </span>
               </div>
-            </div>
-          )}
-
-          {active?.turns.map((turn) => (
-            <TurnView
-              key={turn.id}
-              turn={turn}
-              agentName={names[turn.agentId] ?? turn.agentId}
-              onCancel={() => void cancel(turn.id)}
-              onAnswer={(id, allowed) => void answerPermission(id, allowed)}
-            />
-          ))}
-        </div>
-
-        <form className="composer" onSubmit={(e) => void submit(e)}>
-          <div className="composer-bar">
-            <div className="segmented" role="radiogroup" aria-label="Chọn agent">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={agentId === AUTO_AGENT}
-                className={agentId === AUTO_AGENT ? 'on' : ''}
-                onClick={() => setAgentId(AUTO_AGENT)}
-                title="NSA chọn agent đủ năng lực cho việc này"
-              >
-                Tự chọn
-              </button>
-              {(agents ?? [])
-                .filter((a) => a.installed)
-                .map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={a.id === agentId}
-                    className={a.id === agentId ? 'on' : ''}
-                    onClick={() => setAgentId(a.id)}
-                    title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
-                  >
-                    <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
-                    {a.name}
-                  </button>
-                ))}
-            </div>
-            {selectedAgent && !selectedAgent.ready && (
-              <span className="hint warn-text">{selectedAgent.note}</span>
             )}
-          </div>
-          {sendError && <div className="error-box">{sendError}</div>}
-          <div className="input-field">
-            <textarea
-              value={draft}
-              ref={inputRef}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                autoGrow(e.target);
-              }}
-              onKeyDown={onKeyDown}
-              placeholder={`Nhắn cho ${selectedName}`}
-              rows={1}
-            />
-            {runningTurn ? (
-              <button
-                type="button"
-                className="round-btn stop"
-                onClick={() => void cancel(runningTurn.id)}
-                title="Dừng"
-                aria-label="Dừng"
-              >
-                <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                  <rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                type="submit"
-                className="round-btn"
-                disabled={!draft.trim() || sending}
-                title="Gửi (Enter)"
-                aria-label="Gửi"
-              >
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                  <path
-                    d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+          </header>
+
+          <div className="messages" ref={scrollRef}>
+            {!active && (
+              <div className="setup">
+                <img src={logo} alt="" width={64} height={64} />
+                <h2>Giao việc cho agent</h2>
+                <p className="hint">
+                  Chọn thư mục dự án, chọn agent bên dưới rồi gõ yêu cầu. Có thể đổi agent giữa
+                  chừng — NSA tự chuyển ngữ cảnh cho agent mới.
+                </p>
+                <div className="form-group">
+                  <div className="form-row">
+                    <span className="form-label">Thư mục</span>
+                    <span className="cwd form-value" title={newCwd ?? ''}>
+                      {newCwd ?? 'Chưa chọn'}
+                    </span>
+                    <button type="button" className="push-btn" onClick={() => void pickFolder()}>
+                      {newCwd ? 'Đổi…' : 'Chọn…'}
+                    </button>
+                  </div>
+                  <label className="form-row">
+                    <span className="form-label">Cho sửa file</span>
+                    <span className="form-value hint">
+                      {newPermission === 'edit'
+                        ? 'Agent được sửa file trong thư mục này'
+                        : 'Chỉ đọc và lập kế hoạch'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="switch"
+                      checked={newPermission === 'edit'}
+                      onChange={(e) => setNewPermission(e.target.checked ? 'edit' : 'read-only')}
+                    />
+                  </label>
+                </div>
+              </div>
             )}
+
+            {active?.turns.map((turn) => (
+              <TurnView
+                key={turn.id}
+                turn={turn}
+                agentName={names[turn.agentId] ?? turn.agentId}
+                onCancel={() => void cancel(turn.id)}
+                onAnswer={(id, allowed) => void answerPermission(id, allowed)}
+              />
+            ))}
           </div>
-          <div className="composer-hint hint">Enter để gửi · Shift+Enter xuống dòng</div>
-        </form>
-      </main>
+
+          <form className="composer" onSubmit={(e) => void submit(e)}>
+            <div className="composer-bar">
+              <div className="segmented" role="radiogroup" aria-label="Chọn agent">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={agentId === AUTO_AGENT}
+                  className={agentId === AUTO_AGENT ? 'on' : ''}
+                  onClick={() => setAgentId(AUTO_AGENT)}
+                  title="NSA chọn agent đủ năng lực cho việc này"
+                >
+                  Tự chọn
+                </button>
+                {(agents ?? [])
+                  .filter((a) => a.installed)
+                  .map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={a.id === agentId}
+                      className={a.id === agentId ? 'on' : ''}
+                      onClick={() => setAgentId(a.id)}
+                      title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
+                    >
+                      <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
+                      {a.name}
+                    </button>
+                  ))}
+              </div>
+              {selectedAgent && !selectedAgent.ready && (
+                <span className="hint warn-text">{selectedAgent.note}</span>
+              )}
+            </div>
+            {sendError && <div className="error-box">{sendError}</div>}
+            <div className="input-field">
+              <textarea
+                value={draft}
+                ref={inputRef}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  autoGrow(e.target);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder={`Nhắn cho ${selectedName}`}
+                rows={1}
+              />
+              {runningTurn ? (
+                <button
+                  type="button"
+                  className="round-btn stop"
+                  onClick={() => void cancel(runningTurn.id)}
+                  title="Dừng"
+                  aria-label="Dừng"
+                >
+                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                    <rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="round-btn"
+                  disabled={!draft.trim() || sending}
+                  title="Gửi (Enter)"
+                  aria-label="Gửi"
+                >
+                  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path
+                      d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="composer-hint hint">Enter để gửi · Shift+Enter xuống dòng</div>
+          </form>
+        </main>
+      )}
 
       {confirm && (
         <ConfirmSheet

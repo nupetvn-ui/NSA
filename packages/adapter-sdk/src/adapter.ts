@@ -1,4 +1,5 @@
 import type { AgentEvent } from './events.js';
+import type { McpServerSpec } from './mcp.js';
 
 /** Kết quả dò tìm CLI trên máy người dùng. */
 export interface DetectResult {
@@ -68,6 +69,11 @@ export interface RunOptions {
    * và móc phải "lỗi là chặn". Chỉ truyền khi `capabilities().toolGate` là true.
    */
   gate?: ToolGateEndpoint;
+  /**
+   * Server MCP của NSA gắn cho lượt này (`attachMcp` trong PLAN.md). Adapter có
+   * `capabilities().mcp` gắn vào CLI; adapter không hỗ trợ thì bỏ qua.
+   */
+  mcpServers?: McpServerSpec[];
 }
 
 export interface AgentRun {

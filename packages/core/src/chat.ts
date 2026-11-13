@@ -28,6 +28,8 @@ export interface Turn {
   usage?: { inputTokens: number; outputTokens: number; costUsd?: number };
   /** Lượt này có được kèm ngữ cảnh chuyển giao từ agent khác không. */
   handoff?: boolean;
+  /** Mục nhớ NSA Mem đã chèn vào đầu lượt. */
+  memory?: { id: string; title: string }[];
 }
 
 export interface Conversation {
