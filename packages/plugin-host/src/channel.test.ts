@@ -178,6 +178,14 @@ async function setup(
     ensureBranch: async (path) => void branches.push(path),
     search: async () => [],
     list: async (branch) => [{ id: 'm1', title: branch, body: 'nội quy', updated: '2026-01-01' }],
+    searchSemantic: async () => ({ mode: 'keyword', hits: [] }),
+    entries: async () => [],
+    pending: async () => [],
+    accept: async () => ({ entryId: '' }),
+    reject: async () => undefined,
+    remove: async () => ({ undo: [] }),
+    restore: async () => ({ restored: 0 }),
+    setAutoApprove: async () => undefined,
     read: async () => null,
     propose: async (branch, _id, input) => {
       proposals.push({ branch, title: input.title });

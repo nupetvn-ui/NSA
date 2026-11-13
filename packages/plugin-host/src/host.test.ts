@@ -128,6 +128,14 @@ async function setup(
     ensureBranch: async () => undefined,
     search: async (branch, q) => [{ id: 'm-1', title: `${branch}:${q}`, snippet: 's' }],
     read: async () => null,
+    searchSemantic: async () => ({ mode: 'keyword', hits: [] }),
+    entries: async () => [],
+    pending: async () => [],
+    accept: async () => ({ entryId: '' }),
+    reject: async () => undefined,
+    remove: async () => ({ undo: [] }),
+    restore: async () => ({ restored: 0 }),
+    setAutoApprove: async () => undefined,
     list: async () => [],
     propose: async (branch, pluginId, input) => {
       proposals.push(`${pluginId}@${branch}:${input.title}`);

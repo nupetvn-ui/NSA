@@ -179,7 +179,11 @@ export class ModelTaskRunner {
   async runText(
     task: string,
     prompt: string,
-    options: { signal?: AbortSignal; cwd?: string } = {},
+    options: {
+      signal?: AbortSignal;
+      cwd?: string;
+      images?: { mimeType: string; base64: string }[];
+    } = {},
   ): Promise<TaskOutcome<string>> {
     const candidates = this.#o
       .candidates(task)
@@ -203,6 +207,7 @@ export class ModelTaskRunner {
               prompt,
               cwd: options.cwd ?? this.#o.defaultCwd?.() ?? process.cwd(),
               permission: 'read-only',
+              ...(options.images?.length ? { images: options.images } : {}),
             },
             (event: AgentEvent) => {
               if (event.type === 'text') text += event.text;

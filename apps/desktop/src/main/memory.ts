@@ -10,7 +10,12 @@ import type {
   MemoryTeachInput,
   Policy,
 } from '@nsa/core';
-import { ChatHistoryImporter, MemoryRuntime, MemoryService } from '@nsa/memory';
+import {
+  ChatHistoryImporter,
+  EmbeddingVectorIndex,
+  MemoryRuntime,
+  MemoryService,
+} from '@nsa/memory';
 
 /**
  * NSA Mem trong app desktop: kho nhớ ở thư mục dữ liệu người dùng (`%APPDATA%\NSA\memory`),
@@ -27,9 +32,20 @@ export async function setupMemory(options: {
   onStatus: (status: DistillStatus) => void;
   /** Cổng MCP có đang chạy không (để báo cho agent rằng có tool `mem_*`). */
   toolsAvailable: () => boolean;
+  /** Tìm theo nghĩa (ADR-0014): tính embedding bằng model loại việc "embedding" nếu có. */
+  embed: (texts: string[]) => Promise<number[][]>;
+  embeddingReady: () => boolean;
 }): Promise<{ runtime: MemoryRuntime; close: () => Promise<void> }> {
   let runtime: MemoryRuntime | null = null;
+  const holder: { service?: MemoryService } = {};
+  const vector = new EmbeddingVectorIndex({
+    file: join(options.userData, 'memory', '.nsa', 'vectors.json'),
+    embed: options.embed,
+    ready: options.embeddingReady,
+    entries: () => holder.service?.listEntries() ?? [],
+  });
   const service = await MemoryService.open({
+    vector,
     root: join(options.userData, 'memory'),
     identity: options.identity,
     policy: options.policy,
@@ -37,6 +53,7 @@ export async function setupMemory(options: {
     onChange: () => options.onChanged(runtime?.service.listProposals('pending').length ?? 0),
   });
 
+  holder.service = service;
   runtime = new MemoryRuntime({
     service,
     toolsAvailable: options.toolsAvailable,

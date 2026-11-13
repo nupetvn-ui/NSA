@@ -265,6 +265,54 @@ export class MemoryService {
     return this.#index.search(query, options).filter((h) => this.#access.canRead(actor, h.entry));
   }
 
+  /**
+   * Tìm lai: FTS5 (từ khoá) + vector (nghĩa) trộn theo thứ hạng (RRF). Chưa có model embedding,
+   * hoặc tính vector lỗi (mất mạng, hết hạn mức) thì lùi về FTS5 và `mode` = `keyword`.
+   */
+  async searchHybrid(
+    query: string,
+    options: { limit?: number; branch?: string } = {},
+  ): Promise<{ mode: 'semantic' | 'keyword'; hits: MemorySearchHit[]; note?: string }> {
+    const limit = options.limit ?? 8;
+    const keyword = this.search(query, { ...options, limit: limit * 2 });
+    if (!this.#vector.available) return { mode: 'keyword', hits: keyword.slice(0, limit) };
+    let semantic: { id: string; score: number }[];
+    try {
+      semantic = await this.#vector.query(query, limit * 3);
+    } catch (err) {
+      return {
+        mode: 'keyword',
+        hits: keyword.slice(0, limit),
+        note: `Tìm theo nghĩa lỗi, dùng từ khoá: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+    const branch = options.branch;
+    const inBranch = (e: MemoryEntry): boolean =>
+      !branch || e.branch === branch || e.branch.startsWith(`${branch}/`);
+    const score = new Map<string, number>();
+    const hits = new Map<string, MemorySearchHit>();
+    keyword.forEach((h, i) => {
+      score.set(h.entry.id, (score.get(h.entry.id) ?? 0) + 1 / (60 + i));
+      hits.set(h.entry.id, h);
+    });
+    semantic.forEach((r, i) => {
+      const entry = this.get(r.id);
+      if (!entry || entry.sensitive || !inBranch(entry)) return;
+      score.set(entry.id, (score.get(entry.id) ?? 0) + 1 / (60 + i));
+      if (!hits.has(entry.id)) {
+        hits.set(entry.id, { entry, snippet: entry.body.replace(/s+/g, ' ').slice(0, 200) });
+      }
+    });
+    const ordered = [...score.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .flatMap(([id]) => {
+        const h = hits.get(id);
+        return h ? [h] : [];
+      });
+    return { mode: 'semantic', hits: ordered };
+  }
+
   // ------------------------------------------------------------ Chính sách + nhật ký
 
   async #check(action: PolicyAction): Promise<PolicyDecision> {
@@ -579,6 +627,7 @@ export class MemoryService {
         summary: c.summary,
         op: c.op,
         ...(c.entryId ? { entryId: c.entryId } : {}),
+        paths: c.paths,
         undoable,
       });
       if (items.length >= (options.limit ?? 100)) break;

@@ -1,0 +1,15 @@
+{
+  "name": "@nsa/plugin-knowledge-base",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Plugin Knowledge Base — mã nguồn trong src/, đóng gói thành main.js bằng `pnpm --filter @nsa/plugin-knowledge-base build`",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "fflate": "^0.8.2",
+    "unpdf": "^1.4.0"
+  }
+}
