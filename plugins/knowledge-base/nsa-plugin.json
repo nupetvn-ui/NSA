@@ -1,0 +1,90 @@
+{
+  "id": "knowledge-base",
+  "name": "Knowledge Base",
+  "description": "Dạy NSA bằng tài liệu, ảnh, video và âm thanh; duyệt điều nó học được; agent tìm lại kèm nguồn (trang, khung hình, phút-giây).",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "nsa": ">=0.1.0",
+  "author": "NSA",
+  "main": "main.js",
+  "permissions": {
+    "memory": true,
+    "model": true,
+    "modelTasks": ["vision", "embedding"],
+    "notifications": true,
+    "network": ["*"],
+    "folders": [
+      {
+        "id": "kho",
+        "label": "Thư mục tài liệu / video để quét (chỉ đọc; video dùng tại chỗ, không chép)",
+        "access": "read"
+      }
+    ],
+    "cli": [
+      {
+        "id": "ffmpeg",
+        "label": "ffmpeg (tách khung hình và tiếng từ video)",
+        "command": "ffmpeg",
+        "install": "Cài ffmpeg: mở terminal chạy \"winget install Gyan.FFmpeg\" rồi mở lại NSA. NSA không cài hộ.",
+        "allow": ["-hide_banner"],
+        "denyFlags": [],
+        "confinePaths": true
+      },
+      {
+        "id": "ffprobe",
+        "label": "ffprobe (đọc thời lượng video)",
+        "command": "ffprobe",
+        "install": "ffprobe đi kèm ffmpeg: \"winget install Gyan.FFmpeg\" rồi mở lại NSA.",
+        "allow": ["-v"],
+        "denyFlags": [],
+        "confinePaths": true
+      },
+      {
+        "id": "whisper-cli",
+        "label": "whisper.cpp (nhận dạng giọng nói, chạy trên máy)",
+        "command": "whisper-cli",
+        "install": "Tải whisper-bin-x64.zip ở github.com/ggml-org/whisper.cpp/releases, giải nén, đặt whisper-cli.exe (cùng các file .dll) vào một thư mục có trong PATH. NSA không cài hộ; model giọng nói tải trong màn hình Knowledge Base.",
+        "allow": ["-m", "-h"],
+        "denyFlags": [],
+        "confinePaths": true
+      }
+    ]
+  },
+  "memory": { "branch": "kien-thuc", "title": "Knowledge Base" },
+  "warning": "Plugin này gửi nội dung ảnh và khung hình video bạn nạp tới nhà cung cấp model NHÌN ẢNH bạn chọn trong Nhà cung cấp (tốn token, có thể tính phí); văn bản tài liệu chỉ gửi đi khi bạn bật tìm theo nghĩa (embedding). Nó đọc được mọi trang web công cộng khi bạn dán link. Thông tin nhạy cảm (số thẻ, CCCD, mật khẩu, khoá API) phát hiện trong tài liệu sẽ không bao giờ được tự nhận.",
+  "tools": [
+    {
+      "name": "kb_search",
+      "description": "Tìm trong Knowledge Base của người dùng (tài liệu, ảnh, video, âm thanh đã được họ dạy và duyệt). Tìm theo nghĩa nếu có model embedding, không thì theo từ khoá. Trả về mã mục, trích đoạn và NGUỒN (tên file, trang / mục / phút-giây). Khi trả lời người dùng hãy nêu nguồn đó.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Câu hỏi hoặc từ khoá" },
+          "limit": { "type": "number", "description": "Số kết quả tối đa (mặc định 6)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "kb_open",
+      "description": "Mở một mục của Knowledge Base theo mã (từ kb_search): đọc đủ nội dung, đoạn gốc xung quanh (hoặc đoạn phụ đề quanh mốc thời gian) và đường dẫn tới file gốc / khung hình.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": { "id": { "type": "string", "description": "Mã mục nhớ, ví dụ m-1a2b3c" } },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "kb_sources",
+      "description": "Liệt kê các nguồn đã nạp vào Knowledge Base (tên, loại, bộ sưu tập, trạng thái).",
+      "readOnly": true,
+      "inputSchema": { "type": "object", "properties": {} }
+    }
+  ],
+  "screens": [{ "id": "main", "title": "Knowledge Base", "entry": "ui/index.html" }],
+  "jobs": [
+    { "id": "tick", "title": "Chạy tiếp hàng đợi nạp", "every": "15s", "runOnStart": true }
+  ]
+}

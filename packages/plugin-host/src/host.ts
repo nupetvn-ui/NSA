@@ -1023,6 +1023,7 @@ export class PluginHost {
         }
         if (method === 'memory.setAuto') {
           if (!sub) throw new Error('Cần nhánh con để đặt tự nhận.');
+          await this.#o.memory.ensureBranch(branch, sub.split('/').at(-1) ?? sub);
           return this.#o.memory.setAutoApprove(
             branch,
             p['autoApprove'] === true,
@@ -1698,6 +1699,8 @@ export function pathsOutside(args: string[], roots: string[]): string | null {
   };
   for (const a of args) {
     const value = a.startsWith('-') && a.includes('=') ? a.slice(a.indexOf('=') + 1) : a;
+    // Địa chỉ mạng (rtmp://, http://…) cũng bị chặn: chương trình ngoài không được gửi dữ liệu đi.
+    if (/^[A-Za-z][A-Za-z0-9+.-]+:\/\//.test(value)) return value;
     if (absolute.test(value) && !inside(value)) return value;
   }
   return null;

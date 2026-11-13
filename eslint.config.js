@@ -8,6 +8,7 @@ export default tseslint.config(
   {
     ignores: [
       '.claude/**',
+      'plugins/knowledge-base/main.js',
       '**/node_modules/**',
       '**/dist/**',
       '**/out/**',

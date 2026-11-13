@@ -8,3 +8,6 @@ pnpm-lock.yaml
 docs/PLAN.md
 # Worktree của các phiên khác nằm trong .claude/
 .claude
+
+# File sinh ra bởi plugins/knowledge-base/build.mjs
+plugins/knowledge-base/main.js
