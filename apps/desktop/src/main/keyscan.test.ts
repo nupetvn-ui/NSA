@@ -77,19 +77,20 @@ describe('quét key trong mọi thứ app ghi ra', () => {
 
     const sent: unknown[] = [];
     const identity = localIdentity('tester');
-    let chat: ChatService | undefined;
+    // ChatService tạo sau, nhưng nhà cung cấp cần báo cho nó khi danh sách agent đổi.
+    const ref: { chat?: ChatService } = {};
     const providers = setupProviders({
       userData,
       cipher,
       identity,
       audit: createFileAuditLog(join(userData, 'audit')),
       basePolicy: personalPolicy(),
-      onAgentsChanged: (agents) => chat?.setAdapters(agents),
+      onAgentsChanged: (agents) => ref.chat?.setAdapters(agents),
       broadcast: (channel, payload) => sent.push({ channel, payload }),
       cliCommands: { opencode: { command: fakeCli.command, prefixArgs: fakeCli.prefixArgs } },
     });
     const events: ChatEvent[] = [];
-    chat = new ChatService({
+    const chat = new ChatService({
       adapters: providers.agents(),
       identity,
       policy: providers.policy,
@@ -102,6 +103,7 @@ describe('quét key trong mọi thứ app ghi ra', () => {
         sent.push(e);
       },
     });
+    ref.chat = chat;
 
     // 1. Dán key (đường IPC renderer → main).
     sent.push(await providers.handlers['providers:setKey']('deepseek', KEY));

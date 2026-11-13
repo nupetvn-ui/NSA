@@ -103,14 +103,15 @@ if (!app.requestSingleInstanceLock()) {
     const adapters = createAgents(userData);
 
     // Nhà cung cấp model qua API key (ADR-0008): key cất bằng safeStorage (Windows: DPAPI).
-    let chat: ChatService | undefined;
+    // ChatService tạo sau, nhưng nhà cung cấp cần báo cho nó khi danh sách agent đổi.
+    const ref: { chat?: ChatService } = {};
     const providers = setupProviders({
       userData,
       cipher: safeStorage,
       identity,
       audit: createFileAuditLog(join(userData, 'audit')),
       basePolicy: personalPolicy({ homeDir: homedir() }),
-      onAgentsChanged: (apiAgents) => chat?.setAdapters([...adapters, ...apiAgents]),
+      onAgentsChanged: (apiAgents) => ref.chat?.setAdapters([...adapters, ...apiAgents]),
       broadcast,
     });
     const audit = providers.audit;
@@ -126,7 +127,7 @@ if (!app.requestSingleInstanceLock()) {
     app.on('will-quit', () => void gate?.close());
 
     // Bản Cá nhân: cắm bộ mặc định vào ba ổ cắm của lõi (danh tính, chính sách, nhật ký).
-    chat = new ChatService({
+    const chat = new ChatService({
       adapters: [...adapters, ...providers.agents()],
       identity,
       policy: providers.policy,
@@ -139,6 +140,7 @@ if (!app.requestSingleInstanceLock()) {
         broadcast('chat:event', event);
       },
     });
+    ref.chat = chat;
 
     // Tự phát hiện thay đổi: so phiên bản + --help của từng CLI với lần khởi động trước.
     let cliChanges: CliChange[] = [];
