@@ -149,8 +149,9 @@ export function createClaudeAdapter(options: ClaudeAdapterOptions = {}): AgentAd
       const settings = runOptions.gate ? gateSettingsFile() : undefined;
       const mcp = runOptions.mcpServers ?? [];
       const env =
-        runOptions.gate || mcp.length
+        runOptions.gate || mcp.length || runOptions.env
           ? {
+              ...runOptions.env,
               ...(runOptions.gate ? { ...gateEnv(runOptions.gate), ...nodeRuntime().env } : {}),
               ...mcpEnv(mcp),
             }

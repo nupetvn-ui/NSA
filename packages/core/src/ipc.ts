@@ -6,6 +6,12 @@
 import type { Conversation } from './chat.js';
 import type { AgentInfo, ChatEvent, SendRequest, SendResult } from './chat-service.js';
 import type { CliChange } from './cli-watch.js';
+import {
+  PROVIDERS_IPC_CHANNELS,
+  PROVIDERS_IPC_EVENT_CHANNELS,
+  type ProvidersIpcContract,
+  type ProvidersIpcEventContract,
+} from './providers-ipc.js';
 import type {
   DistillStatus,
   ImportCandidate,
@@ -62,7 +68,7 @@ export type UpdateStatus =
   | { state: 'error'; message: string };
 
 /** Lệnh renderer gọi xuống main (yêu cầu → trả lời). */
-export interface IpcContract {
+export interface IpcContract extends ProvidersIpcContract {
   'core:ping': { args: [message: string]; result: PingResult };
   'app:info': { args: []; result: AppInfo };
   'app:updateStatus': { args: []; result: UpdateStatus };
@@ -109,7 +115,7 @@ export interface IpcContract {
 }
 
 /** Sự kiện main đẩy lên renderer. */
-export interface IpcEventContract {
+export interface IpcEventContract extends ProvidersIpcEventContract {
   'chat:event': ChatEvent;
   'app:update': UpdateStatus;
   'agents:changes': CliChange[];
@@ -137,6 +143,7 @@ export const IPC_CHANNELS = [
   'chat:answerPermission',
   'agents:changes',
   'dialog:pickFolder',
+  ...PROVIDERS_IPC_CHANNELS,
   'mem:info',
   'mem:branches',
   'mem:saveBranch',
@@ -165,6 +172,7 @@ export const IPC_EVENT_CHANNELS = [
   'chat:event',
   'app:update',
   'agents:changes',
+  ...PROVIDERS_IPC_EVENT_CHANNELS,
   'mem:changed',
   'mem:status',
 ] as const satisfies readonly IpcEventChannel[];

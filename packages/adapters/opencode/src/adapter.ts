@@ -144,15 +144,19 @@ export function createOpenCodeAdapter(options: OpenCodeAdapterOptions = {}): Age
     fingerprint: () => probeCli(command, { prefixArgs: prefix, helpArgs: ['run', '--help'] }),
 
     run(runOptions, onEvent) {
-      let env: Record<string, string> | undefined;
+      let env: Record<string, string> | undefined = runOptions.env
+        ? { ...runOptions.env }
+        : undefined;
       const mcp = runOptions.mcpServers ?? [];
       if (runOptions.gate || mcp.length) {
         env = {
+          ...env,
           ...(runOptions.gate ? gateEnv(runOptions.gate) : {}),
           ...mcpEnv(mcp),
+          // Gộp với cấu hình của lượt (nhà cung cấp do NSA cấp key) hoặc của người dùng.
           OPENCODE_CONFIG_CONTENT: openCodeGateConfig(
             runOptions.gate ? gateHookFiles().opencodePlugin : undefined,
-            process.env['OPENCODE_CONFIG_CONTENT'],
+            runOptions.env?.['OPENCODE_CONFIG_CONTENT'] ?? process.env['OPENCODE_CONFIG_CONTENT'],
             mcp,
           ),
         };

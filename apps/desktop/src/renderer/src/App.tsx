@@ -9,6 +9,7 @@ import {
 import { AgentsPanel } from './AgentsPanel';
 import logo from '../../../resources/icon.png';
 import { ConfirmSheet } from './ConfirmSheet';
+import { ProvidersScreen } from './ProvidersScreen';
 import { MemoryView } from './MemoryView';
 import { TurnView } from './TurnView';
 import { UpdateBanner } from './UpdateBanner';
@@ -38,12 +39,14 @@ export function App() {
   const [sending, setSending] = useState(false);
   /** Yêu cầu đang chờ người dùng xác nhận (chính sách trả lời "hỏi"). */
   const [confirm, setConfirm] = useState<{ reason: string; request: SendRequest } | null>(null);
-  const [view, setView] = useState<'chat' | 'memory'>('chat');
+  const [view, setView] = useState<'chat' | 'memory' | 'providers'>('chat');
   /** Số đề xuất ghi nhớ chờ duyệt + bộ đếm để màn hình Bộ nhớ tải lại. */
   const [memPending, setMemPending] = useState(0);
   const [memVersion, setMemVersion] = useState(0);
   const [memStatus, setMemStatus] = useState<DistillStatus | null>(null);
   const [distilling, setDistilling] = useState(false);
+  /** Cảnh báo hạn mức chi phí / chuyển model dự phòng ở việc nền. */
+  const [providerAlert, setProviderAlert] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -61,6 +64,24 @@ export function App() {
       offStatus();
     };
   }, []);
+
+  // Thêm / xoá key, bật cặp CLI → danh sách agent trong chat đổi.
+  useEffect(() => {
+    const offChanged = window.nsa.on('providers:changed', () => void checkAgents());
+    const offBudget = window.nsa.on('providers:budget', (a) =>
+      setProviderAlert(
+        a.level === 'over'
+          ? `Đã vượt hạn mức chi phí tháng: ước tính ${a.spentUsd.toFixed(2)} / ${a.limitUsd} USD.`
+          : `Sắp chạm hạn mức chi phí tháng: ước tính ${a.spentUsd.toFixed(2)} / ${a.limitUsd} USD.`,
+      ),
+    );
+    const offNotice = window.nsa.on('providers:notice', setProviderAlert);
+    return () => {
+      offChanged();
+      offBudget();
+      offNotice();
+    };
+  }, [checkAgents]);
 
   /** Chắt lọc ngay cuộc trò chuyện đang mở thành đề xuất ghi nhớ. */
   async function distillActive() {
@@ -91,6 +112,8 @@ export function App() {
     [agents],
   );
   const selectedAgent = agents?.find((a) => a.id === agentId);
+  /** Model gọi thẳng qua API key (màn hình Nhà cung cấp). */
+  const apiAgents = (agents ?? []).filter((a) => a.installed && a.id.startsWith('api:'));
   const selectedName =
     agentId === AUTO_AGENT ? 'agent NSA tự chọn' : (selectedAgent?.name ?? 'agent');
 
@@ -221,6 +244,23 @@ export function App() {
               </span>
             )}
           </button>
+          <button
+            type="button"
+            className={`nav-item ${view === 'providers' ? 'active' : ''}`}
+            onClick={() => setView('providers')}
+          >
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M7.5 11.5a3.5 3.5 0 1 1 3-1.7L17 16.3V18h-2v-1.5h-1.5V15H12l-1.6-1.6a3.5 3.5 0 0 1-2.9-1.9zM6 8.5h.01"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Nhà cung cấp (API key)</span>
+          </button>
           <div className="section-label">Cuộc trò chuyện</div>
           {conversations.length === 0 && <p className="hint pad">Chưa có cuộc trò chuyện nào.</p>}
           {conversations.map((c) => {
@@ -261,6 +301,16 @@ export function App() {
           })}
         </nav>
 
+        {providerAlert && (
+          <div className="update-banner">
+            <div className="update-title">Nhà cung cấp</div>
+            <div className="hint">{providerAlert}</div>
+            <button type="button" className="link-btn" onClick={() => setProviderAlert(null)}>
+              Đã hiểu
+            </button>
+          </div>
+        )}
+
         <UpdateBanner />
 
         <AgentsPanel
@@ -274,6 +324,8 @@ export function App() {
 
       {view === 'memory' ? (
         <MemoryView agents={agents} status={memStatus} version={memVersion} />
+      ) : view === 'providers' ? (
+        <ProvidersScreen onClose={() => setView('chat')} />
       ) : (
         <main className="chat">
           <header className="chat-head drag">
@@ -361,7 +413,7 @@ export function App() {
                   Tự chọn
                 </button>
                 {(agents ?? [])
-                  .filter((a) => a.installed)
+                  .filter((a) => a.installed && !a.id.startsWith('api:'))
                   .map((a) => (
                     <button
                       key={a.id}
@@ -377,6 +429,21 @@ export function App() {
                     </button>
                   ))}
               </div>
+              {apiAgents.length > 0 && (
+                <select
+                  className={`select model-select ${agentId.startsWith('api:') ? 'on' : ''}`}
+                  value={agentId.startsWith('api:') ? agentId : ''}
+                  onChange={(e) => e.target.value && setAgentId(e.target.value)}
+                  title="Model gọi thẳng qua API key (chỉ trò chuyện, không sửa file)"
+                >
+                  <option value="">Model qua API…</option>
+                  {apiAgents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               {selectedAgent && !selectedAgent.ready && (
                 <span className="hint warn-text">{selectedAgent.note}</span>
               )}

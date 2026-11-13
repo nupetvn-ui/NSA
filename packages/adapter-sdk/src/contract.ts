@@ -31,6 +31,12 @@ export interface ContractOptions {
   fakeLog?: string;
   /** Giới hạn thời gian mỗi lượt (ms). */
   timeoutMs?: number;
+  /**
+   * `cli` (mặc định): adapter chạy một tiến trình. `http`: adapter gọi API (adapter `api`) —
+   * nhật ký giả là các yêu cầu máy chủ giả nhận được (`stdin` = thân yêu cầu). Khi đó bước
+   * resume kiểm lịch sử lượt trước được gửi lại, thay cho mã phiên trong tham số dòng lệnh.
+   */
+  transport?: 'cli' | 'http';
 }
 
 /** Từ khoá khiến CLI giả chạy mãi (để thử huỷ). */
@@ -210,10 +216,18 @@ export async function runContract(
     );
     const problem = checkEventStream(second.events) ?? (second.timedOut ? 'quá thời gian' : null);
     const errors = errorsOf(second.events);
-    const argv = readFakeLog(options.fakeLog).at(-1)?.argv ?? [];
+    const last = readFakeLog(options.fakeLog).at(-1);
+    const argv = last?.argv ?? [];
+    const http = options.transport === 'http';
     if (problem || errors.length) {
       results.push({ step: 'resume', status: 'failed', detail: problem ?? errors.join('; ') });
-    } else if (!live && !argv.includes(sessionId)) {
+    } else if (!live && http && !(last?.stdin ?? '').includes('NSA-PING')) {
+      results.push({
+        step: 'resume',
+        status: 'failed',
+        detail: 'lịch sử lượt trước không được gửi lại cho hãng',
+      });
+    } else if (!live && !http && !argv.includes(sessionId)) {
       results.push({
         step: 'resume',
         status: 'failed',

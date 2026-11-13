@@ -12,7 +12,12 @@ import {
 import { createPtyAdapter } from '@nsa/adapter-pty';
 import { createCodexParser } from './parser.js';
 
-export type CodexAdapterOptions = CliAdapterOptions;
+export interface CodexAdapterOptions extends CliAdapterOptions {
+  /** Model cho lượt chạy (`-c model="…"`); bỏ trống thì dùng cấu hình của người dùng. */
+  model?: string;
+}
+
+const MODEL = /^[A-Za-z0-9][\w.:/-]{0,127}$/;
 
 const INSTALL = 'Chưa cài Codex CLI. Cài bằng: npm install -g @openai/codex';
 
@@ -41,6 +46,9 @@ export function buildCodexArgs(
 export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdapter {
   const command = options.command ?? 'codex';
   const prefix = options.prefixArgs ?? [];
+  if (options.model && !MODEL.test(options.model)) throw new Error('Tên model Codex không hợp lệ');
+  // `-c` là cờ chung của codex (đặt trước lệnh con), giống `-c sandbox_mode` đã chạy thật.
+  const modelArgs = options.model ? ['-c', `model="${options.model}"`] : [];
 
   // Tầng lùi: `codex exec` không có --json, đọc văn bản thô; prompt vẫn qua stdin.
   const fallback = createPtyAdapter({
@@ -107,8 +115,8 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
         {
           command,
           label: 'Codex',
-          ...(mcp.length ? { env: mcpEnv(mcp) } : {}),
-          args: [...prefix, ...buildCodexArgs(runOptions)],
+          ...(mcp.length || runOptions.env ? { env: { ...runOptions.env, ...mcpEnv(mcp) } } : {}),
+          args: [...prefix, ...modelArgs, ...buildCodexArgs(runOptions)],
           cwd: runOptions.cwd,
           stdin: runOptions.prompt,
           parseLine: createCodexParser(),

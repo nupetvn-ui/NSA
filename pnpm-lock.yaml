@@ -51,6 +51,9 @@ importers:
       '@nsa/adapter-antigravity':
         specifier: workspace:*
         version: link:../../packages/adapters/antigravity
+      '@nsa/adapter-api':
+        specifier: workspace:*
+        version: link:../../packages/adapters/api
       '@nsa/adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapters/claude
@@ -75,6 +78,9 @@ importers:
       '@nsa/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@nsa/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
@@ -129,6 +135,12 @@ importers:
         specifier: workspace:*
         version: link:../../adapter-sdk
 
+  packages/adapters/api:
+    dependencies:
+      '@nsa/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../adapter-sdk
+
   packages/adapters/claude:
     dependencies:
       '@nsa/adapter-pty':
@@ -152,6 +164,9 @@ importers:
       '@nsa/adapter-antigravity':
         specifier: workspace:*
         version: link:../antigravity
+      '@nsa/adapter-api':
+        specifier: workspace:*
+        version: link:../api
       '@nsa/adapter-claude':
         specifier: workspace:*
         version: link:../claude
@@ -176,6 +191,9 @@ importers:
       '@nsa/memory':
         specifier: workspace:*
         version: link:../../memory
+      '@nsa/providers':
+        specifier: workspace:*
+        version: link:../../providers
 
   packages/adapters/gemini:
     dependencies:
@@ -217,6 +235,13 @@ importers:
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../adapter-sdk
+      '@nsa/providers':
+        specifier: workspace:*
+        version: link:../providers
+    devDependencies:
+      '@nsa/adapter-api':
+        specifier: workspace:*
+        version: link:../adapters/api
 
   packages/mcp-gateway: {}
 
@@ -233,6 +258,24 @@ importers:
         version: 1.44.13
 
   packages/plugin-sdk: {}
+
+  packages/providers:
+    dependencies:
+      '@nsa/adapter-api':
+        specifier: workspace:*
+        version: link:../adapters/api
+      '@nsa/adapter-claude':
+        specifier: workspace:*
+        version: link:../adapters/claude
+      '@nsa/adapter-codex':
+        specifier: workspace:*
+        version: link:../adapters/codex
+      '@nsa/adapter-opencode':
+        specifier: workspace:*
+        version: link:../adapters/opencode
+      '@nsa/adapter-sdk':
+        specifier: workspace:*
+        version: link:../adapter-sdk
 
 packages:
 

@@ -16,7 +16,9 @@
     "@nsa/adapter-opencode": "workspace:*",
     "@nsa/adapter-pty": "workspace:*",
     "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/adapter-api": "workspace:*",
     "@nsa/core": "workspace:*",
-    "@nsa/memory": "workspace:*"
+    "@nsa/memory": "workspace:*",
+    "@nsa/providers": "workspace:*"
   }
 }

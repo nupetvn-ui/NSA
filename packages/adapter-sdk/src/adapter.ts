@@ -74,6 +74,11 @@ export interface RunOptions {
    * `capabilities().mcp` gắn vào CLI; adapter không hỗ trợ thì bỏ qua.
    */
   mcpServers?: McpServerSpec[];
+  /**
+   * Biến môi trường riêng của lượt này (ví dụ key của hãng khi NSA cấp key cho CLI — ADR-0009).
+   * Có thể chứa bí mật: adapter chỉ được truyền cho tiến trình con, không ghi ra đâu cả.
+   */
+  env?: Record<string, string>;
 }
 
 export interface AgentRun {

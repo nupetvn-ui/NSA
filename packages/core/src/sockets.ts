@@ -62,6 +62,20 @@ export type PolicyAction =
       input: string;
     }
   /**
+   * Gửi dữ liệu cho một hãng model qua API key (adapter `api` hoặc CLI được cấp key — ADR-0009).
+   * Mọi lần chọn hãng đều hỏi ở đây, để bản Doanh nghiệp chặn được hãng ngoài danh sách.
+   */
+  | {
+      kind: 'model.use';
+      agentId: string;
+      providerId: string;
+      model: string;
+      /** Loại việc: `main`, `background`, `vision`, `embedding`, `channel`. */
+      task: string;
+      /** Model tính tiền (không phải máy cục bộ / miễn phí). */
+      paid: boolean;
+    }
+  /**
    * Ghi / sửa / xoá / hoàn tác một mục nhớ (NSA Mem). `by`: người dùng bấm, bộ tự duyệt,
    * hay agent (agent chỉ được đề xuất — xem `memory.propose`).
    */
@@ -149,6 +163,8 @@ export function personalPolicy(options: { homeDir?: string } = {}): Policy {
   const home = options.homeDir ? normalizePath(options.homeDir) : null;
   return {
     check({ action, confirmed }) {
+      // Bản Cá nhân: người dùng tự chọn hãng, nên cho phép (hạn mức chi phí kiểm ở chỗ khác).
+      if (action.kind === 'model.use') return { decision: 'allow' };
       // Bộ nhớ của chính người dùng trên máy họ: cho phép. Đề xuất của agent chỉ vào hộp
       // duyệt; quy tắc hành vi / nhạy cảm / mâu thuẫn do hộp duyệt giữ lại chờ người duyệt.
       if (action.kind === 'memory.write' || action.kind === 'memory.propose') {
@@ -212,7 +228,18 @@ export type AuditEntry = {
       tool?: { name: string; input: string };
     }
   /** Tầng chính hỏng nên lùi tầng, hoặc agent hỏng / chưa cài nên đổi agent. */
-  | { type: 'fallback'; kind: 'tier' | 'agent'; from: string; to: string; reason: string }
+  | {
+      type: 'fallback';
+      /** `model`: hãng lỗi / hết hạn mức nên chuyển sang model dự phòng của loại việc. */
+      kind: 'tier' | 'agent' | 'model';
+      from: string;
+      to: string;
+      reason: string;
+    }
+  /** Chi phí ước tính của tháng chạm ngưỡng cảnh báo hoặc vượt hạn mức tự đặt. */
+  | { type: 'budget'; level: 'warn' | 'over'; spentUsd: number; limitUsd: number }
+  /** Người dùng thêm / xoá key của một hãng (không bao giờ ghi key, chỉ bốn ký tự cuối). */
+  | { type: 'provider_key'; action: 'set' | 'delete'; providerId: string; hint?: string }
   /** Phát hiện CLI vừa đổi phiên bản hoặc `--help` so với lần khởi động trước. */
   | { type: 'cli_change'; summary: string }
   /** Sự kiện của agent (trừ từng mẩu văn bản — văn bản trả lời được ghi gộp khi lượt kết thúc). */

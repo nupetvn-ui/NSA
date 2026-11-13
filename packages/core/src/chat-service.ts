@@ -134,6 +134,11 @@ export interface ChatServiceOptions {
   newId?: () => string;
   /** Thời gian chờ người dùng trả lời một yêu cầu cho phép lệnh (mặc định 4 phút). */
   permissionTimeoutMs?: number;
+  /**
+   * Agent nên thử tiếp khi `agentId` hỏng, theo thứ tự (ví dụ chuỗi model dự phòng của việc
+   * chính khi hãng API lỗi / hết hạn mức — ADR-0009). Agent không đủ năng lực vẫn bị loại.
+   */
+  fallbackOrder?: (agentId: string) => string[];
 }
 
 type AuditBody = AuditEntry extends infer E
@@ -162,7 +167,8 @@ const MAX_ATTEMPTS = 4;
 
 /** Điều phối các lượt chat giữa người dùng và nhiều agent CLI. */
 export class ChatService {
-  readonly #adapters: Map<string, AgentAdapter>;
+  #adapters: Map<string, AgentAdapter>;
+  readonly #fallbackOrder: ((agentId: string) => string[]) | undefined;
   readonly #identity: IdentityProvider;
   readonly #policy: Policy;
   readonly #audit: AuditLog | undefined;
@@ -187,6 +193,7 @@ export class ChatService {
 
   constructor(options: ChatServiceOptions) {
     this.#adapters = new Map(options.adapters.map((a) => [a.id, a]));
+    this.#fallbackOrder = options.fallbackOrder;
     this.#identity = options.identity;
     this.#policy = options.policy ?? personalPolicy();
     this.#audit = options.audit;
@@ -227,6 +234,14 @@ export class ChatService {
         };
       }),
     );
+  }
+
+  /**
+   * Thay danh sách agent (người dùng thêm / xoá key của một hãng). Lượt đang chạy giữ adapter cũ.
+   */
+  setAdapters(adapters: AgentAdapter[]): void {
+    this.#adapters = new Map(adapters.map((a) => [a.id, a]));
+    for (const id of [...this.#status.keys()]) if (!this.#adapters.has(id)) this.#status.delete(id);
   }
 
   listConversations(): Conversation[] {
@@ -676,7 +691,9 @@ export class ChatService {
     if (!state.autoSwitch) return finish();
     const conversation = this.#conversations.get(state.conversationId);
     if (!conversation) return finish();
-    const next = this.#route(undefined, conversation.permission, state.tried).candidates[0];
+    const routed = this.#route(undefined, conversation.permission, state.tried).candidates;
+    const next =
+      (this.#fallbackOrder?.(agent.id) ?? []).find((id) => routed.includes(id)) ?? routed[0];
     const nextAdapter = next ? this.#adapters.get(next) : undefined;
     if (!nextAdapter) return finish();
 
