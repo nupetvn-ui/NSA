@@ -66,7 +66,7 @@ export async function startFakeApiServer(options: FakeServerOptions = {}): Promi
     req.setEncoding('utf8');
     req.on('data', (c: string) => (raw += c));
     req.on('end', () => {
-      const url = req.url ?? '';
+      const url = (req.url ?? '').split('?')[0] ?? '';
       const standard = url.startsWith('/anthropic') ? 'anthropic' : 'openai';
       const path = url.replace(/^\/anthropic/, '').replace(/^\/v1/, '');
       let body: Record<string, unknown>;

@@ -161,6 +161,9 @@ importers:
       '@nsa/adapter-antigravity':
         specifier: workspace:*
         version: link:../antigravity
+      '@nsa/adapter-api':
+        specifier: workspace:*
+        version: link:../api
       '@nsa/adapter-claude':
         specifier: workspace:*
         version: link:../claude
@@ -182,6 +185,9 @@ importers:
       '@nsa/core':
         specifier: workspace:*
         version: link:../../core
+      '@nsa/providers':
+        specifier: workspace:*
+        version: link:../../providers
 
   packages/adapters/gemini:
     dependencies:
