@@ -13,3 +13,4 @@ Mỗi quyết định kỹ thuật đáng kể được ghi thành một file đ
 | [0007](0007-chan-tung-lenh-qua-cong-chinh-sach.md) | Chặn từng lệnh qua cổng chính sách                        | Chấp nhận  |
 | [0008](0008-nsa-mem.md)                            | NSA Mem: Markdown + git, FTS5, hộp duyệt, MCP tạm         | Chấp nhận  |
 | [0009](0009-nguon-model-qua-api-key.md)            | Nguồn model qua API key, kho khoá, chọn model theo việc   | Chấp nhận  |
+| [0010](0010-app-store-plugin-host-va-cong-mcp.md)  | App Store: plugin host, cô lập, cổng MCP chung, gói ký    | Chấp nhận  |

@@ -30,5 +30,10 @@ export default tseslint.config(
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
+  {
+    // Màn hình plugin chạy trong khung cô lập của trình duyệt, có thêm window.nsa.
+    files: ['plugins/**/ui/**/*.js'],
+    languageOptions: { globals: { ...globals.browser, nsa: 'readonly' } },
+  },
   prettier,
 );
