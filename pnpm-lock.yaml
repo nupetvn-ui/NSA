@@ -75,9 +75,18 @@ importers:
       '@nsa/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@nsa/mcp-gateway':
+        specifier: workspace:*
+        version: link:../../packages/mcp-gateway
       '@nsa/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@nsa/plugin-host':
+        specifier: workspace:*
+        version: link:../../packages/plugin-host
+      '@nsa/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
       '@nsa/providers':
         specifier: workspace:*
         version: link:../../packages/providers

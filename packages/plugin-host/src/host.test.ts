@@ -722,7 +722,7 @@ describe('kho (file chỉ mục)', () => {
     const bytes = packDirectory(src, { key, publisher: 'Nhà A' });
     writeFileSync(join(repo, 'thu-nghiem-1.0.0.nsapkg'), bytes);
     const { createHash } = await import('node:crypto');
-    const index = {
+    const index: { plugins: Record<string, unknown>[] } = {
       plugins: [
         {
           id: 'thu-nghiem',

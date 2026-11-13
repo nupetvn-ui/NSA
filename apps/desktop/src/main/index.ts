@@ -19,11 +19,15 @@ import { createFingerprintStore } from './cli-changes';
 import { setupProviders } from './providers';
 import { registerIpc } from './ipc';
 import { setupMemory } from './memory';
+import { registerPluginScheme, setupPlugins, type PluginsSetup } from './plugins';
 import { createFileStore } from './store';
 import { setupAutoUpdate } from './updater';
 import icon from '../../resources/icon.png?asset';
 
 const core = new NsaCore();
+
+// Giao thức của màn hình plugin phải đăng ký trước khi app sẵn sàng.
+registerPluginScheme();
 
 // Chạy thử / test tự động trong thư mục dữ liệu riêng, không đụng dữ liệu thật của người dùng.
 const userDataOverride = process.env['NSA_USER_DATA'];
@@ -136,6 +140,7 @@ if (!app.requestSingleInstanceLock()) {
     // Chính sách đã ghép thêm kiểm hãng model (model.use) và hạn mức chi phí — ADR-0009.
     const policy = providers.policy;
     let chat: ChatService | null = null;
+    let plugins: PluginsSetup | null = null;
     const memory = await setupMemory({
       userData,
       identity,
@@ -147,8 +152,24 @@ if (!app.requestSingleInstanceLock()) {
       },
       onChanged: (pending) => broadcast('mem:changed', { pending }),
       onStatus: (status) => broadcast('mem:status', status),
+      toolsAvailable: () => plugins?.gateway != null,
     });
     app.on('will-quit', () => void memory.close());
+
+    // App Store: cổng MCP chung (tool bộ nhớ + tool của plugin) và plugin host (ADR-0010).
+    plugins = await setupPlugins({
+      userData,
+      identity,
+      policy,
+      audit,
+      runtime: memory.runtime,
+      chat: () => {
+        if (!chat) throw new Error('Lõi chat chưa sẵn sàng');
+        return chat;
+      },
+      broadcast,
+    });
+    app.on('will-quit', () => void plugins?.close());
 
     chat = new ChatService({
       adapters: [...adapters, ...providers.agents()],
@@ -157,7 +178,7 @@ if (!app.requestSingleInstanceLock()) {
       audit,
       ...(gate ? { gate } : {}),
       store: providers.wrapStore(createFileStore(join(userData, 'conversations.json'))),
-      extensions: [memory.runtime],
+      extensions: [memory.runtime, ...(plugins.gateway ? [plugins.gateway] : [])],
       fallbackOrder: (agentId) => providers.hub.fallbackAgents(agentId),
       onEvent: (event) => {
         providers.onChatEvent(event);
@@ -187,7 +208,8 @@ if (!app.requestSingleInstanceLock()) {
 
     registerIpc(core, chat, () => cliChanges, providers, {
       runtime: memory.runtime,
-      mcpUrl: memory.mcp?.url ?? null,
+      mcpUrl: plugins.gateway?.url ?? null,
+      plugins: plugins.handlers,
     });
     createWindow();
     setupAutoUpdate((status) => broadcast('app:update', status));
