@@ -31,9 +31,9 @@ import {
   createFileUsageLedger,
   parseModelRef,
   pickCatalog,
+  type CliAdapterFactories,
   type OsCipher,
 } from '@nsa/providers';
-import { cliAdapterFactories } from './agents';
 
 export interface ProvidersSetupOptions {
   userData: string;
@@ -45,6 +45,8 @@ export interface ProvidersSetupOptions {
   /** Danh sách agent đổi (thêm / xoá key, bật cặp CLI) → cập nhật ChatService. */
   onAgentsChanged: (adapters: AgentAdapter[]) => void;
   broadcast: <E extends IpcEventChannel>(channel: E, payload: IpcEventContract[E]) => void;
+  /** Cách tạo adapter CLI cho cặp CLI + key (qua bộ quản lý adapter hoặc bản kèm app). */
+  cliAdapters: CliAdapterFactories;
   /** Lệnh CLI thay thế (test). */
   cliCommands?: ConstructorParameters<typeof ProviderHub>[0]['cliCommands'];
 }
@@ -87,7 +89,7 @@ export function setupProviders(options: ProvidersSetupOptions): ProvidersSetup {
   // File dữ liệu hãng: bản tải về (nếu mới hơn và hợp lệ) hoặc bản đóng gói kèm app.
   const picked = pickCatalog(readJson(join(userData, 'provider-catalog.json')));
   const hub = new ProviderHub({
-    cliAdapters: cliAdapterFactories,
+    cliAdapters: options.cliAdapters,
     catalog: picked.catalog,
     settings: createFileSettingsStore(join(userData, 'providers.json')),
     secrets: createEncryptedFileSecretStore(join(userData, 'secrets.json'), options.cipher),

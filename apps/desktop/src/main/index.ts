@@ -9,10 +9,12 @@ import {
   detectCliChanges,
   localIdentity,
   personalPolicy,
+  type AuditLog,
   type CliChange,
   type IpcEventChannel,
   type IpcEventContract,
 } from '@nsa/core';
+import { cliAdapterFactoriesOf, setupAdapters } from './adapters';
 import { createAgents } from './agents';
 import { createFileAuditLog } from './audit';
 import { createFingerprintStore } from './cli-changes';
@@ -25,6 +27,8 @@ import { setupAutoUpdate } from './updater';
 import icon from '../../resources/icon.png?asset';
 
 const core = new NsaCore();
+/** Nhật ký có sau khi nhà cung cấp dựng xong; bộ quản lý adapter ghi vào đây. */
+const auditRef: { current?: AuditLog } = {};
 
 // Giao thức của màn hình plugin phải đăng ký trước khi app sẵn sàng.
 registerPluginScheme();
@@ -48,6 +52,8 @@ function titleBarOverlay() {
     height: 52,
   };
 }
+
+const ADAPTER_CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -109,12 +115,43 @@ if (!app.requestSingleInstanceLock()) {
     app.setAppUserModelId('vn.nupet.nsa');
     const userData = app.getPath('userData');
     const identity = localIdentity(userInfo().username);
-    const adapters = createAgents(userData);
+
+    // Adapter cập nhật độc lập với app (G1, ADR-0016): bản kèm app là dự phòng. Thông báo phát sinh
+    // trước khi cửa sổ sẵn sàng (ví dụ quay về bản kèm app lúc khởi động) được giữ lại và gửi sau.
+    const refs: { chat?: ChatService; reload?: () => void } = {};
+    const noticeBuffer: { level: 'info' | 'warn'; message: string }[] = [];
+    let rendererReady = false;
+    const adapterSetup = setupAdapters({
+      userData,
+      appVersion: app.getVersion(),
+      isPackaged: app.isPackaged,
+      resourcesDir: join(__dirname, '../../resources'),
+      audit: (event) => {
+        const actor = identity.current();
+        auditRef.current?.record({
+          at: new Date().toISOString(),
+          actor: { id: actor.id, displayName: actor.displayName },
+          agentId: event.adapterId,
+          type: 'adapter_update',
+          action: event.action,
+          version: event.version,
+          reason: event.reason,
+        });
+      },
+      notify: (notice) => {
+        if (rendererReady) broadcast('adapters:notice', notice);
+        else noticeBuffer.push(notice);
+      },
+      onChanged: () => refs.reload?.(),
+    });
+    const adapterManager = adapterSetup.manager;
+    let adapters = createAgents(userData, adapterManager);
 
     // Nhà cung cấp model qua API key (ADR-0009): key cất bằng safeStorage (Windows: DPAPI).
     // ChatService tạo sau, nhưng nhà cung cấp cần báo cho nó khi danh sách agent đổi.
-    const ref: { chat?: ChatService } = {};
+    const ref = refs;
     const providers = setupProviders({
+      cliAdapters: cliAdapterFactoriesOf(adapterManager),
       userData,
       cipher: safeStorage,
       identity,
@@ -124,6 +161,7 @@ if (!app.requestSingleInstanceLock()) {
       broadcast,
     });
     const audit = providers.audit;
+    auditRef.current = audit;
 
     // Cổng chính sách từng lệnh (127.0.0.1, cổng ngẫu nhiên). Mở không được thì vẫn chạy,
     // chỉ là không chặn được từng lệnh bên trong lượt.
@@ -189,6 +227,11 @@ if (!app.requestSingleInstanceLock()) {
       },
     });
     ref.chat = chat;
+    // Có adapter mới được kích hoạt: dựng lại danh sách agent ngay, không cần khởi động lại app.
+    refs.reload = () => {
+      adapters = createAgents(userData, adapterManager);
+      chat?.setAdapters([...adapters, ...providers.agents()]);
+    };
 
     // Tự phát hiện thay đổi: so phiên bản + --help của từng CLI với lần khởi động trước.
     let cliChanges: CliChange[] = [];
@@ -214,7 +257,16 @@ if (!app.requestSingleInstanceLock()) {
       mcpUrl: plugins.gateway?.url ?? null,
       plugins: plugins.handlers,
     });
-    createWindow();
+    const win = createWindow();
+    win.webContents.once('did-finish-load', () => {
+      rendererReady = true;
+      for (const notice of noticeBuffer.splice(0)) broadcast('adapters:notice', notice);
+    });
+    if (adapterSetup.updatesEnabled) {
+      const check = (): void => void adapterManager.checkForUpdates();
+      setTimeout(check, Number(process.env['NSA_ADAPTER_CHECK_DELAY_MS']) || 5_000).unref();
+      setInterval(check, ADAPTER_CHECK_EVERY_MS).unref();
+    }
     setupAutoUpdate((status) => broadcast('app:update', status));
 
     app.on('activate', () => {

@@ -128,6 +128,8 @@ export interface IpcEventContract extends ProvidersIpcEventContract, PluginsIpcE
   /** Bộ nhớ hoặc hộp duyệt vừa thay đổi. */
   'mem:changed': { pending: number };
   'mem:status': DistillStatus;
+  /** Adapter / file dữ liệu cập nhật độc lập với app: đã cập nhật, bị từ chối hoặc đã quay về bản kèm app (ADR-0016). */
+  'adapters:notice': { level: 'info' | 'warn'; message: string };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -183,6 +185,7 @@ export const IPC_EVENT_CHANNELS = [
   ...PLUGINS_IPC_EVENT_CHANNELS,
   'mem:changed',
   'mem:status',
+  'adapters:notice',
 ] as const satisfies readonly IpcEventChannel[];
 
 // Bắt lỗi khi khai báo kênh trong contract mà quên thêm vào danh sách ở trên.

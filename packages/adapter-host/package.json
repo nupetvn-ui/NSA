@@ -1,0 +1,28 @@
+{
+  "name": "@nsa/adapter-host",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Adapter và file dữ liệu hãng cập nhật độc lập với app: gói ký, kiểm tương thích, quay về bản kèm app khi lỗi",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@nsa/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/core": "workspace:*",
+    "@nsa/plugin-host": "workspace:*",
+    "@nsa/plugin-sdk": "workspace:*"
+  }
+}
