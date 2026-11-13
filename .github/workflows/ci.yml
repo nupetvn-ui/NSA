@@ -30,3 +30,61 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+  # G2 (ADR-0014): dựng app thật trên Windows và mở nó bằng Playwright. Lỗi màn hình đen sau PR #5
+  # lọt qua vì job trên chỉ chạy lint/typecheck/test trên Linux, không bao giờ mở giao diện.
+  e2e:
+    name: Mở app trên Windows (dev, build, bản đóng gói)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # pnpm chặn script cài đặt của electron (chỉ esbuild được phép) nên tự tải nhị phân Electron.
+      - name: Tải nhị phân Electron
+        working-directory: apps/desktop
+        run: node node_modules/electron/install.js
+
+      # Bản dựng mà vite báo "externalized for browser compatibility" nghĩa là giao diện đang
+      # import mô-đun của Node — coi là lỗi dù chưa nổ lúc chạy.
+      - name: Dựng app
+        shell: bash
+        run: |
+          pnpm build 2>&1 | tee build.log
+          if grep -qi "externalized for browser compatibility" build.log; then
+            echo "::error::Giao diện import mô-đun của Node (xem build.log)"; exit 1
+          fi
+
+      - name: Mở app — giao diện nạp từ máy chủ Vite (đường đã gây màn hình đen)
+        working-directory: apps/desktop
+        run: pnpm test:e2e
+        env:
+          NSA_E2E_TARGET: dev
+
+      - name: Mở app — bản dựng out/
+        working-directory: apps/desktop
+        run: pnpm test:e2e
+        env:
+          NSA_E2E_TARGET: build
+
+      # Bản đóng gói không ký: bắt lỗi thiếu nhị phân gốc (node-pty…) mà chạy từ mã nguồn không thấy.
+      - name: Đóng gói không ký
+        working-directory: apps/desktop
+        run: pnpm dist:dir
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Mở app — bản đóng gói
+        working-directory: apps/desktop
+        run: pnpm test:e2e
+        env:
+          NSA_E2E_TARGET: packaged

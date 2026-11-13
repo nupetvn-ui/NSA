@@ -15,7 +15,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "dist:win": "electron-vite build && electron-builder --win --publish never",
     "release:win": "electron-vite build && electron-builder --win --publish always",
-    "icons": "node scripts/render-icons.mjs"
+    "icons": "node scripts/render-icons.mjs",
+    "dist:dir": "electron-vite build && electron-builder --win dir --publish never",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
     "@lydell/node-pty": "1.2.0-beta.18",
