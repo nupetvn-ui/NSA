@@ -18,6 +18,7 @@ const PACKAGES: Record<string, string> = {
   '@nsa/mcp-gateway': 'packages/mcp-gateway',
   '@nsa/memory': 'packages/memory',
   '@nsa/plugin-sdk': 'packages/plugin-sdk',
+  '@nsa/plugin-host': 'packages/plugin-host',
 };
 
 export function workspaceAliases(repoRoot: string): Record<string, string> {

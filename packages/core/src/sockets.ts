@@ -98,6 +98,36 @@ export type PolicyAction =
       branch: string;
       title: string;
       conversationId?: string;
+    }
+  /**
+   * Agent gọi một tool qua cổng MCP của NSA (bộ nhớ hoặc plugin — ADR-0010). `sensitive`:
+   * plugin đánh dấu thao tác nhạy cảm (xoá, gửi hàng loạt…) — bản Cá nhân luôn hỏi.
+   */
+  | {
+      kind: 'mcp.tool';
+      agentId: string;
+      conversationId?: string;
+      turnId?: string;
+      source: 'memory' | 'plugin';
+      pluginId?: string;
+      tool: string;
+      sensitive: boolean;
+      /** Tham số của tool, dạng văn bản (cắt ngắn). */
+      input: string;
+    }
+  /**
+   * Cài, cập nhật, bật, cấp quyền hoặc gỡ một plugin (App Store). Plugin chưa ký chỉ cài được
+   * khi người dùng bật chế độ nhà phát triển — bản Doanh nghiệp có thể chặn hẳn.
+   */
+  | {
+      kind: 'plugin.manage';
+      op: 'install' | 'update' | 'enable' | 'grant' | 'uninstall';
+      pluginId: string;
+      version: string;
+      signature: 'trusted' | 'untrusted' | 'unsigned';
+      developerMode: boolean;
+      /** Quyền xin cấp, dạng câu đọc được. */
+      permissions: string[];
     };
 
 export interface PolicyRequest {
@@ -169,6 +199,35 @@ export function personalPolicy(options: { homeDir?: string } = {}): Policy {
       // duyệt; quy tắc hành vi / nhạy cảm / mâu thuẫn do hộp duyệt giữ lại chờ người duyệt.
       if (action.kind === 'memory.write' || action.kind === 'memory.propose') {
         return { decision: 'allow' };
+      }
+      // Tool của plugin: thao tác nhạy cảm luôn hỏi (mỗi lần gọi); còn lại cho phép.
+      if (action.kind === 'mcp.tool') {
+        return action.sensitive
+          ? {
+              decision: 'ask',
+              reason: `Plugin "${action.pluginId ?? '?'}" muốn chạy thao tác nhạy cảm "${action.tool}": ${action.input}`,
+            }
+          : { decision: 'allow' };
+      }
+      if (action.kind === 'plugin.manage') {
+        if (action.op !== 'install' && action.op !== 'update') return { decision: 'allow' };
+        if (action.signature === 'trusted') return { decision: 'allow' };
+        const what =
+          action.signature === 'unsigned'
+            ? 'chưa được ký'
+            : 'do nhà phát hành chưa được NSA tin cậy ký';
+        if (!action.developerMode) {
+          return {
+            decision: 'deny',
+            reason: `Plugin "${action.pluginId}" ${what}. Chỉ cài được khi bật chế độ nhà phát triển.`,
+          };
+        }
+        return confirmed
+          ? { decision: 'allow' }
+          : {
+              decision: 'ask',
+              reason: `Plugin "${action.pluginId}" ${what}: NSA không bảo đảm nó an toàn. Chỉ cài nếu bạn tin người viết nó.`,
+            };
       }
       if (action.kind === 'agent.tool') {
         const destructive = DESTRUCTIVE.find((r) => r.pattern.test(action.input));
@@ -245,6 +304,39 @@ export type AuditEntry = {
   /** Sự kiện của agent (trừ từng mẩu văn bản — văn bản trả lời được ghi gộp khi lượt kết thúc). */
   | { type: 'agent_event'; event: Exclude<AgentEvent, { type: 'text' }> }
   | { type: 'reply'; text: string }
+  /** Một lần agent gọi tool qua cổng MCP (kể cả bị chính sách chặn / người dùng từ chối). */
+  | {
+      type: 'mcp_tool';
+      source: 'memory' | 'plugin';
+      pluginId?: string;
+      tool: string;
+      decision: PolicyDecision['decision'];
+      reason?: string;
+      /** Người dùng đã bấm cho phép khi chính sách hỏi. */
+      confirmed: boolean;
+      /** Có khi tool đã chạy. */
+      ok?: boolean;
+      error?: string;
+      ms?: number;
+    }
+  /** Vòng đời plugin: cài, cập nhật, bật, tắt, gỡ, cấp quyền, sập, truy cập bị từ chối. */
+  | {
+      type: 'plugin';
+      op:
+        | 'install'
+        | 'update'
+        | 'enable'
+        | 'disable'
+        | 'uninstall'
+        | 'grant'
+        | 'crash'
+        | 'denied'
+        | 'job';
+      pluginId: string;
+      version?: string;
+      decision: PolicyDecision['decision'];
+      detail?: string;
+    }
   /** Mọi thay đổi bộ nhớ (kể cả bị chính sách chặn) và mọi quyết định của hộp duyệt. */
   | {
       type: 'memory';

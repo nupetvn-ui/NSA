@@ -15,6 +15,10 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "@nsa/adapter-sdk": "workspace:*",
+    "@nsa/core": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"

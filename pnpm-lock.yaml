@@ -188,6 +188,9 @@ importers:
       '@nsa/core':
         specifier: workspace:*
         version: link:../../core
+      '@nsa/mcp-gateway':
+        specifier: workspace:*
+        version: link:../../mcp-gateway
       '@nsa/memory':
         specifier: workspace:*
         version: link:../../memory
@@ -235,6 +238,9 @@ importers:
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../adapter-sdk
+      '@nsa/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
       '@nsa/providers':
         specifier: workspace:*
         version: link:../providers
@@ -243,7 +249,14 @@ importers:
         specifier: workspace:*
         version: link:../adapters/api
 
-  packages/mcp-gateway: {}
+  packages/mcp-gateway:
+    dependencies:
+      '@nsa/adapter-sdk':
+        specifier: workspace:*
+        version: link:../adapter-sdk
+      '@nsa/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/memory:
     dependencies:
@@ -256,6 +269,22 @@ importers:
       isomorphic-git:
         specifier: ^1.44.13
         version: 1.44.13
+    devDependencies:
+      '@nsa/mcp-gateway':
+        specifier: workspace:*
+        version: link:../mcp-gateway
+
+  packages/plugin-host:
+    dependencies:
+      '@nsa/core':
+        specifier: workspace:*
+        version: link:../core
+      '@nsa/mcp-gateway':
+        specifier: workspace:*
+        version: link:../mcp-gateway
+      '@nsa/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
 
   packages/plugin-sdk: {}
 

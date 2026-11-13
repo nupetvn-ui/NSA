@@ -49,7 +49,7 @@ import {
   slugify,
   type BranchMeta,
 } from './markdown.js';
-import type { McpCallContext, McpTool } from './mcp-server.js';
+import type { McpCallContext, McpTool } from '@nsa/adapter-sdk';
 import { findConflicts, judgeProposal } from './review.js';
 import { SearchIndex } from './search-index.js';
 import { noVectorIndex, type VectorIndex } from './vector.js';
@@ -898,7 +898,7 @@ export class MemoryService {
     // Agent có tool mem_* thì luôn được báo, kể cả khi kho còn trống — để khi người dùng dặn
     // nhớ, agent đề xuất vào NSA Mem thay vì ghi vào bộ nhớ riêng của CLI (đã thấy khi chạy thật).
     const toolsHint = options.tools
-      ? 'Bạn có tool MCP của NSA (server nsa_mem): mem_search / mem_read để tra bộ nhớ của người ' +
+      ? 'Bạn có tool MCP của NSA (server nsa): mem_search / mem_read để tra bộ nhớ của người ' +
         'dùng; mem_propose để đề xuất ghi nhớ khi người dùng dặn nhớ hoặc khi có điều đáng nhớ lâu ' +
         'dài. Dùng mem_propose thay cho file nhớ hay bộ nhớ riêng của bạn — bộ nhớ NSA dùng chung cho mọi agent. ' +
         'Các tool này không sửa file nào nên được gọi ngay cả ở chế độ chỉ đọc / lập kế hoạch; ' +

@@ -10,7 +10,8 @@ import type { AgentAdapter, AgentEvent } from '@nsa/adapter-sdk';
 import { createClaudeAdapter } from '@nsa/adapter-claude';
 import { createCodexAdapter } from '@nsa/adapter-codex';
 import { createOpenCodeAdapter } from '@nsa/adapter-opencode';
-import { McpHttpServer } from '@nsa/memory';
+import { localIdentity, personalPolicy } from '@nsa/core';
+import { McpGateway } from '@nsa/mcp-gateway';
 
 const LIVE = process.env['NSA_LIVE_CONTRACT'] === '1';
 const only = (process.env['NSA_LIVE_AGENTS'] ?? '').split(',').filter(Boolean);
@@ -24,29 +25,31 @@ const ADAPTERS: AgentAdapter[] = [
 const SECRET = 'ZEBRA-4217';
 
 describe.skipIf(!LIVE)('MCP bộ nhớ gắn vào CLI thật', () => {
-  let server: McpHttpServer;
+  let server: McpGateway;
   const calls: string[] = [];
   beforeAll(async () => {
-    server = await McpHttpServer.start({
-      name: 'nsa_mem',
+    server = await McpGateway.start({
       version: '0.0.0',
-      tools: [
-        {
-          name: 'mem_search',
-          description: 'Tìm trong bộ nhớ NSA của người dùng.',
-          inputSchema: {
-            type: 'object',
-            properties: { query: { type: 'string' } },
-            required: ['query'],
-          },
-          readOnly: true,
-          call: (args, ctx) => {
-            calls.push(`${ctx.agentId}:${String(args['query'])}`);
-            return `Mục nhớ: mã kiểm tra của người dùng là ${SECRET}.`;
-          },
-        },
-      ],
+      identity: localIdentity('live'),
+      policy: personalPolicy(),
     });
+    server.addSource(() => [
+      {
+        source: 'memory',
+        name: 'mem_search',
+        description: 'Tìm trong bộ nhớ NSA của người dùng.',
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+          required: ['query'],
+        },
+        readOnly: true,
+        call: (args, ctx) => {
+          calls.push(`${ctx.agentId}:${String(args['query'])}`);
+          return `Mục nhớ: mã kiểm tra của người dùng là ${SECRET}.`;
+        },
+      },
+    ]);
   });
   afterAll(() => server.close());
 
@@ -66,7 +69,7 @@ describe.skipIf(!LIVE)('MCP bộ nhớ gắn vào CLI thật', () => {
       const run = adapter.run(
         {
           prompt:
-            'Gọi tool mem_search (server nsa_mem) với query "mã kiểm tra", rồi trả lời đúng mã kiểm tra tìm được. Chỉ trả lời mã.',
+            'Gọi tool mem_search (server nsa) với query "mã kiểm tra", rồi trả lời đúng mã kiểm tra tìm được. Chỉ trả lời mã.',
           cwd,
           permission: 'read-only',
           mcpServers: [registration.server],

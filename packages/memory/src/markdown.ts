@@ -41,7 +41,7 @@ export function parseFrontmatter(text: string): { fields: Record<string, unknown
 }
 
 const KINDS: MemoryKind[] = ['fact', 'preference', 'rule'];
-const SOURCES: MemorySourceKind[] = ['manual', 'chat', 'distill', 'import', 'agent'];
+const SOURCES: MemorySourceKind[] = ['manual', 'chat', 'distill', 'import', 'agent', 'plugin'];
 
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
