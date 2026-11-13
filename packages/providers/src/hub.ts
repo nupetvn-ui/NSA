@@ -427,9 +427,10 @@ export class ProviderHub {
     }
     for (const provider of this.#providersWithModels()) {
       if (!this.usable(provider.id)) continue;
+      // Mọi model hợp việc chính; hãng chỉ có model thêm tay (Ollama…) thì lấy hết model chat.
       const chat = provider.models.filter((m) => m.kind === 'chat');
-      const pick = chat.find((m) => m.tasks.includes('main')) ?? chat[0];
-      if (pick) refs.push(modelRef(provider.id, pick.id));
+      const main = chat.filter((m) => m.tasks.includes('main'));
+      for (const m of main.length ? main : chat) refs.push(modelRef(provider.id, m.id));
     }
     return [...new Set(refs)].filter((ref) => {
       const found = findModel(this.#providersWithModels(), ref);

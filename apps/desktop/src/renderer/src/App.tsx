@@ -3,6 +3,7 @@ import { AUTO_AGENT, type AppInfo, type PermissionLevel, type SendRequest } from
 import { AgentsPanel } from './AgentsPanel';
 import logo from '../../../resources/icon.png';
 import { ConfirmSheet } from './ConfirmSheet';
+import { ProvidersScreen } from './ProvidersScreen';
 import { TurnView } from './TurnView';
 import { UpdateBanner } from './UpdateBanner';
 import { useChat } from './useChat';
@@ -31,12 +32,33 @@ export function App() {
   const [sending, setSending] = useState(false);
   /** Yêu cầu đang chờ người dùng xác nhận (chính sách trả lời "hỏi"). */
   const [confirm, setConfirm] = useState<{ reason: string; request: SendRequest } | null>(null);
+  const [showProviders, setShowProviders] = useState(false);
+  /** Cảnh báo hạn mức chi phí / chuyển model dự phòng ở việc nền. */
+  const [providerAlert, setProviderAlert] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     void window.nsa.invoke('app:info').then(setInfo);
   }, []);
+
+  // Thêm / xoá key, bật cặp CLI → danh sách agent trong chat đổi.
+  useEffect(() => {
+    const offChanged = window.nsa.on('providers:changed', () => void checkAgents());
+    const offBudget = window.nsa.on('providers:budget', (a) =>
+      setProviderAlert(
+        a.level === 'over'
+          ? `Đã vượt hạn mức chi phí tháng: ước tính ${a.spentUsd.toFixed(2)} / ${a.limitUsd} USD.`
+          : `Sắp chạm hạn mức chi phí tháng: ước tính ${a.spentUsd.toFixed(2)} / ${a.limitUsd} USD.`,
+      ),
+    );
+    const offNotice = window.nsa.on('providers:notice', setProviderAlert);
+    return () => {
+      offChanged();
+      offBudget();
+      offNotice();
+    };
+  }, [checkAgents]);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const lastAgentId = active?.turns.at(-1)?.agentId;
@@ -53,6 +75,8 @@ export function App() {
     [agents],
   );
   const selectedAgent = agents?.find((a) => a.id === agentId);
+  /** Model gọi thẳng qua API key (màn hình Nhà cung cấp). */
+  const apiAgents = (agents ?? []).filter((a) => a.installed && a.id.startsWith('api:'));
   const selectedName =
     agentId === AUTO_AGENT ? 'agent NSA tự chọn' : (selectedAgent?.name ?? 'agent');
 
@@ -142,7 +166,10 @@ export function App() {
           <button
             type="button"
             className="icon-btn no-drag"
-            onClick={startNew}
+            onClick={() => {
+              startNew();
+              setShowProviders(false);
+            }}
             title="Cuộc trò chuyện mới"
             aria-label="Cuộc trò chuyện mới"
           >
@@ -168,7 +195,10 @@ export function App() {
               <div
                 key={c.id}
                 className={`conv-item ${c.id === activeId ? 'active' : ''}`}
-                onClick={() => openConversation(c.id)}
+                onClick={() => {
+                  openConversation(c.id);
+                  setShowProviders(false);
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && openConversation(c.id)}
@@ -200,7 +230,35 @@ export function App() {
           })}
         </nav>
 
+        {providerAlert && (
+          <div className="update-banner">
+            <div className="update-title">Nhà cung cấp</div>
+            <div className="hint">{providerAlert}</div>
+            <button type="button" className="link-btn" onClick={() => setProviderAlert(null)}>
+              Đã hiểu
+            </button>
+          </div>
+        )}
+
         <UpdateBanner />
+
+        <button
+          type="button"
+          className={`sidebar-btn ${showProviders ? 'active' : ''}`}
+          onClick={() => setShowProviders((v) => !v)}
+        >
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+            <path
+              d="M7.5 11.5a3.5 3.5 0 1 1 3-1.7L17 16.3V18h-2v-1.5h-1.5V15H12l-1.6-1.6a3.5 3.5 0 0 1-2.9-1.9zM6 8.5h.01"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Nhà cung cấp (API key)
+        </button>
 
         <AgentsPanel
           agents={agents}
@@ -211,152 +269,171 @@ export function App() {
         />
       </aside>
 
-      <main className="chat">
-        <header className="chat-head drag">
-          <h1 className="chat-title">{active ? active.title : 'Cuộc trò chuyện mới'}</h1>
-          {active && (
-            <div className="chat-sub">
-              <span className="cwd" title={active.cwd}>
-                {active.cwd}
-              </span>
-              <span className={`tag perm-${active.permission}`}>
-                {active.permission === 'edit' ? 'Được sửa file' : 'Chỉ đọc'}
-              </span>
-            </div>
-          )}
-        </header>
-
-        <div className="messages" ref={scrollRef}>
-          {!active && (
-            <div className="setup">
-              <img src={logo} alt="" width={64} height={64} />
-              <h2>Giao việc cho agent</h2>
-              <p className="hint">
-                Chọn thư mục dự án, chọn agent bên dưới rồi gõ yêu cầu. Có thể đổi agent giữa chừng
-                — NSA tự chuyển ngữ cảnh cho agent mới.
-              </p>
-              <div className="form-group">
-                <div className="form-row">
-                  <span className="form-label">Thư mục</span>
-                  <span className="cwd form-value" title={newCwd ?? ''}>
-                    {newCwd ?? 'Chưa chọn'}
-                  </span>
-                  <button type="button" className="push-btn" onClick={() => void pickFolder()}>
-                    {newCwd ? 'Đổi…' : 'Chọn…'}
-                  </button>
-                </div>
-                <label className="form-row">
-                  <span className="form-label">Cho sửa file</span>
-                  <span className="form-value hint">
-                    {newPermission === 'edit'
-                      ? 'Agent được sửa file trong thư mục này'
-                      : 'Chỉ đọc và lập kế hoạch'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="switch"
-                    checked={newPermission === 'edit'}
-                    onChange={(e) => setNewPermission(e.target.checked ? 'edit' : 'read-only')}
-                  />
-                </label>
+      {showProviders ? (
+        <ProvidersScreen onClose={() => setShowProviders(false)} />
+      ) : (
+        <main className="chat">
+          <header className="chat-head drag">
+            <h1 className="chat-title">{active ? active.title : 'Cuộc trò chuyện mới'}</h1>
+            {active && (
+              <div className="chat-sub">
+                <span className="cwd" title={active.cwd}>
+                  {active.cwd}
+                </span>
+                <span className={`tag perm-${active.permission}`}>
+                  {active.permission === 'edit' ? 'Được sửa file' : 'Chỉ đọc'}
+                </span>
               </div>
-            </div>
-          )}
-
-          {active?.turns.map((turn) => (
-            <TurnView
-              key={turn.id}
-              turn={turn}
-              agentName={names[turn.agentId] ?? turn.agentId}
-              onCancel={() => void cancel(turn.id)}
-              onAnswer={(id, allowed) => void answerPermission(id, allowed)}
-            />
-          ))}
-        </div>
-
-        <form className="composer" onSubmit={(e) => void submit(e)}>
-          <div className="composer-bar">
-            <div className="segmented" role="radiogroup" aria-label="Chọn agent">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={agentId === AUTO_AGENT}
-                className={agentId === AUTO_AGENT ? 'on' : ''}
-                onClick={() => setAgentId(AUTO_AGENT)}
-                title="NSA chọn agent đủ năng lực cho việc này"
-              >
-                Tự chọn
-              </button>
-              {(agents ?? [])
-                .filter((a) => a.installed)
-                .map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={a.id === agentId}
-                    className={a.id === agentId ? 'on' : ''}
-                    onClick={() => setAgentId(a.id)}
-                    title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
-                  >
-                    <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
-                    {a.name}
-                  </button>
-                ))}
-            </div>
-            {selectedAgent && !selectedAgent.ready && (
-              <span className="hint warn-text">{selectedAgent.note}</span>
             )}
-          </div>
-          {sendError && <div className="error-box">{sendError}</div>}
-          <div className="input-field">
-            <textarea
-              value={draft}
-              ref={inputRef}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                autoGrow(e.target);
-              }}
-              onKeyDown={onKeyDown}
-              placeholder={`Nhắn cho ${selectedName}`}
-              rows={1}
-            />
-            {runningTurn ? (
-              <button
-                type="button"
-                className="round-btn stop"
-                onClick={() => void cancel(runningTurn.id)}
-                title="Dừng"
-                aria-label="Dừng"
-              >
-                <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                  <rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                type="submit"
-                className="round-btn"
-                disabled={!draft.trim() || sending}
-                title="Gửi (Enter)"
-                aria-label="Gửi"
-              >
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                  <path
-                    d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+          </header>
+
+          <div className="messages" ref={scrollRef}>
+            {!active && (
+              <div className="setup">
+                <img src={logo} alt="" width={64} height={64} />
+                <h2>Giao việc cho agent</h2>
+                <p className="hint">
+                  Chọn thư mục dự án, chọn agent bên dưới rồi gõ yêu cầu. Có thể đổi agent giữa
+                  chừng — NSA tự chuyển ngữ cảnh cho agent mới.
+                </p>
+                <div className="form-group">
+                  <div className="form-row">
+                    <span className="form-label">Thư mục</span>
+                    <span className="cwd form-value" title={newCwd ?? ''}>
+                      {newCwd ?? 'Chưa chọn'}
+                    </span>
+                    <button type="button" className="push-btn" onClick={() => void pickFolder()}>
+                      {newCwd ? 'Đổi…' : 'Chọn…'}
+                    </button>
+                  </div>
+                  <label className="form-row">
+                    <span className="form-label">Cho sửa file</span>
+                    <span className="form-value hint">
+                      {newPermission === 'edit'
+                        ? 'Agent được sửa file trong thư mục này'
+                        : 'Chỉ đọc và lập kế hoạch'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="switch"
+                      checked={newPermission === 'edit'}
+                      onChange={(e) => setNewPermission(e.target.checked ? 'edit' : 'read-only')}
+                    />
+                  </label>
+                </div>
+              </div>
             )}
+
+            {active?.turns.map((turn) => (
+              <TurnView
+                key={turn.id}
+                turn={turn}
+                agentName={names[turn.agentId] ?? turn.agentId}
+                onCancel={() => void cancel(turn.id)}
+                onAnswer={(id, allowed) => void answerPermission(id, allowed)}
+              />
+            ))}
           </div>
-          <div className="composer-hint hint">Enter để gửi · Shift+Enter xuống dòng</div>
-        </form>
-      </main>
+
+          <form className="composer" onSubmit={(e) => void submit(e)}>
+            <div className="composer-bar">
+              <div className="segmented" role="radiogroup" aria-label="Chọn agent">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={agentId === AUTO_AGENT}
+                  className={agentId === AUTO_AGENT ? 'on' : ''}
+                  onClick={() => setAgentId(AUTO_AGENT)}
+                  title="NSA chọn agent đủ năng lực cho việc này"
+                >
+                  Tự chọn
+                </button>
+                {(agents ?? [])
+                  .filter((a) => a.installed && !a.id.startsWith('api:'))
+                  .map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={a.id === agentId}
+                      className={a.id === agentId ? 'on' : ''}
+                      onClick={() => setAgentId(a.id)}
+                      title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
+                    >
+                      <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
+                      {a.name}
+                    </button>
+                  ))}
+              </div>
+              {apiAgents.length > 0 && (
+                <select
+                  className={`select model-select ${agentId.startsWith('api:') ? 'on' : ''}`}
+                  value={agentId.startsWith('api:') ? agentId : ''}
+                  onChange={(e) => e.target.value && setAgentId(e.target.value)}
+                  title="Model gọi thẳng qua API key (chỉ trò chuyện, không sửa file)"
+                >
+                  <option value="">Model qua API…</option>
+                  {apiAgents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedAgent && !selectedAgent.ready && (
+                <span className="hint warn-text">{selectedAgent.note}</span>
+              )}
+            </div>
+            {sendError && <div className="error-box">{sendError}</div>}
+            <div className="input-field">
+              <textarea
+                value={draft}
+                ref={inputRef}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  autoGrow(e.target);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder={`Nhắn cho ${selectedName}`}
+                rows={1}
+              />
+              {runningTurn ? (
+                <button
+                  type="button"
+                  className="round-btn stop"
+                  onClick={() => void cancel(runningTurn.id)}
+                  title="Dừng"
+                  aria-label="Dừng"
+                >
+                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                    <rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="round-btn"
+                  disabled={!draft.trim() || sending}
+                  title="Gửi (Enter)"
+                  aria-label="Gửi"
+                >
+                  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path
+                      d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="composer-hint hint">Enter để gửi · Shift+Enter xuống dòng</div>
+          </form>
+        </main>
+      )}
 
       {confirm && (
         <ConfirmSheet
