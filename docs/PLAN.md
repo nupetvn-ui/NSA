@@ -186,6 +186,7 @@ Kết quả rà kiến trúc trên `main` (commit `b350699`, đọc mã và ADR)
 - Lõi chỉ giữ interface; việc lắp ghép dồn về `apps/desktop`.
 - Thêm luật lint chặn phụ thuộc ngược chiều và ghi sơ đồ phụ thuộc cho phép vào một ADR.
 - Xong khi: `core` không import gói nào ngoài `adapter-sdk` và `plugin-sdk`, và lint chặn vi phạm mới.
+- **Tình trạng (13/11/2026): xong** (ADR-0015). `core` chỉ import `adapter-sdk` và `plugin-sdk`; `providers` nhận adapter CLI lúc lắp ghép (`cliAdapters`), không import Claude/Codex/OpenCode; luật lint theo gói + `packages/boundaries.test.ts` bắt vi phạm. Còn lại: `providers → adapter-api` được giữ có chủ ý; chưa chặn import tương đối chui qua gói khác.
 
 ### Làm trước giai đoạn 8
 

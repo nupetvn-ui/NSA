@@ -5,13 +5,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { CliId, CustomProvider, ModelRef, TaskKind } from './catalog.js';
-
-export interface TaskModelSetting {
-  /** Model chính cho loại việc; bỏ trống = NSA tự chọn (model rẻ nhất phù hợp). */
-  primary?: ModelRef;
-  /** Model dự phòng theo thứ tự. */
-  fallbacks: ModelRef[];
-}
+import type { TaskModelSetting } from '@nsa/core';
+export type { TaskModelSetting } from '@nsa/core';
 
 export interface BudgetSetting {
   /** Hạn mức chi phí ước tính mỗi tháng (USD); null = không đặt. */

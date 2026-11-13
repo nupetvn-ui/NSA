@@ -2,9 +2,12 @@
  * Kênh IPC của màn hình Nhà cung cấp (ADR-0009). Giao diện KHÔNG BAO GIỜ nhận key:
  * `ProvidersView` chỉ có bốn ký tự cuối. Key đi một chiều renderer → main qua `providers:setKey`.
  */
-import type { CheckResult, ProviderSettingsPatch, ProvidersView, TaskKind } from '@nsa/providers';
-
-export type { CheckResult, ProviderSettingsPatch, ProvidersView, TaskKind };
+import type {
+  CheckResult,
+  ProviderSettingsPatch,
+  ProvidersView,
+  TaskKind,
+} from './providers-types.js';
 
 /** Kết quả chạy thử một loại việc (ví dụ việc nền) qua chuỗi model. */
 export interface TaskTryResult {

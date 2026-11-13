@@ -13,6 +13,9 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { AgentEvent } from '@nsa/adapter-sdk';
 import { startFakeApiServer, type FakeServer } from '@nsa/adapter-api';
+import { createClaudeAdapter } from '@nsa/adapter-claude';
+import { createCodexAdapter } from '@nsa/adapter-codex';
+import { createOpenCodeAdapter } from '@nsa/adapter-opencode';
 import {
   ProviderHub,
   bundledCatalog,
@@ -51,6 +54,11 @@ describe.skipIf(!LIVE)('cấp key cho CLI thật (máy chủ giả)', () => {
       deepseek.endpoints = { openai: server.openaiUrl, anthropic: server.anthropicUrl };
       const dataDir = mkdtempSync(join(tmpdir(), 'nsa-pairing-'));
       const hub = new ProviderHub({
+        cliAdapters: {
+          claude: (o) => createClaudeAdapter(o),
+          codex: (o) => createCodexAdapter(o),
+          opencode: (o) => createOpenCodeAdapter(o),
+        },
         catalog,
         settings: memorySettingsStore(),
         secrets: memorySecretStore(),
