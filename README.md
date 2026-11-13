@@ -63,6 +63,10 @@ Cài từ **App Store → Quản lý → Cài từ thư mục…** (bật Chế 
 
 Plugin `plugins/google-workspace` cho agent (Claude Code, Codex, OpenCode) dùng Drive, Gmail, Calendar, Sheets, Docs, Chat qua [`gws`](https://github.com/googleworkspace/cli) — chương trình dòng lệnh **không phải sản phẩm chính thức của Google**. Cần tự cài `gws.exe` (bản Windows ở GitHub Releases, đặt vào thư mục có trong PATH) và chạy `gws auth login` một lần; NSA không cài hộ và không thấy token Google. Cài plugin như các plugin khác (Chế độ nhà phát triển → Cài từ thư mục), rồi bật quyền **Chạy chương trình gws** (hộp cài liệt kê từng lệnh con được phép). Đọc thì không hỏi; **gửi Gmail, gửi Google Chat, xoá file Drive luôn hỏi bạn**. Nội dung thư / tài liệu có thể chứa lời dụ agent (prompt injection) — xem [ADR-0012](docs/adr/0012-quyen-cli-va-plugin-google-workspace.md). **Chưa chạy thật với `gws` và tài khoản Google thật.**
 
+### KiotViet
+
+Plugin `plugins/kiotviet` cho agent đọc dữ liệu bán hàng của gian hàng KiotViet (chi nhánh, hàng hóa và tồn kho, đơn đặt hàng, hóa đơn, khách hàng, nhập hàng, sổ quỹ) qua [Public API](https://www.kiotviet.vn/huong-dan-su-dung-kiotviet/retail-ket-noi-api/public-api/), thêm khách hàng, và (luôn hỏi bạn) tạo / xoá đơn đặt hàng. Lấy **Client ID** và **Mã bảo mật** ở KiotViet → Thiết lập cửa hàng (tài khoản admin) → Thiết lập kết nối API; nhập Client ID và tên gian hàng ở màn hình plugin, dán Client Secret ở Quản lý → KiotViet → Bí mật. NSA tự lấy và làm mới access token, plugin không thấy. Xem [ADR-0013](docs/adr/0013-plugin-kiotviet.md). **Chưa thử với gian hàng KiotViet thật.**
+
 ### Bộ nhớ (NSA Mem)
 
 Bấm **Bộ nhớ** ở thanh bên (số bên cạnh là đề xuất đang chờ duyệt).

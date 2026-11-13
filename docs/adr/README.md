@@ -16,3 +16,4 @@ Mỗi quyết định kỹ thuật đáng kể được ghi thành một file đ
 | [0010](0010-app-store-plugin-host-va-cong-mcp.md)                | App Store: plugin host, cô lập, cổng MCP chung, gói ký                              | Chấp nhận  |
 | [0011](0011-kenh-chat-plugin-khe-bi-mat-va-canh-nhom-theo-lo.md) | Kênh chat: token không tới plugin, cổng hành động, canh nhóm theo lô, Zalo          | Chấp nhận  |
 | [0012](0012-quyen-cli-va-plugin-google-workspace.md)             | Quyền cli: lõi chạy chương trình dòng lệnh hộ plugin; plugin Google Workspace (gws) | Chấp nhận  |
+| [0013](0013-plugin-kiotviet.md)                                  | Plugin KiotViet: Public API bán lẻ / bán buôn cho agent                             | Chấp nhận  |

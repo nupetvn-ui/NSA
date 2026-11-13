@@ -1,0 +1,456 @@
+{
+  "id": "kiotviet",
+  "name": "KiotViet",
+  "description": "Public API KiotViet (bán lẻ / bán buôn): hàng hóa, đơn đặt hàng, hóa đơn, khách hàng, nhập hàng, sổ quỹ cho agent. Chưa chạy thử với gian hàng thật.",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "nsa": ">=0.1.0",
+  "author": "NSA",
+  "main": "main.js",
+  "permissions": {
+    "network": ["public.kiotapi.com", "id.kiotviet.vn"]
+  },
+  "secrets": [
+    {
+      "id": "client_secret",
+      "label": "Client Secret (Mã bảo mật) của KiotViet",
+      "help": "KiotViet → Thiết lập cửa hàng (tài khoản admin) → Thiết lập kết nối API.",
+      "hosts": ["id.kiotviet.vn"],
+      "where": ["body"]
+    },
+    {
+      "id": "access_token",
+      "label": "Access token (NSA tự lấy và làm mới)",
+      "help": "Không cần nhập: NSA tự lấy từ Client ID + Client Secret (hiệu lực ~24 giờ).",
+      "hosts": ["id.kiotviet.vn", "public.kiotapi.com"],
+      "where": ["header"]
+    }
+  ],
+  "warning": "Plugin cho agent đọc dữ liệu bán hàng của gian hàng KiotViet (doanh thu, khách hàng, tồn kho) và thêm khách hàng. Tạo đơn và xoá đơn là thao tác nhạy cảm, luôn hỏi bạn. Tên hàng / ghi chú / tên khách do người khác nhập có thể chứa lời dụ agent làm điều có hại. Plugin CHƯA được thử với gian hàng KiotViet thật.",
+  "tools": [
+    {
+      "name": "branches_list",
+      "description": "Liệt kê chi nhánh của gian hàng KiotViet.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "categories_list",
+      "description": "Liệt kê nhóm hàng (tối đa 3 cấp). tree=true để lấy dạng cây.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "tree": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "name": "products_list",
+      "description": "Liệt kê hàng hóa (kèm tồn kho). Tìm theo tên hoặc nhóm hàng.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tìm theo tên"
+          },
+          "category_id": {
+            "type": "number",
+            "description": "Mã nhóm hàng"
+          },
+          "include_inventory": {
+            "type": "boolean"
+          },
+          "active_only": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "name": "product_get",
+      "description": "Xem chi tiết một hàng hóa theo mã (code) hoặc id.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Mã hàng"
+          },
+          "id": {
+            "type": "number",
+            "description": "Id hàng"
+          }
+        }
+      }
+    },
+    {
+      "name": "orders_list",
+      "description": "Liệt kê đơn ĐẶT HÀNG (mới nhất trước), kèm thanh toán. Lọc theo chi nhánh, mã khách, thời gian cập nhật.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Từ ngày YYYY-MM-DD"
+          },
+          "to": {
+            "type": "string",
+            "description": "Đến ngày YYYY-MM-DD"
+          },
+          "branch_id": {
+            "type": "number",
+            "description": "Mã chi nhánh (xem branches_list)"
+          },
+          "customer_code": {
+            "type": "string",
+            "description": "Mã khách hàng"
+          }
+        }
+      }
+    },
+    {
+      "name": "order_get",
+      "description": "Xem chi tiết một đơn đặt hàng theo mã hoặc id.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Mã đơn"
+          },
+          "id": {
+            "type": "number",
+            "description": "Id đơn"
+          }
+        }
+      }
+    },
+    {
+      "name": "invoices_list",
+      "description": "Liệt kê HÓA ĐƠN bán hàng (mới nhất trước), kèm thanh toán. Lọc theo chi nhánh, mã khách, ngày giao dịch.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Từ ngày YYYY-MM-DD"
+          },
+          "to": {
+            "type": "string",
+            "description": "Đến ngày YYYY-MM-DD"
+          },
+          "branch_id": {
+            "type": "number",
+            "description": "Mã chi nhánh (xem branches_list)"
+          },
+          "customer_code": {
+            "type": "string",
+            "description": "Mã khách hàng"
+          }
+        }
+      }
+    },
+    {
+      "name": "invoice_get",
+      "description": "Xem chi tiết một hóa đơn theo mã hoặc id.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Mã hóa đơn"
+          },
+          "id": {
+            "type": "number",
+            "description": "Id hóa đơn"
+          }
+        }
+      }
+    },
+    {
+      "name": "customers_list",
+      "description": "Liệt kê / tìm khách hàng (theo tên, số điện thoại, mã), kèm tổng doanh thu.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Số điện thoại"
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã khách"
+          }
+        }
+      }
+    },
+    {
+      "name": "customer_get",
+      "description": "Xem chi tiết một khách hàng theo mã hoặc id.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Mã khách"
+          },
+          "id": {
+            "type": "number",
+            "description": "Id khách"
+          }
+        }
+      }
+    },
+    {
+      "name": "customer_groups_list",
+      "description": "Liệt kê nhóm khách hàng.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "purchaseorders_list",
+      "description": "Liệt kê phiếu NHẬP HÀNG.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Từ ngày YYYY-MM-DD"
+          },
+          "to": {
+            "type": "string",
+            "description": "Đến ngày YYYY-MM-DD"
+          },
+          "branch_id": {
+            "type": "number",
+            "description": "Mã chi nhánh (xem branches_list)"
+          }
+        }
+      }
+    },
+    {
+      "name": "cashflow_list",
+      "description": "Liệt kê phiếu thu / chi trong SỔ QUỸ.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "type": "number",
+            "description": "Số dòng mỗi trang, tối đa 100 (mặc định 20)"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Bỏ qua bấy nhiêu dòng đầu (phân trang)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Từ ngày YYYY-MM-DD"
+          },
+          "to": {
+            "type": "string",
+            "description": "Đến ngày YYYY-MM-DD"
+          },
+          "branch_id": {
+            "type": "number",
+            "description": "Mã chi nhánh (xem branches_list)"
+          }
+        }
+      }
+    },
+    {
+      "name": "customer_create",
+      "description": "Thêm một khách hàng mới vào KiotViet (ghi dữ liệu của gian hàng).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Tên khách"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Số điện thoại"
+          },
+          "address": {
+            "type": "string",
+            "description": "Địa chỉ"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email"
+          },
+          "note": {
+            "type": "string",
+            "description": "Ghi chú"
+          },
+          "branch_id": {
+            "type": "number",
+            "description": "Chi nhánh tạo"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "order_create",
+      "description": "TẠO ĐƠN ĐẶT HÀNG (có thể tạo luôn hóa đơn nếu make_invoice=true). Ảnh hưởng tồn kho và doanh thu. Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "branch_id": {
+            "type": "number",
+            "description": "Mã chi nhánh"
+          },
+          "items": {
+            "type": "array",
+            "description": "Dòng hàng",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_code": {
+                  "type": "string",
+                  "description": "Mã hàng"
+                },
+                "product_id": {
+                  "type": "number",
+                  "description": "Id hàng"
+                },
+                "quantity": {
+                  "type": "number",
+                  "description": "Số lượng"
+                },
+                "price": {
+                  "type": "number",
+                  "description": "Đơn giá"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Ghi chú"
+                }
+              },
+              "required": ["quantity", "price"]
+            }
+          },
+          "customer_code": {
+            "type": "string",
+            "description": "Mã khách có sẵn"
+          },
+          "customer_name": {
+            "type": "string",
+            "description": "Tên khách (nếu chưa có mã)"
+          },
+          "customer_phone": {
+            "type": "string",
+            "description": "SĐT khách"
+          },
+          "description": {
+            "type": "string",
+            "description": "Ghi chú đơn"
+          },
+          "make_invoice": {
+            "type": "boolean"
+          }
+        },
+        "required": ["branch_id", "items"]
+      }
+    },
+    {
+      "name": "order_delete",
+      "description": "XOÁ một đơn đặt hàng (void_payment=true để hủy cả phiếu thanh toán kèm theo). Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Id đơn"
+          },
+          "void_payment": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id"]
+      }
+    }
+  ],
+  "screens": [
+    {
+      "id": "main",
+      "title": "KiotViet",
+      "entry": "ui/index.html"
+    }
+  ]
+}

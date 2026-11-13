@@ -6,4 +6,6 @@ Kênh chat (giai đoạn 4, [ADR-0011](../docs/adr/0011-kenh-chat-plugin-khe-bi-
 
 Công cụ Google Workspace cho agent (giai đoạn 4, [ADR-0012](../docs/adr/0012-quyen-cli-va-plugin-google-workspace.md)): [`google-workspace`](google-workspace) — dùng quyền `cli` để lõi chạy `gws`.
 
+Công cụ bán hàng: [`kiotviet`](kiotviet) — Public API KiotViet cho agent ([ADR-0013](../docs/adr/0013-plugin-kiotviet.md)).
+
 Có sẵn: [`ghi-chu-nhanh`](ghi-chu-nhanh) — plugin mẫu (một tool MCP, một màn hình, một việc nền, một nhánh nhớ). Cách viết: [docs/viet-plugin-dau-tien.md](../docs/viet-plugin-dau-tien.md).
