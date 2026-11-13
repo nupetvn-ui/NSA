@@ -900,7 +900,9 @@ export class MemoryService {
     const toolsHint = options.tools
       ? 'Bạn có tool MCP của NSA (server nsa_mem): mem_search / mem_read để tra bộ nhớ của người ' +
         'dùng; mem_propose để đề xuất ghi nhớ khi người dùng dặn nhớ hoặc khi có điều đáng nhớ lâu ' +
-        'dài. Dùng mem_propose thay cho file nhớ hay bộ nhớ riêng của bạn — bộ nhớ NSA dùng chung cho mọi agent.'
+        'dài. Dùng mem_propose thay cho file nhớ hay bộ nhớ riêng của bạn — bộ nhớ NSA dùng chung cho mọi agent. ' +
+        'Các tool này không sửa file nào nên được gọi ngay cả ở chế độ chỉ đọc / lập kế hoạch; ' +
+        'mem_propose chỉ đưa đề xuất vào hộp duyệt của người dùng.'
       : null;
     const readable = this.#readable();
     if (readable.length === 0) {

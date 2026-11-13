@@ -11,3 +11,4 @@ Mỗi quyết định kỹ thuật đáng kể được ghi thành một file đ
 | [0005](0005-o-cam-chinh-sach-nhat-ky-danh-tinh.md) | Ổ cắm chính sách, nhật ký, danh tính                      | Chấp nhận  |
 | [0006](0006-dieu-phoi-nhieu-agent-va-ba-tang.md)   | Điều phối nhiều agent, ba tầng tự lùi, phát hiện thay đổi | Chấp nhận  |
 | [0007](0007-chan-tung-lenh-qua-cong-chinh-sach.md) | Chặn từng lệnh qua cổng chính sách                        | Chấp nhận  |
+| [0008](0008-nsa-mem.md)                            | NSA Mem: Markdown + git, FTS5, hộp duyệt, MCP tạm         | Chấp nhận  |
