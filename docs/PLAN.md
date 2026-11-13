@@ -43,7 +43,7 @@ packages/adapters/*   claude, codex, opencode, gemini, pty, api (gọi thẳng b
 packages/mcp-gateway
 packages/memory       NSA Mem
 packages/plugin-sdk   manifest, quyền, API giao diện
-plugins/*             zalo, telegram, discord, knowledge-base, scheduler, browser, content-factory
+plugins/*             telegram, discord, zalo-oa, zalo-ca-nhan, lark, google-workspace, kiotviet, ghi-chu-nhanh (mẫu); sắp có: knowledge-base, scheduler, browser, content-factory
 docs/                 PLAN.md, ADR, đặc tả
 ```
 
@@ -151,14 +151,56 @@ Lõi chỉ định nghĩa ổ cắm, không chứa nghiệp vụ của bản nà
 | 1b. API key | Màn hình Nhà cung cấp, kho khoá, file dữ liệu hãng/model, cấp key cho CLI sẵn có, adapter `api`, chọn model theo việc, theo dõi chi phí | Dán key Google AI Studio hoặc DeepSeek là chat được; việc nền chạy bằng model rẻ; hãng lỗi thì tự chuyển model dự phòng |
 | 2. NSA Mem | Cây nhánh, tìm kiếm, hộp duyệt, chắt lọc tự động, nhập lịch sử chat; mỗi mục nhớ có chủ sở hữu và phạm vi | Agent B nhớ điều đã dạy agent A |
 | 3. App Store | Plugin host, MCP gateway, quyền, SDK, màn hình lưới + Quản lý; mọi tool của plugin đi qua ổ cắm chính sách | Cài/gỡ một plugin mẫu không cần khởi động lại |
-| 4. Kênh chat | Telegram, Discord, Zalo; nhớ theo nhóm/nick; canh nhóm theo lô | Bot trả lời đúng nội quy từng nhóm |
+| 4. Kênh chat | Telegram, Discord, Zalo OA, Zalo cá nhân; nhớ theo nhóm/nick; canh nhóm theo lô. Làm thêm ngoài kế hoạch ban đầu: Lark, Google Workspace, KiotViet | Bot trả lời đúng nội quy từng nhóm |
 | 5. Knowledge Base | Dạy bằng tài liệu, ảnh, video; giao diện duyệt | Dạy bằng 1 video, hỏi lại trả lời đúng |
 | 6. Tự động hoá | Hẹn giờ, điều khiển trình duyệt (Playwright) | Việc theo lịch chạy khi không ai ngồi máy |
 | 7. Content Factory | Slide, video motion, SVG, case study | Ra được 1 slide + 1 video từ một yêu cầu |
 | 8. Thương mại (bản Cá nhân) | License, thanh toán, kho plugin trực tuyến, tài liệu, macOS | Người lạ mua, cài, dùng được không cần hỗ trợ |
 | 9. Bản Doanh nghiệp | Gói `enterprise-*`: SSO + vai trò, chính sách do quản trị đặt, nhật ký kiểm toán, hộp cát agent, bộ nhớ nhóm mã hoá, kho plugin riêng, bản cài cho IT; hợp đồng và kiểm thử xâm nhập | Một công ty triển khai cho cả nhóm, quản trị khoá được chính sách và xuất được nhật ký |
+| G. Gia cố nền | Xem mục "Gia cố nền": G1 adapter cập nhật độc lập, G2 lưới kiểm thử, G3 ranh giới gói làm ngay; G4–G8 làm trước giai đoạn 8 | Đổi adapter không cần ra bản app; CI Windows mở được app và đi qua các màn hình chính; lint chặn phụ thuộc ngược chiều |
+
+Trạng thái (13/11/2026): giai đoạn 0, 1, 1b, 2, 3, 4 đã merge vào `main`; giai đoạn 5 đang làm. Giai đoạn G chen ngang, không theo thứ tự số.
 
 Giai đoạn 1–3 là lõi, làm tuần tự. Giai đoạn 1b độc lập với 2 và 3, chen vào lúc nào cũng được nhưng nên xong trước giai đoạn 4, vì kênh chat và Knowledge Base cần model rẻ cho việc nền. Giai đoạn 4–7 là plugin, làm song song được sau khi xong 3. Việc của giai đoạn 8 liên quan đến ký mã và tự cập nhật được dựng khung từ giai đoạn 0. Giai đoạn 9 làm sau khi bản Cá nhân chạy ổn, và chỉ cắm thêm vào bốn ổ cắm đã có.
+
+## Gia cố nền
+
+Kết quả rà kiến trúc trên `main` (commit `b350699`, đọc mã và ADR). Khung tổng thể đúng hướng; tám điểm dưới đây là chỗ mã chưa theo kịp plan hoặc sẽ gây khó ở các giai đoạn sau.
+
+### Làm ngay
+
+**G1. Adapter cập nhật độc lập với app.** Nguyên tắc 2 chưa thành hiện thực: adapter đang biên dịch cứng vào app (`apps/desktop/src/main/agents.ts`), và file dữ liệu hãng/model chỉ đọc bản cục bộ, chưa tự tải. Hiện mỗi lần một CLI đổi định dạng vẫn phải ra bản app mới.
+- Đóng adapter thành gói có chữ ký, tải về thư mục dữ liệu, dùng lại cơ chế gói ký và kiểm phiên bản tương thích của plugin.
+- Bản kèm app là bản dự phòng; bản tải về mới hơn thì dùng, lỗi thì tự quay về bản kèm app.
+- File dữ liệu hãng/model tự tải theo cùng kênh.
+- Xong khi: phát hành một bản adapter mới và app đang cài nhận được nó mà không cần cập nhật app.
+
+**G2. Lưới kiểm thử.** Lỗi màn hình đen sau PR #5 lọt qua vì CI chỉ chạy lint, typecheck, test trên Linux, không dựng app; giao diện (khoảng 4.300 dòng) chưa có test; workflow hằng đêm với CLI thật chưa chạy lần nào.
+- Thêm lượt CI trên Windows: dựng app, mở app tự động, đi qua chat, Bộ nhớ, Nhà cung cấp, App Store, bắt lỗi console.
+- Dựng thử bản đóng gói trong CI (không ký) để bắt lỗi thiếu nhị phân gốc.
+- Chạy workflow hằng đêm lần đầu và sửa cho tới khi xanh; bước cần đăng nhập thì bỏ qua có ghi chú.
+- Xong khi: cố ý đưa lại lỗi `node:os` trong giao diện thì CI đỏ.
+
+**G3. Ranh giới gói.** Phụ thuộc đang ngược chiều: `core` phụ thuộc `providers` và adapter `api`; `providers` phụ thuộc thẳng adapter Claude, Codex, OpenCode; `memory` phụ thuộc `core` và `mcp-gateway`. Lõi vì vậy không còn "chỉ có ổ cắm", và bản Doanh nghiệp khó thay từng mảnh.
+- Lõi chỉ giữ interface; việc lắp ghép dồn về `apps/desktop`.
+- Thêm luật lint chặn phụ thuộc ngược chiều và ghi sơ đồ phụ thuộc cho phép vào một ADR.
+- Xong khi: `core` không import gói nào ngoài `adapter-sdk` và `plugin-sdk`, và lint chặn vi phạm mới.
+
+### Làm trước giai đoạn 8
+
+**G4. Lớp cô lập thứ hai cho plugin.** Plugin chạy bằng chế độ giới hạn quyền của Node; ADR-0010 ghi nhận lớp này bị vượt thì không còn lớp nào. Đủ cho plugin tự viết, chưa đủ cho kho plugin bên thứ ba. Cần thêm một lớp ở mức hệ điều hành (AppContainer hoặc Job Object trên Windows), hoặc chỉ nhận plugin đã qua duyệt mã vào kho.
+
+**G5. Plugin có kiểm kiểu, kit dùng chung một nguồn.** Plugin đang viết bằng JavaScript thuần, không được kiểm kiểu; bộ `_kit` được chép vào từng plugin kênh. Chuyển sang TypeScript với kiểu của `plugin-sdk`, đóng gói lúc build, kit là phụ thuộc lúc build thay vì bản sao.
+
+**G6. Lưu trữ.** `conversations.json` và các file trạng thái ghi lại toàn bộ mỗi lần lưu; lưu lỗi chỉ in ra console. Chuyển cuộc trò chuyện, sổ chi phí và trạng thái plugin sang SQLite; lưu lỗi phải báo người dùng.
+
+**G7. Mức bảo vệ theo agent.** Chặn từng lệnh mới có ở Claude Code và OpenCode. Giao diện hiện rõ mức bảo vệ của từng agent; agent chưa có cổng chặn thì mặc định chỉ đọc, muốn cho sửa file phải bật có cảnh báo. Làm cổng cho Codex qua `codex app-server` nếu khả thi.
+
+**G8. Tách file lớn.** `plugin-host/src/host.ts` (1.704 dòng), `memory/src/service.ts` (1.075), `core/src/chat-service.ts` (945), ba màn hình giao diện khoảng 1.000 dòng mỗi cái, `styles.css` (2.194). Tách theo trách nhiệm khi đụng tới, không làm một đợt lớn.
+
+### Giữ plan khớp với mã
+
+Mỗi PR thêm plugin hoặc đổi kiến trúc phải cập nhật file này trong cùng PR.
 
 ## Rủi ro cần biết trước
 
