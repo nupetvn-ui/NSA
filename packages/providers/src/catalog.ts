@@ -131,9 +131,10 @@ export const CUSTOM_PREFIX = 'custom-';
  */
 export function guessLocalModel(id: string): Pick<ModelInfo, 'kind' | 'tasks' | 'vision'> {
   if (/embed/i.test(id)) return { kind: 'embedding', tasks: ['embedding'], vision: null };
-  const vision = /llava|vision|(^|[-_:.])vl([-_:.d]|$)|pixtral|minicpm-v|moondream|gemma3|internvl|qwen2.5vl/i.test(
-    id,
-  );
+  const vision =
+    /llava|vision|(^|[-_:.])vl([-_:.d]|$)|pixtral|minicpm-v|moondream|gemma3|internvl|qwen2.5vl/i.test(
+      id,
+    );
   return {
     kind: 'chat',
     tasks: vision ? ['main', 'background', 'channel', 'vision'] : ['main', 'background', 'channel'],

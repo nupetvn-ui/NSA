@@ -218,7 +218,7 @@ export class Engine {
    * Thêm một file đã nằm trên đĩa (`file`) làm nguồn. `move`: chuyển file vào kho (file tạm tải lên);
    * `inPlace`: dùng ngay tại chỗ (thư mục đã cấp quyền) thay vì chép — dành cho video lớn.
    */
-  async addFile({ file, name, relPath, note, collection, move = false, inPlace = false }) {
+  async addFile({ file, name, relPath, note, collection, url, move = false, inPlace = false }) {
     const kind = kindOf(name);
     if (!kind) {
       throw new Error(
@@ -267,6 +267,7 @@ export class Engine {
       sensitive: [],
       progress: { done: 0, total: 0, label: '' },
       updating: Boolean(existing),
+      ...(url ? { url } : {}),
     };
     delete src.localPath;
     if (inPlace) src.localPath = file;
@@ -324,21 +325,15 @@ export class Engine {
     const tmp = join(this.dir, 'uploads', `${newId('u')}.part`);
     mkdirSync(join(this.dir, 'uploads'), { recursive: true });
     writeFileSync(tmp, bytes);
-    const result = await this.addFile({
+    return this.addFile({
       file: tmp,
       name: `${safeName(label)}.${ext}`,
       relPath: `url:${u.href}`,
       note,
       collection,
+      url: u.href,
       move: true,
     });
-    const src = this.cat.sources[result.id];
-    if (src) {
-      src.kind = 'doc';
-      src.url = u.href;
-      this.save();
-    }
-    return result;
   }
 
   /** Quét thư mục đã được cấp quyền (id `kho`): nạp mọi file hỗ trợ, video dùng tại chỗ. */

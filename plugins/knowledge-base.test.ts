@@ -199,6 +199,7 @@ async function world(
     dataDir?: string;
     level?: 'ok' | 'warn' | 'over';
     priceIn?: number | null;
+    fetch?: (url: string) => Promise<Response>;
   } = {},
 ): Promise<World> {
   const memRoot = options.memRoot ?? tempDir('kb-mem-');
@@ -225,9 +226,11 @@ async function world(
     emit: (e: string) => void emitted.push(e),
     log: () => undefined,
     notify: async () => undefined,
-    fetch: async () => {
-      throw new Error('không có mạng trong test');
-    },
+    fetch:
+      options.fetch ??
+      (async () => {
+        throw new Error('không có mạng trong test');
+      }),
     memory: {
       searchSemantic: async (q: string, o: { limit?: number; subBranch?: string } = {}) =>
         bridge.searchSemantic(branchFor(o.subBranch), q, o.limit ?? 8),
@@ -393,6 +396,51 @@ describe('Engine — tài liệu', () => {
     await expect(
       w.engine.addFile({ file: writeFile('x.exe', 'MZ'), name: 'x.exe' }),
     ).rejects.toThrow('Chưa hỗ trợ');
+  });
+});
+
+describe('Engine — dán link trang web', () => {
+  const page = (body: string, type = 'text/html; charset=utf-8') =>
+    new Response(body, { status: 200, headers: { 'content-type': type } });
+
+  it('tải trang, lấy tiêu đề + mục, vào hộp duyệt kèm nguồn là đường link; nạp lại không đổi thì bỏ qua', async () => {
+    const urls: string[] = [];
+    const w = await world({
+      fetch: async (url) => {
+        urls.push(url);
+        return page(
+          '<html><head><title>Giao hàng nội thành</title><script>x()</script></head><body><h1>Phí giao</h1><p>Miễn phí từ 500k, dưới đó 20k.</p></body></html>',
+        );
+      },
+    });
+    const r = await w.engine.addUrl({
+      url: 'https://shop.example.com/giao-hang#phan-1',
+      collection: 'web',
+    });
+    expect(r.status).toBe('created');
+    expect(urls).toEqual(['https://shop.example.com/giao-hang']); // bỏ phần #
+    await w.engine.idle();
+    const [p] = await w.engine.pendingList();
+    expect(p.body).toContain('Miễn phí từ 500k');
+    expect(p.loc).toBe('mục: Phí giao');
+    expect(p.sourceName).toBe('Giao hàng nội thành');
+    expect(w.engine.src(r.id).url).toBe('https://shop.example.com/giao-hang');
+    expect((await w.engine.addUrl({ url: 'https://shop.example.com/giao-hang' })).status).toBe(
+      'unchanged',
+    );
+  });
+
+  it('báo lỗi rõ khi link sai, không phải http(s), trang lỗi hoặc loại nội dung lạ', async () => {
+    const w = await world({
+      fetch: async (url) =>
+        url.includes('404')
+          ? new Response('x', { status: 404 })
+          : page('MZ', 'application/octet-stream'),
+    });
+    await expect(w.engine.addUrl({ url: 'khong phai link' })).rejects.toThrow('không hợp lệ');
+    await expect(w.engine.addUrl({ url: 'ftp://a.com/x' })).rejects.toThrow('http');
+    await expect(w.engine.addUrl({ url: 'https://a.com/404' })).rejects.toThrow('HTTP 404');
+    await expect(w.engine.addUrl({ url: 'https://a.com/file.bin' })).rejects.toThrow('chưa hỗ trợ');
   });
 });
 
