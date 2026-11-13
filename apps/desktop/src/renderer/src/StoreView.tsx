@@ -433,7 +433,11 @@ function PluginDetail({
   }
 
   const noPermissions =
-    want.network.length === 0 && want.folders.length === 0 && !want.memory && !want.notifications;
+    want.network.length === 0 &&
+    want.folders.length === 0 &&
+    !want.memory &&
+    !want.notifications &&
+    !want.model;
 
   return (
     <div className="plugin-detail">
@@ -555,7 +559,33 @@ function PluginDetail({
             />
           </label>
         )}
+        {want.model && (
+          <label className="form-row">
+            <span className="form-label">
+              Nhờ NSA chạy model &quot;kênh chat&quot; (nội dung tin nhắn đi tới nhà cung cấp model)
+            </span>
+            <input
+              type="checkbox"
+              className="switch"
+              checked={p.grants.model}
+              onChange={(e) => void setGrants({ ...p.grants, model: e.target.checked })}
+            />
+          </label>
+        )}
       </div>
+      {p.manifest.warning && <div className="warn-box left">{p.manifest.warning}</div>}
+      {p.secrets.length > 0 && (
+        <>
+          <h3>Bí mật (token, khoá)</h3>
+          <p className="hint small">
+            Giá trị cất trong kho khoá của hệ điều hành. Plugin KHÔNG đọc được: nó chỉ nhờ NSA điền
+            vào lời gọi mạng tới đúng tên miền ghi bên dưới.
+          </p>
+          {p.secrets.map((s) => (
+            <SecretRow key={s.id} plugin={p} secret={s} act={act} />
+          ))}
+        </>
+      )}
       {!noPermissions && (
         <p className="hint small">
           Thu hồi quyền có hiệu lực ngay: plugin được khởi động lại với quyền mới.
@@ -642,6 +672,7 @@ function InstallSheet({
     folders: current ? { ...current.grants.folders } : {},
     memory: want.memory && (current ? current.grants.memory : true),
     notifications: want.notifications && (current ? current.grants.notifications : true),
+    model: want.model && (current ? current.grants.model : true),
   }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -668,7 +699,11 @@ function InstallSheet({
   }
 
   const noPermissions =
-    want.network.length === 0 && want.folders.length === 0 && !want.memory && !want.notifications;
+    want.network.length === 0 &&
+    want.folders.length === 0 &&
+    !want.memory &&
+    !want.notifications &&
+    !want.model;
   const m = prepared.manifest;
 
   return (
@@ -786,6 +821,26 @@ function InstallSheet({
                   </span>
                 </label>
               )}
+              {want.model && (
+                <label className="perm-row">
+                  <input
+                    type="checkbox"
+                    checked={grants.model}
+                    onChange={(e) => setGrants({ ...grants, model: e.target.checked })}
+                  />
+                  <span>
+                    Nhờ NSA chạy model &quot;kênh chat&quot; — nội dung tin nhắn được gửi tới nhà
+                    cung cấp model bạn chọn
+                    {isNew('Dùng model "kênh chat"') && <span className="tag sig-warn">mới</span>}
+                  </span>
+                </label>
+              )}
+              {m.secrets.length > 0 && (
+                <p className="hint small left">
+                  Plugin cần nhập: {m.secrets.map((s) => s.label).join('; ')}. Nhập sau khi cài ở
+                  Quản lý — giá trị cất trong kho khoá của hệ điều hành, plugin không đọc được.
+                </p>
+              )}
             </div>
             {m.tools.some((t) => t.sensitive) && (
               <p className="hint small left">
@@ -820,9 +875,9 @@ function InstallSheet({
       </div>
       {confirmReason && (
         <ConfirmSheet
-          title="Cài plugin chưa được tin cậy?"
+          title={prepared.riskWarning ? 'Bạn hiểu rủi ro chứ?' : 'Cài plugin chưa được tin cậy?'}
           message={confirmReason}
-          confirmLabel="Vẫn cài"
+          confirmLabel={prepared.riskWarning ? 'Tôi hiểu, vẫn cài' : 'Vẫn cài'}
           onCancel={() => setConfirmReason(null)}
           onConfirm={() => {
             setConfirmReason(null);
@@ -830,6 +885,69 @@ function InstallSheet({
           }}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Một khe bí mật của plugin (token bot…). Ô nhập do NSA vẽ — KHÔNG nằm trong màn hình của plugin —
+ * và giá trị đi thẳng vào kho khoá; ô không bao giờ hiện lại giá trị, chỉ bốn ký tự cuối.
+ */
+function SecretRow({
+  plugin,
+  secret,
+  act,
+}: {
+  plugin: PluginInfo;
+  secret: PluginInfo['secrets'][number];
+  act: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
+}) {
+  const [value, setValue] = useState('');
+  return (
+    <div className="form-row secret-row">
+      <span className="form-label">
+        {secret.label}
+        <span className="hint small"> · chỉ gửi tới {secret.hosts.join(', ')}</span>
+        {secret.help && <span className="hint small"> · {secret.help}</span>}
+      </span>
+      <span className="secret-input">
+        {secret.set && <span className="tag sig-ok">đã lưu {secret.hint}</span>}
+        <input
+          className="text-input"
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={secret.set ? 'Dán giá trị mới để thay' : 'Dán vào đây'}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          type="button"
+          className="push-btn"
+          disabled={value.trim() === ''}
+          onClick={() =>
+            void act(async () => {
+              await window.nsa.invoke('plugins:setSecret', plugin.id, secret.id, value.trim());
+              setValue('');
+            })
+          }
+        >
+          Lưu
+        </button>
+        {secret.set && (
+          <button
+            type="button"
+            className="push-btn danger"
+            onClick={() =>
+              void act(async () => {
+                await window.nsa.invoke('plugins:deleteSecret', plugin.id, secret.id);
+              })
+            }
+          >
+            Xoá
+          </button>
+        )}
+      </span>
     </div>
   );
 }

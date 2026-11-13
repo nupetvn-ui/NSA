@@ -2152,3 +2152,19 @@ textarea::placeholder {
 .plugin-error {
   margin: 12px 24px 0;
 }
+
+/* Khe bí mật của plugin (ô nhập token) */
+.secret-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.secret-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.secret-input .text-input {
+  min-width: 220px;
+}
