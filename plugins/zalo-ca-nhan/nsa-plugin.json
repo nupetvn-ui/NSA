@@ -1,0 +1,176 @@
+{
+  "id": "zalo-ca-nhan",
+  "name": "Zalo cá nhân (không chính thức)",
+  "description": "KHÔNG CHÍNH THỨC — có thể bị khoá nick. Chỉ bản Cá nhân. Nói chuyện qua cầu nối trên máy bạn; chưa chạy thật.",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "nsa": ">=0.1.0",
+  "author": "NSA",
+  "main": "main.js",
+  "editions": ["personal"],
+  "warning": "Zalo cá nhân KHÔNG có API chính thức. Dùng bot trên tài khoản cá nhân vi phạm điều khoản sử dụng của Zalo và có thể khiến nick bị khoá hoặc cấm vĩnh viễn — NSA không chịu trách nhiệm. Đừng dùng nick chính hay nick quan trọng. Plugin này CHƯA được thử với Zalo thật (chưa có cầu nối đã kiểm). Doanh nghiệp nên dùng plugin \"Zalo OA\" (chính thức).",
+  "permissions": {
+    "network": ["localhost"],
+    "memory": true,
+    "model": true
+  },
+  "memory": {
+    "branch": "zalo",
+    "title": "Zalo cá nhân: quy tắc & nhóm"
+  },
+  "secrets": [
+    {
+      "id": "bridge_token",
+      "label": "Mã bí mật của cầu nối",
+      "help": "Mã bạn đặt cho chương trình cầu nối trên máy.",
+      "hosts": ["localhost"]
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_groups",
+      "description": "Liệt kê các nhóm / hội thoại bot đã thấy, kèm mã (chat_id) và chế độ (off / watch / reply).",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "recent_messages",
+      "description": "Xem tin nhắn gần đây của các nhóm đang bật (nhóm tắt thì không lưu tin).",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Gửi một tin vào một nhóm / hội thoại. Đi qua chính sách và nhật ký của NSA.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "text"]
+      }
+    },
+    {
+      "name": "broadcast",
+      "description": "GỬI HÀNG LOẠT cùng một tin vào nhiều nhóm (tối đa 20). Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_ids", "text"]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "XOÁ một tin nhắn trong nhóm. Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "message_id"]
+      }
+    },
+    {
+      "name": "remove_member",
+      "description": "MỜI một thành viên ra khỏi nhóm. Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "user_id"]
+      }
+    },
+    {
+      "name": "change_group_owner",
+      "description": "ĐỔI TRƯỞNG NHÓM sang người khác. Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "user_id"]
+      }
+    },
+    {
+      "name": "set_group_mode",
+      "description": "Đổi chế độ bot ở một nhóm: off (không làm gì), watch (canh, không gửi), reply (trả lời đúng nội quy). Nhạy cảm vì cho bot nói thay bạn.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["off", "watch", "reply"]
+          }
+        },
+        "required": ["chat_id", "mode"]
+      }
+    }
+  ],
+  "screens": [
+    {
+      "id": "main",
+      "title": "Zalo cá nhân (không chính thức)",
+      "entry": "ui/index.html"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "tick",
+      "title": "Đọc tin mới và canh nhóm theo lô",
+      "every": "10s",
+      "runOnStart": true
+    }
+  ]
+}

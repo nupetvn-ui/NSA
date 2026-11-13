@@ -1,0 +1,157 @@
+{
+  "id": "telegram",
+  "name": "Telegram",
+  "description": "Bot Telegram chính thức: nhớ theo nhóm, canh nhóm theo lô, trả lời đúng nội quy từng nhóm.",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "nsa": ">=0.1.0",
+  "author": "NSA",
+  "main": "main.js",
+  "permissions": {
+    "network": ["api.telegram.org"],
+    "memory": true,
+    "model": true
+  },
+  "memory": {
+    "branch": "telegram",
+    "title": "Telegram: quy tắc & nhóm"
+  },
+  "secrets": [
+    {
+      "id": "bot_token",
+      "label": "Token bot Telegram",
+      "help": "Từ @BotFather (/newbot). Dạng 123456:ABC…",
+      "hosts": ["api.telegram.org"]
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_groups",
+      "description": "Liệt kê các nhóm / hội thoại bot đã thấy, kèm mã (chat_id) và chế độ (off / watch / reply).",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "recent_messages",
+      "description": "Xem tin nhắn gần đây của các nhóm đang bật (nhóm tắt thì không lưu tin).",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Gửi một tin vào một nhóm / hội thoại. Đi qua chính sách và nhật ký của NSA.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "text"]
+      }
+    },
+    {
+      "name": "broadcast",
+      "description": "GỬI HÀNG LOẠT cùng một tin vào nhiều nhóm (tối đa 20). Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_ids", "text"]
+      }
+    },
+    {
+      "name": "delete_message",
+      "description": "XOÁ một tin nhắn trong nhóm. Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "message_id"]
+      }
+    },
+    {
+      "name": "remove_member",
+      "description": "MỜI một thành viên ra khỏi nhóm. Thao tác nhạy cảm: NSA luôn hỏi người dùng.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": ["chat_id", "user_id"]
+      }
+    },
+    {
+      "name": "set_group_mode",
+      "description": "Đổi chế độ bot ở một nhóm: off (không làm gì), watch (canh, không gửi), reply (trả lời đúng nội quy). Nhạy cảm vì cho bot nói thay bạn.",
+      "sensitive": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["off", "watch", "reply"]
+          }
+        },
+        "required": ["chat_id", "mode"]
+      }
+    }
+  ],
+  "screens": [
+    {
+      "id": "main",
+      "title": "Telegram",
+      "entry": "ui/index.html"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "tick",
+      "title": "Đọc tin mới và canh nhóm theo lô",
+      "every": "10s",
+      "runOnStart": true
+    }
+  ]
+}
