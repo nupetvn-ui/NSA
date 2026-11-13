@@ -55,6 +55,7 @@
     if (!state) return;
     document.title = state.label;
     $('title').textContent = state.label;
+    $('logo').setAttribute('src', '../' + (state.icon || 'icon.svg'));
     var conn = $('conn');
     if (state.missingSecrets.length) {
       conn.textContent = 'Chưa nhập khoá';

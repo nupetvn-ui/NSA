@@ -5,7 +5,7 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const CHANNEL_PLUGINS = ['telegram', 'discord', 'zalo-oa', 'zalo-ca-nhan'];
+export const CHANNEL_PLUGINS = ['telegram', 'discord', 'lark', 'zalo-oa', 'zalo-ca-nhan'];
 export const COPIES = [
   ['channel-kit.js', 'kit.js'],
   ['ui/index.html', 'ui/index.html'],

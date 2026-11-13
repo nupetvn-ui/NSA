@@ -877,6 +877,93 @@ describe('Discord: đọc kênh bằng REST, token ở header', () => {
   }, 60_000);
 });
 
+describe('Lark Suite: tenant token tự lấy, lịch sử tin theo lịch', () => {
+  it('lấy token từ App Secret (vào kho khoá), khám phá nhóm, đọc lô, trả lời; không lộ bí mật', async () => {
+    const queue: unknown[] = [];
+    const api = await fakeServer((r) => {
+      const url = new URL(r.url, 'http://x');
+      if (url.pathname === '/open-apis/auth/v3/tenant_access_token/internal') {
+        const body = JSON.parse(r.body) as { app_id: string; app_secret: string };
+        if (body.app_id !== 'cli_test' || body.app_secret !== 'SECRET-lark-app-123456') {
+          return { code: 10003, msg: 'invalid app' };
+        }
+        return { code: 0, msg: 'ok', tenant_access_token: 't-LARKTOKEN-12345678', expire: 7200 };
+      }
+      if (r.headers['authorization'] !== 'Bearer t-LARKTOKEN-12345678')
+        return { code: 99991663, msg: 'invalid token' };
+      if (url.pathname === '/open-apis/bot/v3/info')
+        return { code: 0, bot: { open_id: 'ou_bot', app_name: 'Lark Bot' } };
+      if (url.pathname === '/open-apis/im/v1/chats') {
+        return {
+          code: 0,
+          data: { items: [{ chat_id: 'oc_1', name: 'Nhóm Lark' }], has_more: false },
+        };
+      }
+      if (url.pathname === '/open-apis/im/v1/messages' && r.method === 'GET') {
+        return { code: 0, data: { items: queue.splice(0), has_more: false } };
+      }
+      return { code: 0, data: {} };
+    });
+    const r = await rig('lark', api.port, {
+      config: { apiBase: 'http://localhost:PORT', cfg_app_id: 'cli_test' },
+      secrets: { app_secret: 'SECRET-lark-app-123456' },
+    });
+    await r.tick();
+    expect(r.store.map.get('plugin:lark:tenant_token')).toBe('t-LARKTOKEN-12345678');
+    const ov = await r.ui('overview');
+    expect(ov.me.name).toBe('Lark Bot');
+    expect(ov.groups[0]).toMatchObject({ id: 'oc_1', name: 'Nhóm Lark', mode: 'off' });
+    await r.ui('setMode', { id: 'oc_1', mode: 'reply' });
+    await r.ui('saveSettings', { batchMax: 2 });
+    await r.tick(); // đặt mốc, không đọc lịch sử
+    expect(r.models).toHaveLength(0);
+    const t = Date.now();
+    const msg = (id: string, text: string, ms: number, mentions: unknown[] = []) => ({
+      message_id: id,
+      msg_type: 'text',
+      create_time: String(t + ms),
+      sender: { id: 'ou_user1', id_type: 'open_id', sender_type: 'user' },
+      body: { content: JSON.stringify({ text }) },
+      mentions,
+    });
+    queue.push(
+      msg('om_1', '@_user_1 giá bao nhiêu', 2000, [
+        { key: '@_user_1', id: 'ou_bot', name: 'Lark Bot' },
+      ]),
+      msg('om_2', 'còn hàng không', 3000),
+    );
+    await r.tick();
+    expect(r.models).toHaveLength(1);
+    expect(r.models[0]?.prompt).toContain('@Lark Bot giá bao nhiêu');
+    const send = api.seen.find(
+      (x) => x.method === 'POST' && x.url.startsWith('/open-apis/im/v1/messages'),
+    );
+    expect(send?.url).toContain('receive_id_type=chat_id');
+    expect(JSON.parse(send?.body ?? '{}')).toMatchObject({ receive_id: 'oc_1', msg_type: 'text' });
+    const everything =
+      JSON.stringify(r.audit.entries) + JSON.stringify(r.models) + allText(r.hostDir);
+    for (const secret of ['SECRET-lark-app', 't-LARKTOKEN'])
+      expect(everything, secret).not.toContain(secret);
+    // Xoá tin / mời ra là thao tác nhạy cảm: từ chối thì Lark không nhận lệnh.
+    await expect(
+      r.call('delete_message', { chat_id: 'oc_1', message_id: 'om_1' }),
+    ).rejects.toThrow();
+    expect(api.seen.some((x) => x.method === 'DELETE')).toBe(false);
+  }, 60_000);
+
+  it('sai App Secret: báo lỗi rõ ràng ở màn hình, không crash', async () => {
+    const api = await fakeServer(() => ({ code: 10003, msg: 'invalid app secret' }));
+    const r = await rig('lark', api.port, {
+      config: { apiBase: 'http://localhost:PORT', cfg_app_id: 'cli_test' },
+      secrets: { app_secret: 'WRONG-secret-0000' },
+    });
+    await r.tick();
+    const ov = await r.ui('overview');
+    expect(ov.lastError).toMatch(/Lấy token Lark thất bại/);
+    expect(ov.lastError).not.toContain('WRONG-secret');
+  }, 60_000);
+});
+
 describe('Zalo OA (chính thức) — chạy với máy chủ giả, CHƯA thử OA thật', () => {
   it('đọc tin khách, trả lời; token hết hạn thì tự làm mới và token mới vào kho khoá, không lộ cho plugin', async () => {
     let expired = true;

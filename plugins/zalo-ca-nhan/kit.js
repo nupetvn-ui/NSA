@@ -450,6 +450,7 @@ export function createChannelPlugin(spec) {
       platform: spec.platform,
       label: spec.label,
       warning: spec.warning || '',
+      icon: spec.icon || 'icon.svg',
       setup: spec.setup,
       me: state.me,
       lastTick: state.lastTick,
