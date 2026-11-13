@@ -39,7 +39,10 @@ export function extOf(name) {
 
 /** Tên file an toàn để lưu trong thư mục dữ liệu (không đường dẫn, không ký tự lạ). */
 export function safeName(name) {
-  const base = String(name ?? 'file').split(/[\/]/).pop() || 'file';
+  const base =
+    String(name ?? 'file')
+      .split(/[/\\]/)
+      .pop() || 'file';
   return base.replace(/[^\p{L}\p{N}._ -]/gu, '_').slice(0, 120) || 'file';
 }
 

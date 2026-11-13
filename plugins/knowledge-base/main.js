@@ -14,7 +14,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// ../../node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/pdfjs.mjs
+// node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/pdfjs.mjs
 var pdfjs_exports = {};
 __export(pdfjs_exports, {
   AbortException: () => AbortException,
@@ -4437,7 +4437,7 @@ function percentage(e2) {
 }
 var e, t, n, r, i2, a, o, s, c, l, u, d, f, p, m, h, g, _, v, y, b, x2, S, C, w, T, E, D, PasswordException$1, UnknownErrorException$1, InvalidPDFException$1, ResponseException$1, FormatError$1, AbortException$1, FeatureTest$1, Util$1, O, k, makeArr$1, makeMap$1, makeObj$1, makeSet$1, ee, j, M, te, ne, N, re, nonSerializable, F, L, RefSet, RefMap, BaseStream, ie, ae, oe, se, ce, le, ue, de, MissingDataException, ParserEOFException, XRefEntryException, XRefParseException, fe, pe, me, he, QCMS, ge, _e, ve, ye, be, xe, Se, Ce, AlternateCS, PatternCS, IndexedCS, DeviceGrayCS, DeviceRgbCS, DeviceRgbaCS, DeviceCmykCS, CalGrayCS, we, LabCS, Te, Ee, De, StringStream, NullStream, ChunkedStream, ChunkedStreamManager, Oe, ke, Ae, DecodeStream, StreamsSequenceStream, ColorSpaceUtils, JpegError, DNLMarkerError, EOIMarkerError, je, Me, Ne, Pe, Fe, Ie, Le, Re, JpegImage, ze, Be, NullOptimizer, QueueOptimizer, Ve, CheckedOperatorList, He, Pattern, BaseShading, RadialAxialShading, Ue, MeshStreamReader, We, Ge, DummyShading, BinaryCMapStream, BinaryCMapReader, Ascii85Stream, AsciiHexStream, makeBrotliDecode, Ke, BrotliStream, qe, Je, Jbig2Error, Ye, CCITTFaxStream, Xe, Ze, Qe, $e, et2, FlateStream, tt, nt, JpxError, rt, JpxStream, LZWStream, PredictorStream, RunLengthStream, Parser, it, Lexer, Linearization, at, ot, CMap, IdentityCMap, CMapFactory, st, ct, lt, ut, dt, ft, pt, mt, ht, gt, _t, vt, yt, bt, xt, St, Ct, wt, Tt, Et, DataBuilder, Dt, Ot, kt, At, jt, CFFParser, CFF, CFFHeader, CFFStrings, CFFIndex, CFFDict, Mt, Nt, Pt, Ft, It, CFFCharset, CFFEncoding, CFFFDSelect, CFFOffsetTracker, Lt, Rt, zt, Bt, Vt, Ht, Ut, Wt, Gt, Kt, qt, GlyfTable, Jt, Yt, Contour, Xt, Zt, ToUnicodeMap, IdentityToUnicodeMap, CFFFont, CSS_FONT_INFO$1, SYSTEM_FONT_INFO$1, FONT_INFO$1, PATTERN_INFO$1, InfoUtils$1, Commands, Qt, TrueTypeCompiled, Type2Compiled, FontRendererFactory, $t, en, tn, nn, Type1CharString, rn, Type1Parser, Type1Font, an, on, sn, cn, fonts_Glyph, ln, Font, ErrorFont, un, dn, fn, pn, mn, hn, gn, _n, vn, yn, bn, xn, Sn, Cn, wn, Tn, En, Dn, On, kn, An, jn, Mn, Nn, Pn, Fn, In, Ln, Rn, zn, Bn, Vn, Hn, Un, Wn, Gn, Kn, qn, Jn, Yn, Xn, R, Token, Zn, Qn, z, PsNode, PsProgram, PsBlock, PsNumber, PsOperator, PsIf, PsIfElse, PsArgNode, PsConstNode, PsUnaryNode, PsBinaryNode, PsTernaryNode, $n, er, V, tr, nr, PsJsCompiler, PSStackBasedInterpreter, H, rr, ir, ar, or, BaseLocalCache, LocalImageCache, LocalColorSpaceCache, LocalFunctionCache, LocalGStateCache, LocalTilingPatternCache, RegionalImageCache, GlobalColorSpaceCache, sr, cr, lr, ur, dr, fr, pr, mr, hr, gr, _r, vr, yr, br, xr, Sr, Cr, wr, MurmurHash3_64$1, Tr, Er, Dr, Or, argIsDict, kr, Ar, TranslatedFont, StateManager, TextState, EvalState, jr, DefaultAppearanceEvaluator, AppearanceStreamEvaluator, Mr, Nr, Pr, NameOrNumberTree, NameTree, NumberTree, Fr, Ir, Lr, SimpleDOMNode, SimpleXMLParser, MetadataParser, Rr, zr, Vr, StructElementNode, StructElement, StructTreePage, isRef, Hr, Ur, Wr, Gr, Kr, qr, Jr, Yr, Xr, Zr, Qr, $r, U, ei, ti, W, ni, ri, ii, ai, oi, si, ci, li, ui, di, fi, pi, mi, hi, gi, G, _i, vi, yi, bi, xi, Si, Ci, wi, Ti, Ei, Di, Oi, ki, Ai, ji, Mi, Ni, Pi, Fi, Ii, Ri, zi, Bi, Vi, Hi, Wi, Gi, Ki, qi, Ji, Yi, Xi, Zi, Qi, $i, K, ea, ta, na, ra, ia, aa, oa, q, FontFinder, FontInfo$1, FontSelector, TextMeasure, sa, ca, la, ua, da, fa, pa, ma, J, ha, ga, _a2, va, ya, ba, xa, Sa, Ca, wa, Ta, Ea, Da, Oa, ka, Y, X, XFAAttribute, Aa, ContentObject, OptionObject, StringObject, IntegerObject, Option01, Option10, ja, Z, Ma, Na, Pa, AppearanceFilter, Arc, Area, Assist, Barcode, Bind, BindItems, Bookend, BooleanElement, Border, Break, BreakAfter, BreakBefore, Button, Calculate, Caption, Certificate, Certificates, CheckButton, ChoiceList, Color, Comb, Connect, ContentArea, Corner, DateElement, DateTime, DateTimeEdit, Decimal, DefaultUi, Desc, DigestMethod, DigestMethods, Draw, Edge, Encoding, Encodings, Encrypt, EncryptData, Encryption, EncryptionMethod, EncryptionMethods, Event$1, ExData, ExObject, ExclGroup, Execute, Extras, Field, Fill, Filter, Float, template_Font, Format, Handler, Hyphenation, Image$1, ImageEdit, Integer, Issuers, Items, Keep, KeyUsage, Line, Linear, LockDocument, Manifest, Margin, Mdp, Medium, Message, NumericEdit, Occur, Oid, Oids, Overflow, PageArea, Fa, Para, PasswordEdit, template_Pattern, Picture, Proto, Radial, Reason, Reasons, Rectangle, RefElement, Script, SetProperty, SignData, Signature, Signing, Solid, Speak, Stipple, Subform, SubformSet, SubjectDN, SubjectDNs, Submit, Template, Text, TextEdit, Time, TimeStamp, ToolTip, Traversal, Traverse, Ui, Validate, Value, Variables, Ia, La, Binder, DataHandler, Q, Acrobat, Acrobat7, ADBE_JSConsole, ADBE_JSDebugger, AddSilentPrint, AddViewerPreferences, AdjustData, AdobeExtensionLevel, Agent, AlwaysEmbed, Amd, config_Area, Attributes, AutoSave, Base, BatchOutput, BehaviorOverride, Cache, Change, Common, Compress, CompressLogicalStructure, CompressObjectStream, Compression, Config, Conformance, ContentCopy, Copies, Creator, CurrentPage, Data, Debug, DefaultTypeface, Destination, DocumentAssembly, Driver, DuplexOption, DynamicRender, Embed, config_Encrypt, config_Encryption, EncryptionLevel, Enforce, Equate, EquateRange, Exclude, ExcludeNS, FlipLabel, config_FontInfo, FormFieldFilling, GroupParent, IfEmpty, IncludeXDPContent, IncrementalLoad, IncrementalMerge, Interactive, Jog, LabelPrinter, Layout, Level, Linearized, Locale, LocaleSet, Log, MapElement, MediumInfo, config_Message, Messaging, Mode, ModifyAnnots, MsgId, NameAttr, NeverEmbed, NumberOfCopies, OpenAction, Output, OutputBin, OutputXSL, Overprint, Packets, PageOffset, PageRange, Pagination, PaginationOverride, Part, Pcl, Pdf, Pdfa, Permissions, PickTrayByPDFSize, config_Picture, PlaintextMetadata, Presence, Present, Print, PrintHighQuality, PrintScaling, PrinterName, Producer, Ps, Range$1, Record, Relevant, Rename, RenderPolicy, RunScripts, config_Script, ScriptModel, Severity, SilentPrint, Staple, StartNode, StartPage, SubmitFormat, SubmitUrl, SubsetBelow, SuppressBanner, Tagged, config_Template, Threshold, To, TemplateCache, Trace, Transform, Type, Uri, config_Validate, ValidateApprovalSignatures, ValidationMessaging, Version, VersionControl, ViewerPreferences, WebClient, Whitespace, Window, Xdc, Xdp, Xsl, Zpl, Ra, za, ConnectionSet, EffectiveInputPolicy, EffectiveOutputPolicy, Operation, RootElement, SoapAction, SoapAddress, connection_set_Uri, WsdlAddress, WsdlConnection, XmlConnection, XsdConnection, Ba, Va, datasets_Data, Datasets, Ha, Ua, CalendarSymbols, CurrencySymbol, CurrencySymbols, DatePattern, DatePatterns, DateTimeSymbols, Day, DayNames, Era, EraNames, locale_set_Locale, locale_set_LocaleSet, Meridiem, MeridiemNames, Month, MonthNames, NumberPattern, NumberPatterns, NumberSymbol, NumberSymbols, TimePattern, TimePatterns, TypeFace, TypeFaces, Wa, Ga, signature_Signature, Ka, qa, Stylesheet, Ja, Ya, xdp_Xdp, Xa, Za, Qa, $a, eo, to, no, ro, io, XhtmlObject, A, B, Body, Br, Html, I, Li, Ol, P, Span, Sub, Sup, Ul, ao, oo, UnknownNamespace, Root, Empty, Builder, so, co, AnnotationFactory, Annotation, AnnotationBorderStyle, MarkupAnnotation, lo, TextWidgetAnnotation, ButtonWidgetAnnotation, ChoiceWidgetAnnotation, SignatureWidgetAnnotation, TextAnnotation, LinkAnnotation, PopupAnnotation, FreeTextAnnotation, LineAnnotation, SquareAnnotation, CircleAnnotation, PolylineAnnotation, PolygonAnnotation, CaretAnnotation, InkAnnotation, HighlightAnnotation, UnderlineAnnotation, SquigglyAnnotation, StrikeOutAnnotation, StampAnnotation, FileAttachmentAnnotation, uo, fo, po, SoundAnnotation, mo, DatasetXMLParser, DatasetReader, SingleIntersector, Intersector, Word64, ho, go, DecryptStream, _o, vo, ARCFourCipher, NullCipher, AESBaseCipher, AES128Cipher, AES256Cipher, PDFBase, PDF17, PDF20, CipherTransform, yo, XRef, bo, xo, Page, So, Co, wo, PDFDocument, BasePdfManager, LocalPdfManager, NetworkPdfManager, Eo, Do, MessageHandler$1, PageData, DocumentData, XRefWrapper, PDFEditor, BasePDFStream$1, BasePDFStreamReader$1, BasePDFStreamRangeReader$1, PDFWorkerStream, PDFWorkerStreamReader, PDFWorkerStreamRangeReader, WorkerTask, WorkerMessageHandler, Oo, ko, Ao, jo, Mo, No, Po, Fo, Io, $, Lo, Ro, zo, Bo, Vo, Ho, Uo, Wo, Go, Ko, qo, Jo, PasswordException, UnknownErrorException, InvalidPDFException, ResponseException, FormatError, AbortException, FeatureTest, Util, Yo, Xo, makeArr, makeMap, makeObj, makeSet, Zo, Qo, $o, es, XfaLayer, PixelsPerInch, RenderingCancelledException, StatTimer, PDFDateString, ts, ns, ColorScheme, CSSConstants, rs, is, FloatingToolbar, as, os, IdManager, ss, CommandManager, cs, ls, us, ds, Comment, fs, TouchManager, ps, FakeEditor, ms, hs, gs, MurmurHash3_64, _s, AnnotationStorage, PrintAnnotationStorage, vs, ys, bs, xs, BBoxReader, ensureDebugMetadata, CanvasBBoxTracker, CanvasDependencyTracker, Ss, Cs, ws, Ts, FontLoader, FontFaceObject, CSS_FONT_INFO, SYSTEM_FONT_INFO, FONT_INFO, PATTERN_INFO, InfoUtils, CssFontInfo, SystemFontInfo, FontInfo, PatternInfo, FontPathInfo, isRefProxy, isNameProxy, Es, LoopbackPort, Ds, Os, MessageHandler, BaseBinaryDataFactory, DOMBinaryDataFactory, BaseCanvasFactory, DOMCanvasFactory, BaseFilterFactory, DOMFilterFactory, NodeFilterFactory, NodeCanvasFactory, NodeBinaryDataFactory, WebGPU, ks, As, BaseShadingPattern, RadialAxialShadingPattern, MeshShadingPattern, DummyShadingPattern, js, Ms, Ns, CanvasExtraState, Fs, Is, Ls, Rs, zs, Bs, BasePDFStream, BasePDFStreamReader, BasePDFStreamRangeReader, PDFFetchStream, PDFFetchStreamReader, PDFFetchStreamRangeReader, PDFDataTransportStream, PDFDataTransportStreamReader, PDFDataTransportStreamRangeReader, PDFNetworkStream, PDFNetworkStreamReader, PDFNetworkStreamRangeReader, PDFNodeStream, PDFNodeStreamReader, PDFNodeStreamRangeReader, GlobalWorkerOptions, Metadata, Vs, OptionalContentGroup, Hs, PagesMapper, Us, dataObj, PDFObjects, Ws, Gs, PDFDataRangeTransport, PDFDocumentProxy, Ks, qs, WorkerTransport, RenderTask, Js, Ys, Xs, Zs, Qs, ColorConverters, BaseSVGFactory, DOMSVGFactory, $s, ec2, AnnotationElementFactory, tc, EditorAnnotationElement, LinkAnnotationElement, TextAnnotationElement, WidgetAnnotationElement, TextWidgetAnnotationElement, SignatureWidgetAnnotationElement, CheckboxWidgetAnnotationElement, RadioButtonWidgetAnnotationElement, PushButtonWidgetAnnotationElement, ChoiceWidgetAnnotationElement, PopupAnnotationElement, PopupElement, FreeTextAnnotationElement, LineAnnotationElement, SquareAnnotationElement, CircleAnnotationElement, PolylineAnnotationElement, PolygonAnnotationElement, CaretAnnotationElement, InkAnnotationElement, HighlightAnnotationElement, UnderlineAnnotationElement, SquigglyAnnotationElement, StrikeOutAnnotationElement, StampAnnotationElement, FileAttachmentAnnotationElement, MediaAnnotationElement, nc, rc, ic, DrawingOptions, ac, Outline, oc, FreeDrawOutline, HighlightOutliner, HighlightOutline, FreeHighlightOutliner, FreeHighlightDrawer, sc, cc, lc, InkDrawOutliner, InkDrawOutline, uc, dc, ContourDrawOutline, SignatureExtractor, fc, pc, mc, StampEditor, hc, gc, _c;
 var init_pdfjs = __esm({
-  "../../node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/pdfjs.mjs"() {
+  "node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/pdfjs.mjs"() {
     if (polyfillDOMMatrix(), globalThis.FinalizationRegistry === void 0 && (globalThis.FinalizationRegistry = class FinalizationRegistry2 {
       register() {
       }
@@ -39455,7 +39455,7 @@ fn fs_main(in : VertexOutput) -> @location(0) vec4<f32> {
   }
 });
 
-// ../../node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/index.mjs
+// node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/index.mjs
 var dist_exports = {};
 __export(dist_exports, {
   configureUnPDF: () => configureUnPDF,
@@ -39741,7 +39741,7 @@ async function configureUnPDF(options) {
 }
 var resolvedModule, isNode, isBrowser, resolvedCanvasModule, BaseCanvasFactory2, DOMCanvasFactory2, NodeCanvasFactory2, XMP_DATE_PROPERTIES, getMeta, extractText, extractTextItems, extractImages, renderPageAsImage, extractLinks;
 var init_dist = __esm({
-  "../../node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/index.mjs"() {
+  "node_modules/.pnpm/unpdf@1.9.1/node_modules/unpdf/dist/index.mjs"() {
     isNode = globalThis.process?.release?.name === "node";
     isBrowser = typeof window !== "undefined";
     BaseCanvasFactory2 = class {
@@ -39828,7 +39828,7 @@ var init_dist = __esm({
   }
 });
 
-// src/engine.js
+// plugins/knowledge-base/src/engine.js
 import {
   appendFileSync,
   copyFileSync,
@@ -39845,7 +39845,7 @@ import {
 import { createHash as createHash2 } from "node:crypto";
 import { basename, extname, join as join2, relative } from "node:path";
 
-// src/util.js
+// plugins/knowledge-base/src/util.js
 import { createHash, randomBytes } from "node:crypto";
 var sha1 = (data) => createHash("sha1").update(data).digest("hex");
 var newId = (prefix) => `${prefix}-${randomBytes(4).toString("hex")}`;
@@ -39867,11 +39867,11 @@ function extOf(name) {
   return m2 ? m2[1].toLowerCase() : "";
 }
 function safeName(name) {
-  const base = String(name ?? "file").split(/[\/]/).pop() || "file";
+  const base = String(name ?? "file").split(/[/\\]/).pop() || "file";
   return base.replace(/[^\p{L}\p{N}._ -]/gu, "_").slice(0, 120) || "file";
 }
 
-// src/chunk.js
+// plugins/knowledge-base/src/chunk.js
 var MAX_CHARS = 1400;
 function splitText(text, max2 = MAX_CHARS) {
   const clean = String(text ?? "").replace(/\r\n?/g, "\n").trim();
@@ -39925,7 +39925,10 @@ function makeChunks(blocks, max2 = MAX_CHARS) {
       flush();
       const parts = splitText(text, max2);
       parts.forEach(
-        (part, i3) => chunks.push({ loc: parts.length > 1 ? `${block.loc} (ph\u1EA7n ${i3 + 1}/${parts.length})` : block.loc, text: part })
+        (part, i3) => chunks.push({
+          loc: parts.length > 1 ? `${block.loc} (ph\u1EA7n ${i3 + 1}/${parts.length})` : block.loc,
+          text: part
+        })
       );
       continue;
     }
@@ -39943,7 +39946,7 @@ ${text}`;
   return chunks.filter((c2) => c2.text.length > 0);
 }
 
-// ../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/index.mjs
+// node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/index.mjs
 import { createRequire } from "module";
 var require2 = createRequire("/");
 var _a;
@@ -40426,7 +40429,7 @@ function unzipSync(data, opts) {
   return files;
 }
 
-// src/html.js
+// plugins/knowledge-base/src/html.js
 var ENTITIES = {
   amp: "&",
   lt: "<",
@@ -40462,7 +40465,7 @@ function htmlToBlocks(html) {
     /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi,
     (_2, level, inner) => `
 
-${level}${inner.replace(/<[^>]+>/g, " ")}
+\uE001${level}\uE002${inner.replace(/<[^>]+>/g, " ")}\uE003
 
 `
   );
@@ -40470,7 +40473,7 @@ function htmlToBlocks(html) {
     /<\/(p|div|section|article|li|tr|table|ul|ol|blockquote|pre|dd|dt|figure|figcaption)>/gi,
     "\n\n"
   ).replace(/<li\b[^>]*>/gi, "\n- ").replace(/<\/t[dh]>/gi, " | ").replace(/<[^>]+>/g, " ");
-  s2 = decodeEntities(s2).replace(/[ \t ]+/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n");
+  s2 = decodeEntities(s2).replace(/[ \t\u00a0]+/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n");
   const blocks = [];
   let path = [];
   let buf = [];
@@ -40482,7 +40485,7 @@ function htmlToBlocks(html) {
     blocks.push({ text, loc, group: loc });
   };
   for (const part of s2.split(/\n{2,}/)) {
-    const m2 = /^\u0001([1-6])\u0002([\s\S]*?)\u0003$/.exec(part.trim());
+    const m2 = /^\uE001([1-6])\uE002([\s\S]*?)\uE003$/.exec(part.trim());
     if (m2) {
       flush();
       const level = Number(m2[1]);
@@ -40495,7 +40498,7 @@ function htmlToBlocks(html) {
   return { title, blocks };
 }
 
-// src/extract.js
+// plugins/knowledge-base/src/extract.js
 var DOC_EXTENSIONS = [
   "txt",
   "md",
@@ -40638,7 +40641,7 @@ function tableBlocks(rows, perBlock = 12) {
 }
 function xmlText(xml) {
   return decodeEntities(
-    xml.replace(/<w:tab\b[^>]*\/>/g, "	").replace(/<w:br\b[^>]*\/>/g, "\n").replace(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g, "$1\0").replace(/<[^>]+>/g, "").replace(/\u0000/g, "")
+    xml.replace(/<w:tab\b[^>]*\/>/g, "	").replace(/<w:br\b[^>]*\/>/g, "\n").replace(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g, "$1\uE000").replace(/<[^>]+>/g, "").replace(/\uE000/g, "")
   );
 }
 function docxBlocks(bytes) {
@@ -40825,7 +40828,7 @@ async function extractDocument(bytes, name) {
   }
 }
 
-// src/media.js
+// plugins/knowledge-base/src/media.js
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 var FF = ["-hide_banner", "-nostdin", "-y"];
@@ -40857,7 +40860,9 @@ async function probe(cli, file) {
   const types = (json.streams ?? []).map((s2) => s2.codec_type);
   const duration = Number(json.format?.duration);
   if (!Number.isFinite(duration) || duration <= 0) {
-    throw new Error("Kh\xF4ng x\xE1c \u0111\u1ECBnh \u0111\u01B0\u1EE3c th\u1EDDi l\u01B0\u1EE3ng file (file h\u1ECFng ho\u1EB7c kh\xF4ng ph\u1EA3i video / \xE2m thanh).");
+    throw new Error(
+      "Kh\xF4ng x\xE1c \u0111\u1ECBnh \u0111\u01B0\u1EE3c th\u1EDDi l\u01B0\u1EE3ng file (file h\u1ECFng ho\u1EB7c kh\xF4ng ph\u1EA3i video / \xE2m thanh)."
+    );
   }
   return { duration, hasVideo: types.includes("video"), hasAudio: types.includes("audio") };
 }
@@ -40901,8 +40906,9 @@ async function extractFrames(cli, input, outDir, duration, options = {}) {
     if (!/fps_mode|Unrecognized option/i.test(String(err2.message))) throw err2;
     result = await run(cli, "ffmpeg", sceneArgs("-vsync"), 9e5, "ffmpeg (t\xE1ch khung)");
   }
-  const times = parseShowinfo(result.stderr);
   const files = readdirSync(outDir).filter((f2) => /^s\d+\.jpg$/.test(f2)).sort();
+  let times = parseShowinfo(result.stderr);
+  if (times.length !== files.length) times = files.map((_2, i3) => i3 * duration / files.length);
   let frames = files.map((f2, i3) => ({ time: Math.max(0, times[i3] ?? 0), file: join(outDir, f2) }));
   const wanted = Math.min(maxFrames, Math.ceil(duration / 60));
   if (frames.length < wanted) {
@@ -40935,7 +40941,10 @@ async function extractFrames(cli, input, outDir, duration, options = {}) {
   }
   let kept = spaced;
   if (kept.length > maxFrames) {
-    kept = Array.from({ length: maxFrames }, (_2, i3) => spaced[Math.floor(i3 * spaced.length / maxFrames)]);
+    kept = Array.from(
+      { length: maxFrames },
+      (_2, i3) => spaced[Math.floor(i3 * spaced.length / maxFrames)]
+    );
   }
   const keepSet = new Set(kept.map((f2) => f2.file));
   for (const f2 of frames) if (!keepSet.has(f2.file)) rmSync(f2.file, { force: true });
@@ -40964,12 +40973,13 @@ async function transcribe(cli, wavFile, modelFile, workDir, language = "auto") {
   rmSync(`${base}.json`, { force: true });
   await run(
     cli,
-    "whisper-cli",
+    "whisper",
     ["-m", modelFile, "-f", wavFile, "-l", language, "-oj", "-of", base, "-np"],
     9e5,
     "whisper-cli (nh\u1EADn d\u1EA1ng gi\u1ECDng n\xF3i)"
   );
-  if (!existsSync(`${base}.json`)) throw new Error("whisper-cli ch\u1EA1y xong nh\u01B0ng kh\xF4ng t\u1EA1o k\u1EBFt qu\u1EA3.");
+  if (!existsSync(`${base}.json`))
+    throw new Error("whisper-cli ch\u1EA1y xong nh\u01B0ng kh\xF4ng t\u1EA1o k\u1EBFt qu\u1EA3.");
   return parseWhisperJson(readFileSync(`${base}.json`, "utf8"));
 }
 function buildWindows(duration, segments, frames, options = {}) {
@@ -41024,7 +41034,7 @@ function windowText(w2) {
   return lines.join("\n");
 }
 
-// src/sensitive.js
+// plugins/knowledge-base/src/sensitive.js
 function luhn(digits) {
   let sum = 0;
   let alt = false;
@@ -41040,16 +41050,36 @@ function luhn(digits) {
   return sum % 10 === 0;
 }
 var RULES = [
-  { what: "s\u1ED1 th\u1EBB thanh to\xE1n", re: /\b(?:\d[ -]?){13,19}\b/g, test: (m2) => {
-    const d2 = m2.replace(/\D/g, "");
-    return d2.length >= 13 && d2.length <= 19 && luhn(d2);
-  } },
+  {
+    what: "s\u1ED1 th\u1EBB thanh to\xE1n",
+    re: /\b(?:\d[ -]?){13,19}\b/g,
+    test: (m2) => {
+      const d2 = m2.replace(/\D/g, "");
+      return d2.length >= 13 && d2.length <= 19 && luhn(d2);
+    }
+  },
   { what: "s\u1ED1 CCCD / CMND", re: /(?<![\d.,])(?:0\d{11}|\d{9})(?![\d.,])/g, test: () => true },
-  { what: "m\u1EADt kh\u1EA9u", re: /(?:mật khẩu|mat khau|password|passwd|pwd|passcode)\s*(?:là|la|:|=|-)\s*\S+/gi, test: () => true },
-  { what: "kho\xE1 API / token", re: /\b(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_\w{20,}|AKIA[0-9A-Z]{16}|xox[abp]-[\w-]{10,}|AIza[\w-]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})/g, test: () => true },
-  { what: "kho\xE1 b\xED m\u1EADt", re: /\b(?:api[ _-]?key|secret|token|bearer)\b\s*[:=]\s*\S{8,}/gi, test: () => true },
+  {
+    what: "m\u1EADt kh\u1EA9u",
+    re: /(?:mật khẩu|mat khau|password|passwd|pwd|passcode)\s*(?:là|la|:|=|-)\s*\S+/gi,
+    test: () => true
+  },
+  {
+    what: "kho\xE1 API / token",
+    re: /\b(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_\w{20,}|AKIA[0-9A-Z]{16}|xox[abp]-[\w-]{10,}|AIza[\w-]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})/g,
+    test: () => true
+  },
+  {
+    what: "kho\xE1 b\xED m\u1EADt",
+    re: /\b(?:api[ _-]?key|secret|token|bearer)\b\s*[:=]\s*\S{8,}/gi,
+    test: () => true
+  },
   { what: "kho\xE1 ri\xEAng (private key)", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g, test: () => true },
-  { what: "s\u1ED1 t\xE0i kho\u1EA3n ng\xE2n h\xE0ng", re: /(?:stk|số tài khoản|so tai khoan|account (?:no|number))\s*[:.-]?\s*\d[\d ]{7,18}\d/gi, test: () => true }
+  {
+    what: "s\u1ED1 t\xE0i kho\u1EA3n ng\xE2n h\xE0ng",
+    re: /(?:stk|số tài khoản|so tai khoan|account (?:no|number))\s*[:.-]?\s*\d[\d ]{7,18}\d/gi,
+    test: () => true
+  }
 ];
 function detectSensitive(text) {
   const found = /* @__PURE__ */ new Set();
@@ -41070,14 +41100,16 @@ function maskSensitive(text) {
     out = out.replace(rule.re, (m2) => {
       if (!rule.test(m2)) return m2;
       if (rule.what === "kho\xE1 ri\xEAng (private key)") return "[\u0111\xE3 che kho\xE1 ri\xEAng]";
-      const tail2 = m2.slice(-4);
-      return `\u25CF\u25CF\u25CF\u25CF${/^[\w-]+$/.test(tail2) ? tail2 : ""}`;
+      const core = m2.trimEnd();
+      const rest = m2.slice(core.length);
+      const tail2 = core.slice(-4);
+      return `\u25CF\u25CF\u25CF\u25CF${/^[\w-]+$/.test(tail2) ? tail2 : ""}${rest}`;
     });
   }
   return out;
 }
 
-// src/engine.js
+// plugins/knowledge-base/src/engine.js
 var DEFAULT_SETTINGS = {
   /** Hỏi trước khi chạy nếu ước tính chi phí từ mức này (USD) hoặc chưa biết giá. */
   askAboveUsd: 0.02,
@@ -41094,6 +41126,7 @@ var MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 var TRASH_KEEP = 5;
 var Stop = class extends Error {
 };
+var NO_VISION = "Ch\u01B0a c\xF3 model nh\xECn \u1EA3nh. M\u1EDF Nh\xE0 cung c\u1EA5p \u2192 d\xE1n key c\u1EE7a h\xE3ng c\xF3 model nh\xECn \u1EA3nh (v\xED d\u1EE5 Google AI Studio) r\u1ED3i th\u1EED l\u1EA1i.";
 var VISION_SYSTEM = 'B\u1EA1n l\xE0 b\u1ED9 ph\u1EADn "\u0111\u1ECDc \u1EA3nh" c\u1EE7a NSA. Ch\u1EC9 n\xF3i \u0111i\u1EC1u nh\xECn th\u1EA5y; kh\xF4ng b\u1ECBa. Tr\u1EA3 l\u1EDDi b\u1EB1ng ti\u1EBFng Vi\u1EC7t.';
 function imagePrompt(note) {
   return [
@@ -41214,14 +41247,17 @@ var Engine = class {
   saveSettings(patch) {
     const s2 = this.cat.settings;
     if (typeof patch.askAboveUsd === "number") s2.askAboveUsd = Math.max(0, patch.askAboveUsd);
-    if (typeof patch.maxFrames === "number") s2.maxFrames = Math.min(80, Math.max(4, patch.maxFrames));
-    if (typeof patch.language === "string") s2.language = /^[a-z]{2,3}$|^auto$/.test(patch.language) ? patch.language : "auto";
+    if (typeof patch.maxFrames === "number")
+      s2.maxFrames = Math.min(80, Math.max(4, patch.maxFrames));
+    if (typeof patch.language === "string")
+      s2.language = /^[a-z]{2,3}$|^auto$/.test(patch.language) ? patch.language : "auto";
     if (typeof patch.whisperModel === "string") s2.whisperModel = safeName(patch.whisperModel);
     if (typeof patch.autoApprove === "boolean") {
       s2.autoApprove = patch.autoApprove;
       this.cat.collections = {};
     }
-    if (typeof patch.minConfidence === "number") s2.minConfidence = Math.min(1, Math.max(0.5, patch.minConfidence));
+    if (typeof patch.minConfidence === "number")
+      s2.minConfidence = Math.min(1, Math.max(0.5, patch.minConfidence));
     this.save();
     return s2;
   }
@@ -41233,11 +41269,14 @@ var Engine = class {
   async addFile({ file, name, relPath, note, collection, move = false, inPlace = false }) {
     const kind = kindOf(name);
     if (!kind) {
-      throw new Error(`Ch\u01B0a h\u1ED7 tr\u1EE3 file "${name}". H\u1ED7 tr\u1EE3: v\u0103n b\u1EA3n, Markdown, PDF, DOCX, XLSX/CSV, HTML, \u1EA3nh, video, \xE2m thanh.`);
+      throw new Error(
+        `Ch\u01B0a h\u1ED7 tr\u1EE3 file "${name}". H\u1ED7 tr\u1EE3: v\u0103n b\u1EA3n, Markdown, PDF, DOCX, XLSX/CSV, HTML, \u1EA3nh, video, \xE2m thanh.`
+      );
     }
     const stat = statSync(file);
     if (stat.size === 0) throw new Error(`File "${name}" r\u1ED7ng.`);
-    if (kind === "doc" && stat.size > MAX_DOC_BYTES) throw new Error(`T\xE0i li\u1EC7u "${name}" l\u1EDBn qu\xE1 120 MB.`);
+    if (kind === "doc" && stat.size > MAX_DOC_BYTES)
+      throw new Error(`T\xE0i li\u1EC7u "${name}" l\u1EDBn qu\xE1 120 MB.`);
     const hash = await fileHash(file);
     const ident = relPath || name;
     const key = sha1(`${kind}|${ident.toLowerCase()}`);
@@ -41303,10 +41342,14 @@ var Engine = class {
     } catch {
       throw new Error("\u0110\u01B0\u1EDDng link kh\xF4ng h\u1EE3p l\u1EC7.");
     }
-    if (u2.protocol !== "http:" && u2.protocol !== "https:") throw new Error("Ch\u1EC9 nh\u1EADn link http / https.");
+    if (u2.protocol !== "http:" && u2.protocol !== "https:")
+      throw new Error("Ch\u1EC9 nh\u1EADn link http / https.");
     u2.hash = "";
     const response = await this.ctx.fetch(u2.href, {
-      headers: { "user-agent": "NSA-KnowledgeBase/1.0", accept: "text/html,application/pdf,text/plain,*/*;q=0.5" }
+      headers: {
+        "user-agent": "NSA-KnowledgeBase/1.0",
+        accept: "text/html,application/pdf,text/plain,*/*;q=0.5"
+      }
     });
     if (!response.ok) throw new Error(`Kh\xF4ng t\u1EA3i \u0111\u01B0\u1EE3c trang (HTTP ${response.status}).`);
     const type = (response.headers.get("content-type") || "").toLowerCase();
@@ -41319,7 +41362,9 @@ var Engine = class {
     else if (type.includes("markdown")) ext = "md";
     else if (type.startsWith("text/plain")) ext = "txt";
     else if (!type.includes("html") && type && !type.startsWith("text/")) {
-      throw new Error(`Lo\u1EA1i n\u1ED9i dung "${type.split(";")[0]}" ch\u01B0a h\u1ED7 tr\u1EE3 (c\u1EA7n trang web, PDF, DOCX, XLSX, CSV ho\u1EB7c v\u0103n b\u1EA3n).`);
+      throw new Error(
+        `Lo\u1EA1i n\u1ED9i dung "${type.split(";")[0]}" ch\u01B0a h\u1ED7 tr\u1EE3 (c\u1EA7n trang web, PDF, DOCX, XLSX, CSV ho\u1EB7c v\u0103n b\u1EA3n).`
+      );
     }
     const label = `${u2.hostname}${u2.pathname === "/" ? "" : u2.pathname}`.slice(0, 100);
     const tmp = join2(this.dir, "uploads", `${newId("u")}.part`);
@@ -41414,7 +41459,10 @@ var Engine = class {
         src.hasVideo = info2.hasVideo;
         src.hasAudio = info2.hasAudio;
         if (src.kind === "video" && info2.hasVideo) {
-          const frames = Math.min(this.cat.settings.maxFrames, Math.max(3, Math.ceil(info2.duration / 30)));
+          const frames = Math.min(
+            this.cat.settings.maxFrames,
+            Math.max(3, Math.ceil(info2.duration / 30))
+          );
           est.calls = frames;
           est.inputTokens = frames * 1500;
           est.outputTokens = frames * 250;
@@ -41432,8 +41480,13 @@ var Engine = class {
         est.budget = st2.budget;
       }
       src.estimate = est;
-      const needsAsk = est.calls > 0 && (est.usd === null || est.usd >= this.cat.settings.askAboveUsd);
-      src.status = needsAsk ? "awaiting" : "queued";
+      if (est.calls > 0 && est.visionAvailable === false && src.kind === "image") {
+        src.status = "failed";
+        src.error = NO_VISION;
+      } else {
+        const needsAsk = est.calls > 0 && est.visionAvailable !== false && (est.usd === null || est.usd >= this.cat.settings.askAboveUsd);
+        src.status = needsAsk ? "awaiting" : "queued";
+      }
     } catch (err2) {
       src.status = "failed";
       src.error = String(err2.message ?? err2);
@@ -41442,7 +41495,8 @@ var Engine = class {
     this.kick();
   }
   async #visionStatus() {
-    if (!this.ctx.model) return { available: false, budget: { limitUsd: null, spentUsd: 0, level: "ok" } };
+    if (!this.ctx.model)
+      return { available: false, budget: { limitUsd: null, spentUsd: 0, level: "ok" } };
     try {
       return await this.ctx.model.status("vision");
     } catch {
@@ -41481,7 +41535,8 @@ var Engine = class {
   }
   pauseAll() {
     this.cat.queuePaused = true;
-    for (const s2 of Object.values(this.cat.sources)) if (s2.status === "running") s2.status = "paused";
+    for (const s2 of Object.values(this.cat.sources))
+      if (s2.status === "running") s2.status = "paused";
     this.save();
   }
   resumeAll() {
@@ -41493,7 +41548,8 @@ var Engine = class {
   /** Gọi sau khi mở app, khi thêm nguồn, khi tiếp tục: chạy các nguồn đang chờ, lần lượt từng cái. */
   kick() {
     if (this.loop || this.cat.queuePaused) return;
-    for (const s2 of Object.values(this.cat.sources)) if (s2.status === "running") s2.status = "queued";
+    for (const s2 of Object.values(this.cat.sources))
+      if (s2.status === "running") s2.status = "queued";
     this.loop = this.#drain().finally(() => {
       this.loop = null;
     });
@@ -41563,7 +41619,9 @@ var Engine = class {
       this.#check(src);
       let chunks = makeChunks(blocks);
       if (chunks.length > MAX_CHUNKS) {
-        warnings.push(`T\xE0i li\u1EC7u c\xF3 ${chunks.length} \u0111o\u1EA1n; ch\u1EC9 n\u1EA1p ${MAX_CHUNKS} \u0111o\u1EA1n \u0111\u1EA7u (chia nh\u1ECF t\xE0i li\u1EC7u \u0111\u1EC3 n\u1EA1p ph\u1EA7n c\xF2n l\u1EA1i).`);
+        warnings.push(
+          `T\xE0i li\u1EC7u c\xF3 ${chunks.length} \u0111o\u1EA1n; ch\u1EC9 n\u1EA1p ${MAX_CHUNKS} \u0111o\u1EA1n \u0111\u1EA7u (chia nh\u1ECF t\xE0i li\u1EC7u \u0111\u1EC3 n\u1EA1p ph\u1EA7n c\xF2n l\u1EA1i).`
+        );
         chunks = chunks.slice(0, MAX_CHUNKS);
       }
       if (chunks.length === 0) warnings.push("Kh\xF4ng t\xECm th\u1EA5y ch\u1EEF n\xE0o \u0111\u1EC3 nh\u1EDB trong t\xE0i li\u1EC7u n\xE0y.");
@@ -41583,12 +41641,19 @@ var Engine = class {
       const mime = IMAGE_MIME[src.ext];
       const bytes = readFileSync2(this.original(src));
       if (bytes.length > MAX_IMAGE_BYTES) {
-        throw new Error(`\u1EA2nh l\u1EDBn ${(bytes.length / 1048576).toFixed(1)} MB (t\u1ED1i \u0111a 10 MB). H\xE3y thu nh\u1ECF \u1EA3nh r\u1ED3i n\u1EA1p l\u1EA1i.`);
+        throw new Error(
+          `\u1EA2nh l\u1EDBn ${(bytes.length / 1048576).toFixed(1)} MB (t\u1ED1i \u0111a 10 MB). H\xE3y thu nh\u1ECF \u1EA3nh r\u1ED3i n\u1EA1p l\u1EA1i.`
+        );
       }
-      if (!this.ctx.model) throw new Error("Plugin ch\u01B0a \u0111\u01B0\u1EE3c c\u1EA5p quy\u1EC1n d\xF9ng model (App Store \u2192 Qu\u1EA3n l\xFD \u2192 Quy\u1EC1n).");
+      if (!this.ctx.model)
+        throw new Error("Plugin ch\u01B0a \u0111\u01B0\u1EE3c c\u1EA5p quy\u1EC1n d\xF9ng model (App Store \u2192 Qu\u1EA3n l\xFD \u2192 Quy\u1EC1n).");
       await this.#needBudget("vision");
       this.#progress(src, 0, 1, "Model \u0111ang nh\xECn \u1EA3nh");
-      const text = await this.ctx.model.vision(imagePrompt(src.note), [{ mimeType: mime, base64: bytes.toString("base64") }], { system: VISION_SYSTEM });
+      const text = await this.ctx.model.vision(
+        imagePrompt(src.note),
+        [{ mimeType: mime, base64: bytes.toString("base64") }],
+        { system: VISION_SYSTEM }
+      );
       this.#check(src);
       d2.vision = parseImageReply(text);
       this.saveDerived(src.id, d2);
@@ -41605,12 +41670,12 @@ ${ocr}`);
     if (!this.ctx.model) return;
     const st2 = await this.ctx.model.status(task).catch(() => null);
     if (st2 && !st2.available) {
-      throw new Error(
-        task === "vision" ? "Ch\u01B0a c\xF3 model nh\xECn \u1EA3nh. M\u1EDF Nh\xE0 cung c\u1EA5p \u2192 d\xE1n key c\u1EE7a h\xE3ng c\xF3 model nh\xECn \u1EA3nh (v\xED d\u1EE5 Google AI Studio) r\u1ED3i th\u1EED l\u1EA1i." : `Ch\u01B0a c\xF3 model cho vi\u1EC7c "${task}".`
-      );
+      throw new Error(task === "vision" ? NO_VISION : `Ch\u01B0a c\xF3 model cho vi\u1EC7c "${task}".`);
     }
     if (st2 && st2.budget.level === "over") {
-      throw new Error(`\u0110\xE3 v\u01B0\u1EE3t h\u1EA1n m\u1EE9c chi ph\xED th\xE1ng (${st2.budget.spentUsd.toFixed(2)} / ${st2.budget.limitUsd} USD). T\u0103ng h\u1EA1n m\u1EE9c trong Nh\xE0 cung c\u1EA5p r\u1ED3i b\u1EA5m Ti\u1EBFp t\u1EE5c.`);
+      throw new Error(
+        `\u0110\xE3 v\u01B0\u1EE3t h\u1EA1n m\u1EE9c chi ph\xED th\xE1ng (${st2.budget.spentUsd.toFixed(2)} / ${st2.budget.limitUsd} USD). T\u0103ng h\u1EA1n m\u1EE9c trong Nh\xE0 cung c\u1EA5p r\u1ED3i b\u1EA5m Ti\u1EBFp t\u1EE5c.`
+      );
     }
   }
   // ------------------------------------------------------------ nạp video / âm thanh
@@ -41644,7 +41709,13 @@ ${ocr}`);
         await extractAudio(cli, file, wav);
         this.#check(src);
         this.#progress(src, 2, 4, "Nh\u1EADn d\u1EA1ng gi\u1ECDng n\xF3i (c\xF3 th\u1EC3 m\u1EA5t v\xE0i ph\xFAt)");
-        d2.segments = await transcribe(cli, wav, model, join2(dir, "asr"), this.cat.settings.language);
+        d2.segments = await transcribe(
+          cli,
+          wav,
+          model,
+          join2(dir, "asr"),
+          this.cat.settings.language
+        );
         rmSync2(wav, { force: true });
         if (d2.segments.length === 0) src.warnings.push("Kh\xF4ng nh\u1EADn ra l\u1EDDi n\xF3i n\xE0o trong file.");
       }
@@ -41653,7 +41724,9 @@ ${ocr}`);
     this.#check(src);
     if (wantFrames && !d2.frames) {
       this.#progress(src, 2, 4, "T\xE1ch khung h\xECnh theo c\u1EA3nh");
-      const frames = await extractFrames(cli, file, join2(dir, "frames"), d2.duration, { maxFrames: this.cat.settings.maxFrames });
+      const frames = await extractFrames(cli, file, join2(dir, "frames"), d2.duration, {
+        maxFrames: this.cat.settings.maxFrames
+      });
       d2.frames = frames.map((f2) => ({ time: f2.time, file: f2.file }));
       save();
     }
@@ -41681,7 +41754,11 @@ ${ocr}`);
             if (i3 === void 0) return;
             const f2 = d2.frames[i3];
             const bytes = readFileSync2(f2.file);
-            f2.description = (await this.ctx.model.vision(framePrompt(src.name, f2.time, src.note), [{ mimeType: "image/jpeg", base64: bytes.toString("base64") }], { system: VISION_SYSTEM })).trim();
+            f2.description = (await this.ctx.model.vision(
+              framePrompt(src.name, f2.time, src.note),
+              [{ mimeType: "image/jpeg", base64: bytes.toString("base64") }],
+              { system: VISION_SYSTEM }
+            )).trim();
             done++;
             save();
             this.#progress(src, done, total, `Model m\xF4 t\u1EA3 khung h\xECnh ${done}/${total}`);
@@ -41692,10 +41769,17 @@ ${ocr}`);
     }
     this.#check(src);
     const windows = buildWindows(d2.duration, d2.segments ?? [], d2.frames ?? []);
-    d2.windows = windows.map((w2) => ({ loc: windowLoc(w2), start: w2.start, end: w2.end, frames: w2.frames }));
+    d2.windows = windows.map((w2) => ({
+      loc: windowLoc(w2),
+      start: w2.start,
+      end: w2.end,
+      frames: w2.frames
+    }));
     save();
     if (windows.length === 0) {
-      throw new Error("Kh\xF4ng r\xFAt \u0111\u01B0\u1EE3c n\u1ED9i dung n\xE0o t\u1EEB file n\xE0y (kh\xF4ng nh\u1EADn ra l\u1EDDi n\xF3i v\xE0 kh\xF4ng c\xF3 m\xF4 t\u1EA3 h\xECnh \u1EA3nh). Ki\u1EC3m tra c\xF4ng c\u1EE5 nh\u1EADn d\u1EA1ng gi\u1ECDng n\xF3i v\xE0 model nh\xECn \u1EA3nh.");
+      throw new Error(
+        "Kh\xF4ng r\xFAt \u0111\u01B0\u1EE3c n\u1ED9i dung n\xE0o t\u1EEB file n\xE0y (kh\xF4ng nh\u1EADn ra l\u1EDDi n\xF3i v\xE0 kh\xF4ng c\xF3 m\xF4 t\u1EA3 h\xECnh \u1EA3nh). Ki\u1EC3m tra c\xF4ng c\u1EE5 nh\u1EADn d\u1EA1ng gi\u1ECDng n\xF3i v\xE0 model nh\xECn \u1EA3nh."
+      );
     }
     await this.#publish(
       src,
@@ -41712,9 +41796,11 @@ ${ocr}`);
   }
   /** Tình trạng công cụ ngoài + model — cache 30 giây. */
   async tools(force = false) {
-    if (!force && this.toolCache.value && Date.now() - this.toolCache.at < 3e4) return this.toolCache.value;
+    if (!force && this.toolCache.value && Date.now() - this.toolCache.at < 3e4)
+      return this.toolCache.value;
     const check = async (id, args, install) => {
-      if (!this.ctx.cli) return { ok: false, hint: "Plugin ch\u01B0a \u0111\u01B0\u1EE3c c\u1EA5p quy\u1EC1n ch\u1EA1y ch\u01B0\u01A1ng tr\xECnh ngo\xE0i." };
+      if (!this.ctx.cli)
+        return { ok: false, hint: "Plugin ch\u01B0a \u0111\u01B0\u1EE3c c\u1EA5p quy\u1EC1n ch\u1EA1y ch\u01B0\u01A1ng tr\xECnh ngo\xE0i." };
       const r2 = await this.ctx.cli.run(id, args, { timeoutMs: 15e3 }).catch((e2) => ({ error: String(e2.message ?? e2) }));
       if (r2.error) return { ok: false, hint: r2.error };
       return { ok: true, hint: install };
@@ -41729,7 +41815,7 @@ ${ocr}`);
     };
     const value = {
       ffmpeg: await check("ffmpeg", ["-hide_banner", "-version"], ""),
-      whisper: await check("whisper-cli", ["-h"], ""),
+      whisper: await check("whisper", ["-h"], ""),
       whisperModel: basename(this.#whisperModelFile() || ""),
       vision: await model("vision"),
       embedding: await model("embedding")
@@ -41790,7 +41876,9 @@ ${ocr}`);
     const sub = src.collection;
     const d2 = this.derived(src.id);
     const srcTag = `kb:src:${src.id}`;
-    const entries = (await mem.entries({ subBranch: sub, limit: 2e3 })).filter((e2) => e2.tags.includes(srcTag));
+    const entries = (await mem.entries({ subBranch: sub, limit: 2e3 })).filter(
+      (e2) => e2.tags.includes(srcTag)
+    );
     const byLoc = new Map(entries.map((e2) => [tagVal(e2, "kb:loc:"), e2]));
     if (!d2.publish) {
       for (const p2 of await mem.pending({ subBranch: sub })) {
@@ -41841,7 +41929,9 @@ ${ocr}`);
     if (stale.length) {
       const { undo } = await mem.remove(stale.map((e2) => e2.id));
       src.staleUndo = undo;
-      src.warnings.push(`\u0110\xE3 g\u1EE1 ${stale.length} m\u1EE5c kh\xF4ng c\xF2n trong b\u1EA3n m\u1EDBi c\u1EE7a file (ho\xE0n t\xE1c \u0111\u01B0\u1EE3c \u1EDF n\xFAt "Ho\xE0n t\xE1c g\u1EE1").`);
+      src.warnings.push(
+        `\u0110\xE3 g\u1EE1 ${stale.length} m\u1EE5c kh\xF4ng c\xF2n trong b\u1EA3n m\u1EDBi c\u1EE7a file (ho\xE0n t\xE1c \u0111\u01B0\u1EE3c \u1EDF n\xFAt "Ho\xE0n t\xE1c g\u1EE1").`
+      );
     }
     if (flagged.length) {
       src.sensitive = flagged.slice(0, 50);
@@ -41871,7 +41961,9 @@ ${ocr}`);
     }
     const mem = this.ctx.memory;
     const srcTag = `kb:src:${id}`;
-    const entries = (await mem.entries({ subBranch: src.collection, limit: 2e3 })).filter((e2) => e2.tags.includes(srcTag));
+    const entries = (await mem.entries({ subBranch: src.collection, limit: 2e3 })).filter(
+      (e2) => e2.tags.includes(srcTag)
+    );
     for (const p2 of await mem.pending({ subBranch: src.collection })) {
       if (p2.tags.includes(srcTag)) await mem.reject(p2.id).catch(() => void 0);
     }
@@ -41880,10 +41972,17 @@ ${ocr}`);
     rmSync2(trashDir, { recursive: true, force: true });
     mkdirSync2(join2(this.dir, "trash"), { recursive: true });
     if (existsSync2(this.sourceDir(id))) renameSync2(this.sourceDir(id), trashDir);
-    this.cat.trash.unshift({ id, source: src, undo, at: this.now().toISOString(), entries: entries.length });
+    this.cat.trash.unshift({
+      id,
+      source: src,
+      undo,
+      at: this.now().toISOString(),
+      entries: entries.length
+    });
     delete this.cat.sources[id];
     this.cat.order = this.cat.order.filter((x3) => x3 !== id);
-    for (const old of this.cat.trash.splice(TRASH_KEEP)) rmSync2(join2(this.dir, "trash", old.id), { recursive: true, force: true });
+    for (const old of this.cat.trash.splice(TRASH_KEEP))
+      rmSync2(join2(this.dir, "trash", old.id), { recursive: true, force: true });
     this.save();
     return { removed: entries.length, canUndo: true };
   }
@@ -41936,7 +42035,12 @@ ${ocr}`);
       sources,
       pendingTotal: pending.length,
       acceptedTotal: entries.length,
-      trash: this.cat.trash.map((t2) => ({ id: t2.id, name: t2.source.name, entries: t2.entries, at: t2.at }))
+      trash: this.cat.trash.map((t2) => ({
+        id: t2.id,
+        name: t2.source.name,
+        entries: t2.entries,
+        at: t2.at
+      }))
     };
   }
   async pendingList() {
@@ -41976,9 +42080,14 @@ ${ocr}`);
     if (src.kind === "image") {
       const file = this.original(src);
       const mime = IMAGE_MIME[src.ext] ?? "image/png";
-      return { kind: "image", note: src.note, images: [{ label: src.name, dataUrl: dataUrl(file, mime) }], text: d2.vision ? `${d2.vision.describe}
+      return {
+        kind: "image",
+        note: src.note,
+        images: [{ label: src.name, dataUrl: dataUrl(file, mime) }],
+        text: d2.vision ? `${d2.vision.describe}
 
-${d2.vision.ocr}` : "" };
+${d2.vision.ocr}` : ""
+      };
     }
     if (src.kind === "video" || src.kind === "audio") {
       const w2 = (d2.windows ?? []).find((x3) => x3.loc === loc);
@@ -42016,7 +42125,7 @@ function dataUrl(file, mime) {
   }
 }
 
-// src/index.js
+// plugins/knowledge-base/src/index.js
 var engine = null;
 var need = () => {
   if (!engine) throw new Error("Knowledge Base ch\u01B0a s\u1EB5n s\xE0ng.");
@@ -42053,8 +42162,13 @@ async function kbSearch(args, ctx) {
   if (hits.length === 0) {
     return `Kh\xF4ng t\xECm th\u1EA5y g\xEC trong Knowledge Base cho "${query}" (\u0111\xE3 t\xECm theo ${mode === "semantic" ? "ngh\u0129a" : "t\u1EEB kho\xE1"}). C\xF3 th\u1EC3 ng\u01B0\u1EDDi d\xF9ng ch\u01B0a d\u1EA1y \u0111i\u1EC1u n\xE0y, ho\u1EB7c m\u1EE5c c\xF2n n\u1EB1m trong h\u1ED9p duy\u1EC7t ch\u01B0a nh\u1EADn.`;
   }
-  const info2 = await describeEntries(ctx, hits.map((h2) => h2.id));
-  const lines = [`Knowledge Base \u2014 ${hits.length} k\u1EBFt qu\u1EA3 (t\xECm theo ${mode === "semantic" ? "ngh\u0129a" : "t\u1EEB kho\xE1"}):`];
+  const info2 = await describeEntries(
+    ctx,
+    hits.map((h2) => h2.id)
+  );
+  const lines = [
+    `Knowledge Base \u2014 ${hits.length} k\u1EBFt qu\u1EA3 (t\xECm theo ${mode === "semantic" ? "ngh\u0129a" : "t\u1EEB kho\xE1"}):`
+  ];
   hits.forEach((h2, i3) => {
     const d2 = info2.get(h2.id);
     const body = (d2?.entry.body ?? h2.snippet).replace(/\n\n— Nguồn:.*$/s, "").trim();
@@ -42096,7 +42210,10 @@ async function kbOpen(args, ctx) {
     }
     if (src.kind === "image") lines.push("", `File \u1EA3nh g\u1ED1c: ${eng.original(src)}`);
     if (src.kind === "video" || src.kind === "audio") {
-      lines.push("", `File g\u1ED1c: ${eng.original(src)} (m\u1ED1c ${info2.loc}, t\u1ED5ng ${clock(src.duration ?? 0)})`);
+      lines.push(
+        "",
+        `File g\u1ED1c: ${eng.original(src)} (m\u1ED1c ${info2.loc}, t\u1ED5ng ${clock(src.duration ?? 0)})`
+      );
     }
   }
   return lines.join("\n");
@@ -42173,7 +42290,10 @@ var index_default = {
     rejectMany: async (p2, ctx) => {
       let n2 = 0;
       for (const id of p2.ids ?? []) {
-        await ctx.memory.reject(String(id)).then(() => n2++, () => void 0);
+        await ctx.memory.reject(String(id)).then(
+          () => n2++,
+          () => void 0
+        );
       }
       return { rejected: n2 };
     },

@@ -149,8 +149,7 @@ export function createMemoryBridge(service: MemoryServiceLike): PluginMemoryBrid
           title: p.draft.title,
           body: p.draft.body,
           confidence: p.draft.confidence,
-          sensitive:
-            p.draft.sensitive === true || p.reasons.some((r) => /nhạy cảm/i.test(r)),
+          sensitive: p.draft.sensitive === true || p.reasons.some((r) => /nhạy cảm/i.test(r)),
           tags: p.draft.tags ?? [],
           subBranch: relative(p.draft.branch, branch),
           reasons: p.reasons,
@@ -194,7 +193,9 @@ export function createMemoryBridge(service: MemoryServiceLike): PluginMemoryBrid
           !item.paths?.length ||
           !item.paths.every((p) => p.startsWith(prefix))
         ) {
-          throw new Error('Không hoàn tác được: thay đổi này không phải lần xoá trong nhánh của plugin.');
+          throw new Error(
+            'Không hoàn tác được: thay đổi này không phải lần xoá trong nhánh của plugin.',
+          );
         }
         await service.undo(commit);
         restored++;

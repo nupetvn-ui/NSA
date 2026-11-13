@@ -274,7 +274,11 @@ export function validateManifest(raw: unknown): ManifestResult {
     if (!isObj(rawPerm)) err('permissions', '"permissions" phải là một đối tượng.');
     else {
       for (const key of Object.keys(rawPerm)) {
-        if (!['network', 'folders', 'memory', 'notifications', 'model', 'modelTasks', 'cli'].includes(key)) {
+        if (
+          !['network', 'folders', 'memory', 'notifications', 'model', 'modelTasks', 'cli'].includes(
+            key,
+          )
+        ) {
           err(
             `permissions.${key}`,
             `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications, model, modelTasks, cli.`,
@@ -665,7 +669,7 @@ export function domainAllowed(host: string, allowed: string[]): boolean {
  * khai đúng tên (chỉ `localhost` được phép khai).
  */
 export function isPublicHost(host: string): boolean {
-  const h = host.toLowerCase().replace(/.$/, '');
+  const h = host.toLowerCase().replace(/\.$/, '');
   if (!h.includes('.') || h.includes(':') || h.startsWith('[')) return false;
   if (/^[0-9.]+$/.test(h)) return false;
   return !(h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.localhost'));

@@ -17,13 +17,36 @@ function luhn(digits) {
 }
 
 const RULES = [
-  { what: 'số thẻ thanh toán', re: /\b(?:\d[ -]?){13,19}\b/g, test: (m) => { const d = m.replace(/\D/g, ''); return d.length >= 13 && d.length <= 19 && luhn(d); } },
+  {
+    what: 'số thẻ thanh toán',
+    re: /\b(?:\d[ -]?){13,19}\b/g,
+    test: (m) => {
+      const d = m.replace(/\D/g, '');
+      return d.length >= 13 && d.length <= 19 && luhn(d);
+    },
+  },
   { what: 'số CCCD / CMND', re: /(?<![\d.,])(?:0\d{11}|\d{9})(?![\d.,])/g, test: () => true },
-  { what: 'mật khẩu', re: /(?:mật khẩu|mat khau|password|passwd|pwd|passcode)\s*(?:là|la|:|=|-)\s*\S+/gi, test: () => true },
-  { what: 'khoá API / token', re: /\b(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_\w{20,}|AKIA[0-9A-Z]{16}|xox[abp]-[\w-]{10,}|AIza[\w-]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})/g, test: () => true },
-  { what: 'khoá bí mật', re: /\b(?:api[ _-]?key|secret|token|bearer)\b\s*[:=]\s*\S{8,}/gi, test: () => true },
+  {
+    what: 'mật khẩu',
+    re: /(?:mật khẩu|mat khau|password|passwd|pwd|passcode)\s*(?:là|la|:|=|-)\s*\S+/gi,
+    test: () => true,
+  },
+  {
+    what: 'khoá API / token',
+    re: /\b(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_\w{20,}|AKIA[0-9A-Z]{16}|xox[abp]-[\w-]{10,}|AIza[\w-]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})/g,
+    test: () => true,
+  },
+  {
+    what: 'khoá bí mật',
+    re: /\b(?:api[ _-]?key|secret|token|bearer)\b\s*[:=]\s*\S{8,}/gi,
+    test: () => true,
+  },
   { what: 'khoá riêng (private key)', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g, test: () => true },
-  { what: 'số tài khoản ngân hàng', re: /(?:stk|số tài khoản|so tai khoan|account (?:no|number))\s*[:.-]?\s*\d[\d ]{7,18}\d/gi, test: () => true },
+  {
+    what: 'số tài khoản ngân hàng',
+    re: /(?:stk|số tài khoản|so tai khoan|account (?:no|number))\s*[:.-]?\s*\d[\d ]{7,18}\d/gi,
+    test: () => true,
+  },
 ];
 
 /** Trả về danh sách loại nhạy cảm tìm thấy (không lặp). Rỗng = không thấy gì. */

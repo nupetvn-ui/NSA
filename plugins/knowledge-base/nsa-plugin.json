@@ -40,7 +40,7 @@
         "confinePaths": true
       },
       {
-        "id": "whisper-cli",
+        "id": "whisper",
         "label": "whisper.cpp (nhận dạng giọng nói, chạy trên máy)",
         "command": "whisper-cli",
         "install": "Tải whisper-bin-x64.zip ở github.com/ggml-org/whisper.cpp/releases, giải nén, đặt whisper-cli.exe (cùng các file .dll) vào một thư mục có trong PATH. NSA không cài hộ; model giọng nói tải trong màn hình Knowledge Base.",
@@ -84,7 +84,5 @@
     }
   ],
   "screens": [{ "id": "main", "title": "Knowledge Base", "entry": "ui/index.html" }],
-  "jobs": [
-    { "id": "tick", "title": "Chạy tiếp hàng đợi nạp", "every": "15s", "runOnStart": true }
-  ]
+  "jobs": [{ "id": "tick", "title": "Chạy tiếp hàng đợi nạp", "every": "15s", "runOnStart": true }]
 }

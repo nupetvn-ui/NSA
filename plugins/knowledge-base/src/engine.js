@@ -17,11 +17,7 @@ import {
 import { createHash } from 'node:crypto';
 import { basename, extname, join, relative } from 'node:path';
 import { makeChunks } from './chunk.js';
-import {
-  IMAGE_MIME,
-  extractDocument,
-  kindOf,
-} from './extract.js';
+import { IMAGE_MIME, extractDocument, kindOf } from './extract.js';
 import { htmlToBlocks } from './html.js';
 import {
   buildWindows,
@@ -201,14 +197,17 @@ export class Engine {
   saveSettings(patch) {
     const s = this.cat.settings;
     if (typeof patch.askAboveUsd === 'number') s.askAboveUsd = Math.max(0, patch.askAboveUsd);
-    if (typeof patch.maxFrames === 'number') s.maxFrames = Math.min(80, Math.max(4, patch.maxFrames));
-    if (typeof patch.language === 'string') s.language = /^[a-z]{2,3}$|^auto$/.test(patch.language) ? patch.language : 'auto';
+    if (typeof patch.maxFrames === 'number')
+      s.maxFrames = Math.min(80, Math.max(4, patch.maxFrames));
+    if (typeof patch.language === 'string')
+      s.language = /^[a-z]{2,3}$|^auto$/.test(patch.language) ? patch.language : 'auto';
     if (typeof patch.whisperModel === 'string') s.whisperModel = safeName(patch.whisperModel);
     if (typeof patch.autoApprove === 'boolean') {
       s.autoApprove = patch.autoApprove;
       this.cat.collections = {}; // áp lại cho từng bộ ở lần nạp kế tiếp
     }
-    if (typeof patch.minConfidence === 'number') s.minConfidence = Math.min(1, Math.max(0.5, patch.minConfidence));
+    if (typeof patch.minConfidence === 'number')
+      s.minConfidence = Math.min(1, Math.max(0.5, patch.minConfidence));
     this.save();
     return s;
   }
@@ -222,11 +221,14 @@ export class Engine {
   async addFile({ file, name, relPath, note, collection, move = false, inPlace = false }) {
     const kind = kindOf(name);
     if (!kind) {
-      throw new Error(`Chưa hỗ trợ file "${name}". Hỗ trợ: văn bản, Markdown, PDF, DOCX, XLSX/CSV, HTML, ảnh, video, âm thanh.`);
+      throw new Error(
+        `Chưa hỗ trợ file "${name}". Hỗ trợ: văn bản, Markdown, PDF, DOCX, XLSX/CSV, HTML, ảnh, video, âm thanh.`,
+      );
     }
     const stat = statSync(file);
     if (stat.size === 0) throw new Error(`File "${name}" rỗng.`);
-    if (kind === 'doc' && stat.size > MAX_DOC_BYTES) throw new Error(`Tài liệu "${name}" lớn quá 120 MB.`);
+    if (kind === 'doc' && stat.size > MAX_DOC_BYTES)
+      throw new Error(`Tài liệu "${name}" lớn quá 120 MB.`);
     const hash = await fileHash(file);
     const ident = relPath || name;
     const key = sha1(`${kind}|${ident.toLowerCase()}`);
@@ -294,10 +296,14 @@ export class Engine {
     } catch {
       throw new Error('Đường link không hợp lệ.');
     }
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Chỉ nhận link http / https.');
+    if (u.protocol !== 'http:' && u.protocol !== 'https:')
+      throw new Error('Chỉ nhận link http / https.');
     u.hash = '';
     const response = await this.ctx.fetch(u.href, {
-      headers: { 'user-agent': 'NSA-KnowledgeBase/1.0', accept: 'text/html,application/pdf,text/plain,*/*;q=0.5' },
+      headers: {
+        'user-agent': 'NSA-KnowledgeBase/1.0',
+        accept: 'text/html,application/pdf,text/plain,*/*;q=0.5',
+      },
     });
     if (!response.ok) throw new Error(`Không tải được trang (HTTP ${response.status}).`);
     const type = (response.headers.get('content-type') || '').toLowerCase();
@@ -310,7 +316,9 @@ export class Engine {
     else if (type.includes('markdown')) ext = 'md';
     else if (type.startsWith('text/plain')) ext = 'txt';
     else if (!type.includes('html') && type && !type.startsWith('text/')) {
-      throw new Error(`Loại nội dung "${type.split(';')[0]}" chưa hỗ trợ (cần trang web, PDF, DOCX, XLSX, CSV hoặc văn bản).`);
+      throw new Error(
+        `Loại nội dung "${type.split(';')[0]}" chưa hỗ trợ (cần trang web, PDF, DOCX, XLSX, CSV hoặc văn bản).`,
+      );
     }
     const label = `${u.hostname}${u.pathname === '/' ? '' : u.pathname}`.slice(0, 100);
     const tmp = join(this.dir, 'uploads', `${newId('u')}.part`);
@@ -410,7 +418,10 @@ export class Engine {
         src.hasVideo = info.hasVideo;
         src.hasAudio = info.hasAudio;
         if (src.kind === 'video' && info.hasVideo) {
-          const frames = Math.min(this.cat.settings.maxFrames, Math.max(3, Math.ceil(info.duration / 30)));
+          const frames = Math.min(
+            this.cat.settings.maxFrames,
+            Math.max(3, Math.ceil(info.duration / 30)),
+          );
           est.calls = frames;
           est.inputTokens = frames * 1500;
           est.outputTokens = frames * 250;
@@ -423,7 +434,8 @@ export class Engine {
         est.visionAvailable = st.available;
         est.label = st.label ?? '';
         if (st.available && st.inputUsdPer1M != null && st.outputUsdPer1M != null) {
-          est.usd = (est.inputTokens * st.inputUsdPer1M + est.outputTokens * st.outputUsdPer1M) / 1e6;
+          est.usd =
+            (est.inputTokens * st.inputUsdPer1M + est.outputTokens * st.outputUsdPer1M) / 1e6;
         }
         est.budget = st.budget;
       }
@@ -448,7 +460,8 @@ export class Engine {
   }
 
   async #visionStatus() {
-    if (!this.ctx.model) return { available: false, budget: { limitUsd: null, spentUsd: 0, level: 'ok' } };
+    if (!this.ctx.model)
+      return { available: false, budget: { limitUsd: null, spentUsd: 0, level: 'ok' } };
     try {
       return await this.ctx.model.status('vision');
     } catch {
@@ -490,7 +503,8 @@ export class Engine {
   }
   pauseAll() {
     this.cat.queuePaused = true;
-    for (const s of Object.values(this.cat.sources)) if (s.status === 'running') s.status = 'paused';
+    for (const s of Object.values(this.cat.sources))
+      if (s.status === 'running') s.status = 'paused';
     this.save();
   }
   resumeAll() {
@@ -504,7 +518,8 @@ export class Engine {
   kick() {
     if (this.loop || this.cat.queuePaused) return;
     // Nguồn đang "chạy" mà tiến trình đã chết (đóng app giữa chừng) → xếp lại hàng đợi.
-    for (const s of Object.values(this.cat.sources)) if (s.status === 'running') s.status = 'queued';
+    for (const s of Object.values(this.cat.sources))
+      if (s.status === 'running') s.status = 'queued';
     this.loop = this.#drain().finally(() => {
       this.loop = null;
     });
@@ -553,7 +568,9 @@ export class Engine {
   }
 
   #notifyDone(src) {
-    this.ctx.notify?.({ title: 'Knowledge Base', body: `Đã học xong "${src.name}" — vào duyệt.` }).catch?.(() => undefined);
+    this.ctx
+      .notify?.({ title: 'Knowledge Base', body: `Đã học xong "${src.name}" — vào duyệt.` })
+      .catch?.(() => undefined);
   }
 
   #check(src) {
@@ -586,7 +603,9 @@ export class Engine {
       this.#check(src);
       let chunks = makeChunks(blocks);
       if (chunks.length > MAX_CHUNKS) {
-        warnings.push(`Tài liệu có ${chunks.length} đoạn; chỉ nạp ${MAX_CHUNKS} đoạn đầu (chia nhỏ tài liệu để nạp phần còn lại).`);
+        warnings.push(
+          `Tài liệu có ${chunks.length} đoạn; chỉ nạp ${MAX_CHUNKS} đoạn đầu (chia nhỏ tài liệu để nạp phần còn lại).`,
+        );
         chunks = chunks.slice(0, MAX_CHUNKS);
       }
       if (chunks.length === 0) warnings.push('Không tìm thấy chữ nào để nhớ trong tài liệu này.');
@@ -608,12 +627,19 @@ export class Engine {
       const mime = IMAGE_MIME[src.ext];
       const bytes = readFileSync(this.original(src));
       if (bytes.length > MAX_IMAGE_BYTES) {
-        throw new Error(`Ảnh lớn ${(bytes.length / 1048576).toFixed(1)} MB (tối đa 10 MB). Hãy thu nhỏ ảnh rồi nạp lại.`);
+        throw new Error(
+          `Ảnh lớn ${(bytes.length / 1048576).toFixed(1)} MB (tối đa 10 MB). Hãy thu nhỏ ảnh rồi nạp lại.`,
+        );
       }
-      if (!this.ctx.model) throw new Error('Plugin chưa được cấp quyền dùng model (App Store → Quản lý → Quyền).');
+      if (!this.ctx.model)
+        throw new Error('Plugin chưa được cấp quyền dùng model (App Store → Quản lý → Quyền).');
       await this.#needBudget('vision');
       this.#progress(src, 0, 1, 'Model đang nhìn ảnh');
-      const text = await this.ctx.model.vision(imagePrompt(src.note), [{ mimeType: mime, base64: bytes.toString('base64') }], { system: VISION_SYSTEM });
+      const text = await this.ctx.model.vision(
+        imagePrompt(src.note),
+        [{ mimeType: mime, base64: bytes.toString('base64') }],
+        { system: VISION_SYSTEM },
+      );
       this.#check(src);
       d.vision = parseImageReply(text);
       this.saveDerived(src.id, d);
@@ -633,7 +659,9 @@ export class Engine {
       throw new Error(task === 'vision' ? NO_VISION : `Chưa có model cho việc "${task}".`);
     }
     if (st && st.budget.level === 'over') {
-      throw new Error(`Đã vượt hạn mức chi phí tháng (${st.budget.spentUsd.toFixed(2)} / ${st.budget.limitUsd} USD). Tăng hạn mức trong Nhà cung cấp rồi bấm Tiếp tục.`);
+      throw new Error(
+        `Đã vượt hạn mức chi phí tháng (${st.budget.spentUsd.toFixed(2)} / ${st.budget.limitUsd} USD). Tăng hạn mức trong Nhà cung cấp rồi bấm Tiếp tục.`,
+      );
     }
   }
 
@@ -674,7 +702,13 @@ export class Engine {
         await extractAudio(cli, file, wav);
         this.#check(src);
         this.#progress(src, 2, 4, 'Nhận dạng giọng nói (có thể mất vài phút)');
-        d.segments = await transcribe(cli, wav, model, join(dir, 'asr'), this.cat.settings.language);
+        d.segments = await transcribe(
+          cli,
+          wav,
+          model,
+          join(dir, 'asr'),
+          this.cat.settings.language,
+        );
         rmSync(wav, { force: true });
         if (d.segments.length === 0) src.warnings.push('Không nhận ra lời nói nào trong file.');
       }
@@ -685,7 +719,9 @@ export class Engine {
     // 2) Khung hình theo cảnh
     if (wantFrames && !d.frames) {
       this.#progress(src, 2, 4, 'Tách khung hình theo cảnh');
-      const frames = await extractFrames(cli, file, join(dir, 'frames'), d.duration, { maxFrames: this.cat.settings.maxFrames });
+      const frames = await extractFrames(cli, file, join(dir, 'frames'), d.duration, {
+        maxFrames: this.cat.settings.maxFrames,
+      });
       d.frames = frames.map((f) => ({ time: f.time, file: f.file }));
       save();
     }
@@ -716,7 +752,11 @@ export class Engine {
             const f = d.frames[i];
             const bytes = readFileSync(f.file);
             f.description = (
-              await this.ctx.model.vision(framePrompt(src.name, f.time, src.note), [{ mimeType: 'image/jpeg', base64: bytes.toString('base64') }], { system: VISION_SYSTEM })
+              await this.ctx.model.vision(
+                framePrompt(src.name, f.time, src.note),
+                [{ mimeType: 'image/jpeg', base64: bytes.toString('base64') }],
+                { system: VISION_SYSTEM },
+              )
             ).trim();
             done++;
             save();
@@ -730,10 +770,17 @@ export class Engine {
 
     // 4) Gộp phụ đề + mô tả khung hình thành các mục dẫn về đúng phút-giây
     const windows = buildWindows(d.duration, d.segments ?? [], d.frames ?? []);
-    d.windows = windows.map((w) => ({ loc: windowLoc(w), start: w.start, end: w.end, frames: w.frames }));
+    d.windows = windows.map((w) => ({
+      loc: windowLoc(w),
+      start: w.start,
+      end: w.end,
+      frames: w.frames,
+    }));
     save();
     if (windows.length === 0) {
-      throw new Error('Không rút được nội dung nào từ file này (không nhận ra lời nói và không có mô tả hình ảnh). Kiểm tra công cụ nhận dạng giọng nói và model nhìn ảnh.');
+      throw new Error(
+        'Không rút được nội dung nào từ file này (không nhận ra lời nói và không có mô tả hình ảnh). Kiểm tra công cụ nhận dạng giọng nói và model nhìn ảnh.',
+      );
     }
     await this.#publish(
       src,
@@ -752,10 +799,14 @@ export class Engine {
 
   /** Tình trạng công cụ ngoài + model — cache 30 giây. */
   async tools(force = false) {
-    if (!force && this.toolCache.value && Date.now() - this.toolCache.at < 30_000) return this.toolCache.value;
+    if (!force && this.toolCache.value && Date.now() - this.toolCache.at < 30_000)
+      return this.toolCache.value;
     const check = async (id, args, install) => {
-      if (!this.ctx.cli) return { ok: false, hint: 'Plugin chưa được cấp quyền chạy chương trình ngoài.' };
-      const r = await this.ctx.cli.run(id, args, { timeoutMs: 15_000 }).catch((e) => ({ error: String(e.message ?? e) }));
+      if (!this.ctx.cli)
+        return { ok: false, hint: 'Plugin chưa được cấp quyền chạy chương trình ngoài.' };
+      const r = await this.ctx.cli
+        .run(id, args, { timeoutMs: 15_000 })
+        .catch((e) => ({ error: String(e.message ?? e) }));
       if (r.error) return { ok: false, hint: r.error };
       return { ok: true, hint: install };
     };
@@ -769,7 +820,7 @@ export class Engine {
     };
     const value = {
       ffmpeg: await check('ffmpeg', ['-hide_banner', '-version'], ''),
-      whisper: await check('whisper-cli', ['-h'], ''),
+      whisper: await check('whisper', ['-h'], ''),
       whisperModel: basename(this.#whisperModelFile() || ''),
       vision: await model('vision'),
       embedding: await model('embedding'),
@@ -834,7 +885,9 @@ export class Engine {
     const sub = src.collection;
     const d = this.derived(src.id);
     const srcTag = `kb:src:${src.id}`;
-    const entries = (await mem.entries({ subBranch: sub, limit: 2000 })).filter((e) => e.tags.includes(srcTag));
+    const entries = (await mem.entries({ subBranch: sub, limit: 2000 })).filter((e) =>
+      e.tags.includes(srcTag),
+    );
     const byLoc = new Map(entries.map((e) => [tagVal(e, 'kb:loc:'), e]));
 
     if (!d.publish) {
@@ -886,7 +939,9 @@ export class Engine {
     if (stale.length) {
       const { undo } = await mem.remove(stale.map((e) => e.id));
       src.staleUndo = undo;
-      src.warnings.push(`Đã gỡ ${stale.length} mục không còn trong bản mới của file (hoàn tác được ở nút "Hoàn tác gỡ").`);
+      src.warnings.push(
+        `Đã gỡ ${stale.length} mục không còn trong bản mới của file (hoàn tác được ở nút "Hoàn tác gỡ").`,
+      );
     }
     if (flagged.length) {
       src.sensitive = flagged.slice(0, 50);
@@ -919,7 +974,9 @@ export class Engine {
     }
     const mem = this.ctx.memory;
     const srcTag = `kb:src:${id}`;
-    const entries = (await mem.entries({ subBranch: src.collection, limit: 2000 })).filter((e) => e.tags.includes(srcTag));
+    const entries = (await mem.entries({ subBranch: src.collection, limit: 2000 })).filter((e) =>
+      e.tags.includes(srcTag),
+    );
     for (const p of await mem.pending({ subBranch: src.collection })) {
       if (p.tags.includes(srcTag)) await mem.reject(p.id).catch(() => undefined);
     }
@@ -929,10 +986,17 @@ export class Engine {
     rmSync(trashDir, { recursive: true, force: true });
     mkdirSync(join(this.dir, 'trash'), { recursive: true });
     if (existsSync(this.sourceDir(id))) renameSync(this.sourceDir(id), trashDir);
-    this.cat.trash.unshift({ id, source: src, undo, at: this.now().toISOString(), entries: entries.length });
+    this.cat.trash.unshift({
+      id,
+      source: src,
+      undo,
+      at: this.now().toISOString(),
+      entries: entries.length,
+    });
     delete this.cat.sources[id];
     this.cat.order = this.cat.order.filter((x) => x !== id);
-    for (const old of this.cat.trash.splice(TRASH_KEEP)) rmSync(join(this.dir, 'trash', old.id), { recursive: true, force: true });
+    for (const old of this.cat.trash.splice(TRASH_KEEP))
+      rmSync(join(this.dir, 'trash', old.id), { recursive: true, force: true });
     this.save();
     return { removed: entries.length, canUndo: true };
   }
@@ -991,7 +1055,12 @@ export class Engine {
       sources,
       pendingTotal: pending.length,
       acceptedTotal: entries.length,
-      trash: this.cat.trash.map((t) => ({ id: t.id, name: t.source.name, entries: t.entries, at: t.at })),
+      trash: this.cat.trash.map((t) => ({
+        id: t.id,
+        name: t.source.name,
+        entries: t.entries,
+        at: t.at,
+      })),
     };
   }
 
@@ -1033,7 +1102,12 @@ export class Engine {
     if (src.kind === 'image') {
       const file = this.original(src);
       const mime = IMAGE_MIME[src.ext] ?? 'image/png';
-      return { kind: 'image', note: src.note, images: [{ label: src.name, dataUrl: dataUrl(file, mime) }], text: d.vision ? `${d.vision.describe}\n\n${d.vision.ocr}` : '' };
+      return {
+        kind: 'image',
+        note: src.note,
+        images: [{ label: src.name, dataUrl: dataUrl(file, mime) }],
+        text: d.vision ? `${d.vision.describe}\n\n${d.vision.ocr}` : '',
+      };
     }
     if (src.kind === 'video' || src.kind === 'audio') {
       const w = (d.windows ?? []).find((x) => x.loc === loc);
@@ -1046,7 +1120,9 @@ export class Engine {
         kind: 'media',
         range: loc,
         images: frames,
-        text: segs.map((s) => `[${clock(s.start)}] ${s.text}`).join('\n') || '(không có lời nói trong đoạn này)',
+        text:
+          segs.map((s) => `[${clock(s.start)}] ${s.text}`).join('\n') ||
+          '(không có lời nói trong đoạn này)',
       };
     }
     const chunks = d.chunks ?? [];
@@ -1055,7 +1131,8 @@ export class Engine {
     return {
       kind: 'doc',
       range: loc,
-      text: around.map((c) => `── ${c.loc} ──\n${c.text}`).join('\n\n') || '(không tìm thấy đoạn gốc)',
+      text:
+        around.map((c) => `── ${c.loc} ──\n${c.text}`).join('\n\n') || '(không tìm thấy đoạn gốc)',
     };
   }
 

@@ -39,7 +39,9 @@ export async function probe(cli, file) {
   const types = (json.streams ?? []).map((s) => s.codec_type);
   const duration = Number(json.format?.duration);
   if (!Number.isFinite(duration) || duration <= 0) {
-    throw new Error('Không xác định được thời lượng file (file hỏng hoặc không phải video / âm thanh).');
+    throw new Error(
+      'Không xác định được thời lượng file (file hỏng hoặc không phải video / âm thanh).',
+    );
   }
   return { duration, hasVideo: types.includes('video'), hasAudio: types.includes('audio') };
 }
@@ -137,7 +139,10 @@ export async function extractFrames(cli, input, outDir, duration, options = {}) 
   }
   let kept = spaced;
   if (kept.length > maxFrames) {
-    kept = Array.from({ length: maxFrames }, (_, i) => spaced[Math.floor((i * spaced.length) / maxFrames)]);
+    kept = Array.from(
+      { length: maxFrames },
+      (_, i) => spaced[Math.floor((i * spaced.length) / maxFrames)],
+    );
   }
   // Đặt lại tên theo thứ tự thời gian; xoá khung thừa.
   const keepSet = new Set(kept.map((f) => f.file));
@@ -163,7 +168,9 @@ export function parseWhisperJson(text) {
     .map((s) => ({
       start: Number(s.offsets?.from ?? 0) / 1000,
       end: Number(s.offsets?.to ?? 0) / 1000,
-      text: String(s.text ?? '').replace(/\s+/g, ' ').trim(),
+      text: String(s.text ?? '')
+        .replace(/\s+/g, ' ')
+        .trim(),
     }))
     .filter((s) => s.text && !/^\[.*\]$|^\(.*\)$/.test(s.text));
 }
@@ -175,12 +182,13 @@ export async function transcribe(cli, wavFile, modelFile, workDir, language = 'a
   rmSync(`${base}.json`, { force: true });
   await run(
     cli,
-    'whisper-cli',
+    'whisper',
     ['-m', modelFile, '-f', wavFile, '-l', language, '-oj', '-of', base, '-np'],
     900_000,
     'whisper-cli (nhận dạng giọng nói)',
   );
-  if (!existsSync(`${base}.json`)) throw new Error('whisper-cli chạy xong nhưng không tạo kết quả.');
+  if (!existsSync(`${base}.json`))
+    throw new Error('whisper-cli chạy xong nhưng không tạo kết quả.');
   return parseWhisperJson(readFileSync(`${base}.json`, 'utf8'));
 }
 
@@ -230,7 +238,10 @@ export function buildWindows(duration, segments, frames, options = {}) {
         start: gStart,
         end: gEnd,
         speech: g.map((s) => s.text).join(' '),
-        visuals: i === 0 ? fr.filter((f) => f.description).map((f) => ({ time: f.time, text: f.description })) : [],
+        visuals:
+          i === 0
+            ? fr.filter((f) => f.description).map((f) => ({ time: f.time, text: f.description }))
+            : [],
         frames: i === 0 ? fr.map((f) => f.file) : [],
       });
     });

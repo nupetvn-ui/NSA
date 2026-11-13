@@ -44,7 +44,7 @@ export function htmlToBlocks(html) {
   // Đánh dấu heading bằng ký tự riêng để tách mục.
   s = s.replace(
     /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi,
-    (_, level, inner) => `\n\n\u0001${level}\u0002${inner.replace(/<[^>]+>/g, ' ')}\u0003\n\n`,
+    (_, level, inner) => `\n\n\uE001${level}\uE002${inner.replace(/<[^>]+>/g, ' ')}\uE003\n\n`,
   );
   s = s
     .replace(/<(br|hr)\b[^>]*>/gi, '\n')
@@ -56,7 +56,7 @@ export function htmlToBlocks(html) {
     .replace(/<\/t[dh]>/gi, ' | ')
     .replace(/<[^>]+>/g, ' ');
   s = decodeEntities(s)
-    .replace(/[ \t ]+/g, ' ')
+    .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/ *\n */g, '\n')
     .replace(/\n{3,}/g, '\n\n');
 
@@ -71,7 +71,7 @@ export function htmlToBlocks(html) {
     blocks.push({ text, loc, group: loc });
   };
   for (const part of s.split(/\n{2,}/)) {
-    const m = /^\u0001([1-6])\u0002([\s\S]*?)\u0003$/.exec(part.trim());
+    const m = /^\uE001([1-6])\uE002([\s\S]*?)\uE003$/.exec(part.trim());
     if (m) {
       flush();
       const level = Number(m[1]);

@@ -167,9 +167,9 @@ function xmlText(xml) {
     xml
       .replace(/<w:tab\b[^>]*\/>/g, '\t')
       .replace(/<w:br\b[^>]*\/>/g, '\n')
-      .replace(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g, '$1\u0000')
+      .replace(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g, '$1\uE000')
       .replace(/<[^>]+>/g, '')
-      .replace(/\u0000/g, ''),
+      .replace(/\uE000/g, ''),
   );
 }
 

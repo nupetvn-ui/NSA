@@ -6,7 +6,9 @@ export const MIN_CHARS = 200;
 
 /** Cắt một khối văn bản dài thành các đoạn ≤ max ký tự, ưu tiên ranh giới đoạn / câu. */
 export function splitText(text, max = MAX_CHARS) {
-  const clean = String(text ?? '').replace(/\r\n?/g, '\n').trim();
+  const clean = String(text ?? '')
+    .replace(/\r\n?/g, '\n')
+    .trim();
   if (!clean) return [];
   if (clean.length <= max) return [clean];
   const paragraphs = clean.split(/\n{2,}/);
@@ -61,11 +63,19 @@ export function makeChunks(blocks, max = MAX_CHARS) {
       flush();
       const parts = splitText(text, max);
       parts.forEach((part, i) =>
-        chunks.push({ loc: parts.length > 1 ? `${block.loc} (phần ${i + 1}/${parts.length})` : block.loc, text: part }),
+        chunks.push({
+          loc: parts.length > 1 ? `${block.loc} (phần ${i + 1}/${parts.length})` : block.loc,
+          text: part,
+        }),
       );
       continue;
     }
-    if (pending && pending.group === block.group && block.group && (pending.text + '\n\n' + text).length <= max) {
+    if (
+      pending &&
+      pending.group === block.group &&
+      block.group &&
+      (pending.text + '\n\n' + text).length <= max
+    ) {
       pending.text += `\n\n${text}`;
       pending.loc = block.groupLoc ?? pending.loc;
       continue;

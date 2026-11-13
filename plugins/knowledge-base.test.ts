@@ -9,7 +9,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { zipSync, strToU8 } from 'fflate';
+import { makeDocx, makePdf, makeXlsx } from './knowledge-base-fixtures';
 import { afterEach, describe, expect, it } from 'vitest';
 import { localIdentity, memoryAuditLog, personalPolicy } from '@nsa/core';
 import { MemoryService } from '@nsa/memory';
@@ -36,76 +36,6 @@ function tempDir(prefix: string): string {
 }
 
 // ---------------------------------------------------------------- tài liệu mẫu
-
-/** PDF tối thiểu, mỗi chuỗi là một trang (chỉ ASCII để khỏi phụ thuộc font). */
-export function makePdf(pages: string[]): Buffer {
-  const objects: string[] = [];
-  const kids = pages.map((_, i) => `${4 + i * 2} 0 R`).join(' ');
-  objects.push('<< /Type /Catalog /Pages 2 0 R >>');
-  objects.push(`<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`);
-  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  pages.forEach((text, i) => {
-    const stream = `BT /F1 14 Tf 40 700 Td (${text.replace(/[()\\]/g, '')}) Tj ET`;
-    objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${5 + i * 2} 0 R >>`,
-    );
-    objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
-  });
-  let out = '%PDF-1.4\n';
-  const offsets: number[] = [];
-  objects.forEach((body, i) => {
-    offsets.push(out.length);
-    out += `${i + 1} 0 obj\n${body}\nendobj\n`;
-  });
-  const xref = out.length;
-  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  for (const o of offsets) out += `${String(o).padStart(10, '0')} 00000 n \n`;
-  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return Buffer.from(out, 'latin1');
-}
-
-function makeDocx(paragraphs: { text: string; heading?: number }[]): Buffer {
-  const body = paragraphs
-    .map((p) =>
-      p.heading
-        ? `<w:p><w:pPr><w:pStyle w:val="Heading${p.heading}"/></w:pPr><w:r><w:t>${p.text}</w:t></w:r></w:p>`
-        : `<w:p><w:r><w:t>${p.text}</w:t></w:r></w:p>`,
-    )
-    .join('');
-  const xml = `<?xml version="1.0"?><w:document xmlns:w="x"><w:body>${body}</w:body></w:document>`;
-  return Buffer.from(zipSync({ 'word/document.xml': strToU8(xml) }));
-}
-
-function makeXlsx(rows: string[][]): Buffer {
-  const strings: string[] = [];
-  const idx = (s: string) => {
-    const i = strings.indexOf(s);
-    if (i >= 0) return i;
-    strings.push(s);
-    return strings.length - 1;
-  };
-  const colName = (i: number) => String.fromCharCode(65 + i);
-  const sheet = rows
-    .map(
-      (r, ri) =>
-        `<row r="${ri + 1}">${r.map((c, ci) => `<c r="${colName(ci)}${ri + 1}" t="s"><v>${idx(c)}</v></c>`).join('')}</row>`,
-    )
-    .join('');
-  return Buffer.from(
-    zipSync({
-      'xl/workbook.xml': strToU8(
-        '<workbook><sheets><sheet name="Giá" sheetId="1" r:id="rId1"/></sheets></workbook>',
-      ),
-      'xl/_rels/workbook.xml.rels': strToU8(
-        '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
-      ),
-      'xl/sharedStrings.xml': strToU8(
-        `<sst>${strings.map((s) => `<si><t>${s}</t></si>`).join('')}</sst>`,
-      ),
-      'xl/worksheets/sheet1.xml': strToU8(`<worksheet><sheetData>${sheet}</sheetData></worksheet>`),
-    }),
-  );
-}
 
 describe('tách tài liệu (cục bộ)', () => {
   it('nhận đuôi file và loại nguồn', () => {
@@ -261,7 +191,10 @@ async function world(
   options: {
     vision?: (prompt: string) => string;
     visionAvailable?: boolean;
-    cli?: (id: string, args: string[]) => Promise<{ code: number | null; stdout: string; stderr: string; error?: string }>;
+    cli?: (
+      id: string,
+      args: string[],
+    ) => Promise<{ code: number | null; stdout: string; stderr: string; error?: string }>;
     memRoot?: string;
     dataDir?: string;
     level?: 'ok' | 'warn' | 'over';
@@ -333,7 +266,8 @@ async function world(
     cli: {
       run: async (id: string, args: string[]) => {
         cliCalls.push({ id, args });
-        if (!options.cli) return { code: null, stdout: '', stderr: '', error: `Máy chưa có "${id}".` };
+        if (!options.cli)
+          return { code: null, stdout: '', stderr: '', error: `Máy chưa có "${id}".` };
         return options.cli(id, args);
       },
     },
@@ -350,12 +284,20 @@ function writeFile(name: string, data: Buffer | string): string {
 describe('Engine — tài liệu', () => {
   it('nạp PDF → đề xuất vào hộp duyệt kèm nguồn (trang); duyệt xong tìm lại được', async () => {
     const w = await world();
-    const file = writeFile('bang-gia.pdf', makePdf(['Ca phe sua 25000 dong', 'Giao hang mien phi tren 500000']));
+    const file = writeFile(
+      'bang-gia.pdf',
+      makePdf(['Ca phe sua 25000 dong', 'Giao hang mien phi tren 500000']),
+    );
     const r = await w.engine.addFile({ file, name: 'bang-gia.pdf', collection: 'Bảng giá' });
     expect(r.status).toBe('created');
     await w.engine.idle();
     const ov = await w.engine.overview();
-    expect(ov.sources[0]).toMatchObject({ kind: 'doc', status: 'ingested', pending: 2, accepted: 0 });
+    expect(ov.sources[0]).toMatchObject({
+      kind: 'doc',
+      status: 'ingested',
+      pending: 2,
+      accepted: 0,
+    });
     expect(ov.sources[0].collection).toBe('bang-gia');
     // Mặc định mọi thứ chờ người duyệt (tự nhận tắt) — không có gì tự vào kho.
     expect(w.mem.listEntries(ROOT_BRANCH)).toHaveLength(0);
@@ -379,10 +321,14 @@ describe('Engine — tài liệu', () => {
     expect(w.mem.listEntries(ROOT_BRANCH)).toHaveLength(2);
 
     const same = writeFile('gia.md', '# Giá\nCà phê 25000\n# Ship\nMiễn phí trên 500k\n');
-    expect((await w.engine.addFile({ file: same, name: 'gia.md', relPath: 'gia.md' })).status).toBe('unchanged');
+    expect((await w.engine.addFile({ file: same, name: 'gia.md', relPath: 'gia.md' })).status).toBe(
+      'unchanged',
+    );
 
     const v2 = writeFile('gia.md', '# Giá\nCà phê 30000\n');
-    expect((await w.engine.addFile({ file: v2, name: 'gia.md', relPath: 'gia.md' })).status).toBe('updated');
+    expect((await w.engine.addFile({ file: v2, name: 'gia.md', relPath: 'gia.md' })).status).toBe(
+      'updated',
+    );
     await w.engine.idle();
     expect(Object.keys(w.engine.cat.sources)).toHaveLength(1);
     const pending = await w.engine.pendingList();
@@ -393,7 +339,9 @@ describe('Engine — tài liệu', () => {
     expect(entries).toHaveLength(1); // mục "Ship" đã gỡ, "Giá" được sửa tại chỗ
     expect(entries[0].body).toContain('30000');
     // Hoàn tác việc gỡ
-    expect((await w.engine.undoStale(Object.keys(w.engine.cat.sources)[0] as string)).restored).toBe(1);
+    expect(
+      (await w.engine.undoStale(Object.keys(w.engine.cat.sources)[0] as string)).restored,
+    ).toBe(1);
     expect(w.mem.listEntries(ROOT_BRANCH)).toHaveLength(2);
   });
 
@@ -420,7 +368,10 @@ describe('Engine — tài liệu', () => {
 
   it('xoá nguồn gỡ luôn mục nhớ của nó và hoàn tác được', async () => {
     const w = await world();
-    const file = writeFile('a.txt', 'Quy định đổi trả trong 7 ngày.\n\nHoàn tiền trong 3 ngày làm việc.\n');
+    const file = writeFile(
+      'a.txt',
+      'Quy định đổi trả trong 7 ngày.\n\nHoàn tiền trong 3 ngày làm việc.\n',
+    );
     const { id } = await w.engine.addFile({ file, name: 'a.txt' });
     await w.engine.idle();
     const pending = await w.engine.pendingList();
@@ -474,7 +425,9 @@ describe('Engine — ảnh (model nhìn ảnh GIẢ)', () => {
     const pending = await w.engine.pendingList();
     expect(pending[0].body).toContain('Lời dặn của người dùng: đây là bảng giá tháng 11');
     expect(pending[0].body).toContain('Chữ trong ảnh:\nCà phê 25k');
-    expect(w.engine.context(r.id, 'ảnh').images[0].dataUrl.startsWith('data:image/png;base64,')).toBe(true);
+    expect(
+      w.engine.context(r.id, 'ảnh').images[0].dataUrl.startsWith('data:image/png;base64,'),
+    ).toBe(true);
   });
 
   it('ước tính vượt ngưỡng (hoặc chưa biết giá) → chờ người dùng duyệt chạy, chưa gọi model', async () => {
@@ -514,7 +467,10 @@ describe('Engine — ảnh (model nhìn ảnh GIẢ)', () => {
     w.engine.resumeAll();
     await w.engine.idle();
     expect(w.engine.src(a.id).status).toBe('ingested');
-    const b = await w.engine.addFile({ file: writeFile('b.png', png.subarray(0, png.length)), name: 'b.png' });
+    const b = await w.engine.addFile({
+      file: writeFile('b.png', png.subarray(0, png.length)),
+      name: 'b.png',
+    });
     w.engine.cancel(b.id);
     await w.engine.idle();
     expect(w.engine.src(b.id).status).toBe('cancelled');
@@ -562,7 +518,7 @@ function hasFfmpeg(): boolean {
 /** Chạy ffmpeg / ffprobe thật như lõi sẽ chạy hộ; whisper-cli là bản giả ghi JSON mẫu. */
 function realCli(whisperSegments: { from: number; to: number; text: string }[]) {
   return async (id: string, args: string[]) => {
-    if (id === 'whisper-cli') {
+    if (id === 'whisper') {
       if (args[0] === '-h') return { code: 0, stdout: 'usage', stderr: '' };
       const base = args[args.indexOf('-of') + 1] as string;
       writeFileSync(
@@ -589,13 +545,38 @@ describe.runIf(hasFfmpeg())('Engine — video (ffmpeg thật, whisper và model 
     execFileSync(
       'ffmpeg',
       [
-        '-hide_banner', '-loglevel', 'error', '-y',
-        '-f', 'lavfi', '-i', 'color=c=black:s=320x240:d=4,format=yuv420p',
-        '-f', 'lavfi', '-i', 'color=c=white:s=320x240:d=4,format=yuv420p',
-        '-f', 'lavfi', '-i', 'color=c=gray:s=320x240:d=4,format=yuv420p',
-        '-f', 'lavfi', '-i', 'sine=frequency=440:duration=12',
-        '-filter_complex', '[0:v][1:v][2:v]concat=n=3:v=1:a=0[v]',
-        '-map', '[v]', '-map', '3:a', '-c:v', 'libx264', '-c:a', 'aac', '-shortest', file,
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-y',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=black:s=320x240:d=4,format=yuv420p',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=white:s=320x240:d=4,format=yuv420p',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=gray:s=320x240:d=4,format=yuv420p',
+        '-f',
+        'lavfi',
+        '-i',
+        'sine=frequency=440:duration=12',
+        '-filter_complex',
+        '[0:v][1:v][2:v]concat=n=3:v=1:a=0[v]',
+        '-map',
+        '[v]',
+        '-map',
+        '3:a',
+        '-c:v',
+        'libx264',
+        '-c:a',
+        'aac',
+        '-shortest',
+        file,
       ],
       { stdio: 'ignore' },
     );
@@ -610,12 +591,17 @@ describe.runIf(hasFfmpeg())('Engine — video (ffmpeg thật, whisper và model 
         { from: 5000, to: 7000, text: 'Sau đó mở màn hình báo cáo' },
         { from: 9000, to: 11000, text: 'Cuối cùng xuất file Excel' },
       ]),
-      vision: (prompt) => `Khung ${prompt.match(/tại (\S+)/)?.[1] ?? '?'}: màn hình phần mềm bán hàng`,
+      vision: (prompt) =>
+        `Khung ${prompt.match(/tại (\S+)/)?.[1] ?? '?'}: màn hình phần mềm bán hàng`,
     });
     // model whisper giả
     mkdirSync(join(w.dataDir, 'models'), { recursive: true });
     writeFileSync(join(w.dataDir, 'models', 'ggml-tiny.bin'), 'x');
-    const r = await w.engine.addFile({ file: makeVideo(), name: 'dao-tao.mp4', note: 'video hướng dẫn phần mềm' });
+    const r = await w.engine.addFile({
+      file: makeVideo(),
+      name: 'dao-tao.mp4',
+      note: 'video hướng dẫn phần mềm',
+    });
     expect(w.engine.src(r.id).duration).toBeGreaterThan(11);
     await w.engine.idle();
     const src = w.engine.src(r.id);
@@ -656,7 +642,16 @@ describe.runIf(hasFfmpeg())('Engine — video (ffmpeg thật, whisper và model 
     expect(done).toBeGreaterThanOrEqual(2);
     const before = calls;
 
-    const b = await world({ memRoot, dataDir, priceIn: 0, cli: realCli([]), vision: () => { calls++; return 'màn hình'; } });
+    const b = await world({
+      memRoot,
+      dataDir,
+      priceIn: 0,
+      cli: realCli([]),
+      vision: () => {
+        calls++;
+        return 'màn hình';
+      },
+    });
     b.engine.resume(r.id);
     await b.engine.idle();
     expect(b.engine.src(r.id).status, b.engine.src(r.id).error).toBe('ingested');
@@ -665,7 +660,14 @@ describe.runIf(hasFfmpeg())('Engine — video (ffmpeg thật, whisper và model 
   }, 60_000);
 
   it('thiếu whisper và thiếu model nhìn ảnh → báo lỗi rõ, không nạp nửa vời', async () => {
-    const w = await world({ priceIn: 0, cli: async (id, args) => (id === 'whisper-cli' ? { code: null, stdout: '', stderr: '', error: 'Máy chưa có whisper-cli' } : realCli([])(id, args)), visionAvailable: false });
+    const w = await world({
+      priceIn: 0,
+      cli: async (id, args) =>
+        id === 'whisper'
+          ? { code: null, stdout: '', stderr: '', error: 'Máy chưa có whisper-cli' }
+          : realCli([])(id, args),
+      visionAvailable: false,
+    });
     const r = await w.engine.addFile({ file: makeVideo(), name: 'v.mp4' });
     await w.engine.idle();
     const s = w.engine.src(r.id);
@@ -676,8 +678,8 @@ describe.runIf(hasFfmpeg())('Engine — video (ffmpeg thật, whisper và model 
 
 describe('tiện ích', () => {
   it('đọc file test dùng chung', () => {
-    expect(readFileSync(join(import.meta.dirname, 'knowledge-base', 'nsa-plugin.json'), 'utf8')).toContain(
-      '"knowledge-base"',
-    );
+    expect(
+      readFileSync(join(import.meta.dirname, 'knowledge-base', 'nsa-plugin.json'), 'utf8'),
+    ).toContain('"knowledge-base"');
   });
 });

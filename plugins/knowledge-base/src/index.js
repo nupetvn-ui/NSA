@@ -44,8 +44,13 @@ async function kbSearch(args, ctx) {
   if (hits.length === 0) {
     return `Không tìm thấy gì trong Knowledge Base cho "${query}" (đã tìm theo ${mode === 'semantic' ? 'nghĩa' : 'từ khoá'}). Có thể người dùng chưa dạy điều này, hoặc mục còn nằm trong hộp duyệt chưa nhận.`;
   }
-  const info = await describeEntries(ctx, hits.map((h) => h.id));
-  const lines = [`Knowledge Base — ${hits.length} kết quả (tìm theo ${mode === 'semantic' ? 'nghĩa' : 'từ khoá'}):`];
+  const info = await describeEntries(
+    ctx,
+    hits.map((h) => h.id),
+  );
+  const lines = [
+    `Knowledge Base — ${hits.length} kết quả (tìm theo ${mode === 'semantic' ? 'nghĩa' : 'từ khoá'}):`,
+  ];
   hits.forEach((h, i) => {
     const d = info.get(h.id);
     const body = (d?.entry.body ?? h.snippet).replace(/\n\n— Nguồn:.*$/s, '').trim();
@@ -85,7 +90,10 @@ async function kbOpen(args, ctx) {
     }
     if (src.kind === 'image') lines.push('', `File ảnh gốc: ${eng.original(src)}`);
     if (src.kind === 'video' || src.kind === 'audio') {
-      lines.push('', `File gốc: ${eng.original(src)} (mốc ${info.loc}, tổng ${clock(src.duration ?? 0)})`);
+      lines.push(
+        '',
+        `File gốc: ${eng.original(src)} (mốc ${info.loc}, tổng ${clock(src.duration ?? 0)})`,
+      );
     }
   }
   return lines.join('\n');
@@ -175,7 +183,10 @@ export default {
     rejectMany: async (p, ctx) => {
       let n = 0;
       for (const id of p.ids ?? []) {
-        await ctx.memory.reject(String(id)).then(() => n++, () => undefined);
+        await ctx.memory.reject(String(id)).then(
+          () => n++,
+          () => undefined,
+        );
       }
       return { rejected: n };
     },
