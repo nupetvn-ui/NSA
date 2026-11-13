@@ -8,6 +8,7 @@ import type { AgentAdapter, AgentEvent, Capabilities } from '@nsa/adapter-sdk';
 import {
   createApiAdapter,
   createApiClient,
+  createStreamRedactor,
   type ApiSessionStore,
   type ChatMessage,
   type FetchLike,
@@ -510,6 +511,7 @@ export class ProviderHub {
       launch: () => launch()?.env,
       toolsStable,
       redact: (t) => this.redact(t),
+      secrets: () => this.secretValues(),
       providerName: provider.name,
     });
     this.#adapterCache.set(id, adapter);
@@ -683,13 +685,13 @@ export function withProviderKey(
     launch: () => Record<string, string> | undefined;
     toolsStable: boolean;
     redact: (text: string) => string;
+    /** Các key cần che (cho bộ che theo luồng). */
+    secrets: () => string[];
     providerName: string;
   },
 ): AgentAdapter {
   const clean = (event: AgentEvent): AgentEvent => {
     switch (event.type) {
-      case 'text':
-        return { ...event, text: options.redact(event.text) };
       case 'error':
       case 'notice':
         return { ...event, message: options.redact(event.message) };
@@ -737,9 +739,26 @@ export function withProviderKey(
       }
       // Model chưa gọi tool ổn định: luôn chạy chỉ đọc, kể cả khi cuộc trò chuyện cho sửa file.
       const permission = options.toolsStable ? runOptions.permission : 'read-only';
-      return base.run({ ...runOptions, permission, env: { ...runOptions.env, ...env } }, (e) =>
-        onEvent(clean(e)),
-      );
+      // Văn bản stream từng mẩu: che theo luồng (key có thể bị cắt qua nhiều mẩu).
+      const streams = new Map<string, ReturnType<typeof createStreamRedactor>>();
+      const secrets = options.secrets();
+      return base.run({ ...runOptions, permission, env: { ...runOptions.env, ...env } }, (e) => {
+        if (e.type === 'text') {
+          let r = streams.get(e.id);
+          if (!r) streams.set(e.id, (r = createStreamRedactor(secrets)));
+          const text = r.push(e.text);
+          if (text) onEvent({ ...e, text });
+          return;
+        }
+        if (e.type === 'done') {
+          for (const [id, r] of streams) {
+            const text = r.flush();
+            if (text) onEvent({ type: 'text', id, text });
+          }
+          streams.clear();
+        }
+        onEvent(clean(e));
+      });
     },
   };
 }

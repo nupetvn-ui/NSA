@@ -1,5 +1,6 @@
 import { BrowserWindow, app, dialog, ipcMain } from 'electron';
 import type { ChatService, CliChange, IpcArgs, IpcChannel, IpcResult, NsaCore } from '@nsa/core';
+import type { ProvidersSetup } from './providers';
 import { getUpdateStatus, installUpdate } from './updater';
 
 type Handlers = {
@@ -7,8 +8,14 @@ type Handlers = {
 };
 
 /** Đăng ký trình xử lý cho mọi kênh trong hợp đồng IPC — thiếu kênh nào TypeScript báo lỗi. */
-export function registerIpc(core: NsaCore, chat: ChatService, cliChanges: () => CliChange[]): void {
+export function registerIpc(
+  core: NsaCore,
+  chat: ChatService,
+  cliChanges: () => CliChange[],
+  providers: ProvidersSetup,
+): void {
   const handlers: Handlers = {
+    ...providers.handlers,
     'core:ping': (message) => core.ping(message),
     'app:info': () => ({ name: app.getName(), version: app.getVersion() }),
     'app:updateStatus': () => getUpdateStatus(),

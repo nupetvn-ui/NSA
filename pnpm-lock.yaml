@@ -51,6 +51,9 @@ importers:
       '@nsa/adapter-antigravity':
         specifier: workspace:*
         version: link:../../packages/adapters/antigravity
+      '@nsa/adapter-api':
+        specifier: workspace:*
+        version: link:../../packages/adapters/api
       '@nsa/adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapters/claude
@@ -72,6 +75,9 @@ importers:
       '@nsa/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@nsa/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
@@ -217,6 +223,9 @@ importers:
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../adapter-sdk
+      '@nsa/providers':
+        specifier: workspace:*
+        version: link:../providers
     devDependencies:
       '@nsa/adapter-api':
         specifier: workspace:*

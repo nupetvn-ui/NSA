@@ -1,6 +1,6 @@
 import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
-import { BrowserWindow, app, nativeTheme, shell } from 'electron';
+import { BrowserWindow, app, nativeTheme, safeStorage, shell } from 'electron';
 import { ToolGateServer } from '@nsa/adapter-sdk';
 import {
   ChatService,
@@ -16,6 +16,7 @@ import {
 import { createAgents } from './agents';
 import { createFileAuditLog } from './audit';
 import { createFingerprintStore } from './cli-changes';
+import { setupProviders } from './providers';
 import { registerIpc } from './ipc';
 import { createFileStore } from './store';
 import { setupAutoUpdate } from './updater';
@@ -99,8 +100,20 @@ if (!app.requestSingleInstanceLock()) {
     app.setAppUserModelId('vn.nupet.nsa');
     const userData = app.getPath('userData');
     const identity = localIdentity(userInfo().username);
-    const audit = createFileAuditLog(join(userData, 'audit'));
     const adapters = createAgents(userData);
+
+    // Nhà cung cấp model qua API key (ADR-0008): key cất bằng safeStorage (Windows: DPAPI).
+    let chat: ChatService | undefined;
+    const providers = setupProviders({
+      userData,
+      cipher: safeStorage,
+      identity,
+      audit: createFileAuditLog(join(userData, 'audit')),
+      basePolicy: personalPolicy({ homeDir: homedir() }),
+      onAgentsChanged: (apiAgents) => chat?.setAdapters([...adapters, ...apiAgents]),
+      broadcast,
+    });
+    const audit = providers.audit;
 
     // Cổng chính sách từng lệnh (127.0.0.1, cổng ngẫu nhiên). Mở không được thì vẫn chạy,
     // chỉ là không chặn được từng lệnh bên trong lượt.
@@ -113,14 +126,18 @@ if (!app.requestSingleInstanceLock()) {
     app.on('will-quit', () => void gate?.close());
 
     // Bản Cá nhân: cắm bộ mặc định vào ba ổ cắm của lõi (danh tính, chính sách, nhật ký).
-    const chat = new ChatService({
-      adapters,
+    chat = new ChatService({
+      adapters: [...adapters, ...providers.agents()],
       identity,
-      policy: personalPolicy({ homeDir: homedir() }),
+      policy: providers.policy,
       audit,
       ...(gate ? { gate } : {}),
-      store: createFileStore(join(userData, 'conversations.json')),
-      onEvent: (event) => broadcast('chat:event', event),
+      store: providers.wrapStore(createFileStore(join(userData, 'conversations.json'))),
+      fallbackOrder: (agentId) => providers.hub.fallbackAgents(agentId),
+      onEvent: (event) => {
+        providers.onChatEvent(event);
+        broadcast('chat:event', event);
+      },
     });
 
     // Tự phát hiện thay đổi: so phiên bản + --help của từng CLI với lần khởi động trước.
@@ -142,7 +159,7 @@ if (!app.requestSingleInstanceLock()) {
       })
       .catch((err: unknown) => console.error('[cli-watch]', err));
 
-    registerIpc(core, chat, () => cliChanges);
+    registerIpc(core, chat, () => cliChanges, providers);
     createWindow();
     setupAutoUpdate((status) => broadcast('app:update', status));
 

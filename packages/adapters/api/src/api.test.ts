@@ -211,3 +211,17 @@ describe('adapter api — chung', () => {
     ]);
   });
 });
+
+describe('che key theo luồng', () => {
+  it('key bị cắt qua nhiều mẩu vẫn bị che; văn bản khác giữ nguyên', async () => {
+    const { createStreamRedactor } = await import('./index.js');
+    const text = `trước ${KEY} sau, sk-te giữa`;
+    for (const size of [1, 2, 3, 7]) {
+      const r = createStreamRedactor([KEY]);
+      let out = '';
+      for (let i = 0; i < text.length; i += size) out += r.push(text.slice(i, i + size));
+      out += r.flush();
+      expect(out).toBe('trước ••••CRET sau, sk-te giữa');
+    }
+  });
+});

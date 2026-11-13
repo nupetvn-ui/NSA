@@ -15,3 +15,4 @@ export type {
 } from '@nsa/adapter-sdk';
 export * from './model-tasks.js';
 export * from './model-policy.js';
+export * from './providers-ipc.js';

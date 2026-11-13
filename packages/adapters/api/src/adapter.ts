@@ -76,6 +76,44 @@ export function redactKey(text: string, key: string | undefined): string {
   return out;
 }
 
+/**
+ * Che key trong văn bản đến từng mẩu (stream): một key có thể bị cắt qua nhiều mẩu, nên giữ lại
+ * phần đuôi có thể là đầu của key cho tới khi chắc chắn. `flush` khi mẩu cuối đã đến.
+ */
+export function createStreamRedactor(secrets: readonly string[]): {
+  push(delta: string): string;
+  flush(): string;
+} {
+  const forms = secrets
+    .filter((s) => s.length >= 6)
+    .flatMap((s) => [s, encodeURIComponent(s), Buffer.from(s).toString('base64')]);
+  let pending = '';
+  const redact = (text: string): string => secrets.reduce((out, s) => redactKey(out, s), text);
+  return {
+    push(delta) {
+      pending = redact(pending + delta);
+      // Đuôi dài nhất của `pending` trùng với phần đầu của một dạng key → giữ lại.
+      let keep = 0;
+      for (const form of forms) {
+        for (let n = Math.min(form.length - 1, pending.length); n > keep; n--) {
+          if (pending.endsWith(form.slice(0, n))) {
+            keep = n;
+            break;
+          }
+        }
+      }
+      const out = pending.slice(0, pending.length - keep);
+      pending = pending.slice(pending.length - keep);
+      return out;
+    },
+    flush() {
+      const out = redact(pending);
+      pending = '';
+      return out;
+    },
+  };
+}
+
 function trimHistory(messages: ChatMessage[]): ChatMessage[] {
   let total = 0;
   let start = messages.length;
@@ -191,19 +229,28 @@ export function createApiAdapter(options: ApiAdapterOptions): AgentAdapter {
         try {
           for (let round = 0; round <= maxRounds; round++) {
             const textId = `${sessionId}-${conversation.length}`;
-            const result = await client.chat({
-              model: options.model,
-              messages: [...system, ...conversation],
-              ...(tools?.length && round < maxRounds ? { tools } : {}),
-              ...(options.maxTokens ? { maxTokens: options.maxTokens } : {}),
-              signal: controller.signal,
-              onText: (delta) => emit({ type: 'text', id: textId, text: delta }),
-            });
+            const redactor = createStreamRedactor(key ? [key] : []);
+            const emitText = (text: string): void => {
+              if (text) emit({ type: 'text', id: textId, text });
+            };
+            let result;
+            try {
+              result = await client.chat({
+                model: options.model,
+                messages: [...system, ...conversation],
+                ...(tools?.length && round < maxRounds ? { tools } : {}),
+                ...(options.maxTokens ? { maxTokens: options.maxTokens } : {}),
+                signal: controller.signal,
+                onText: (delta) => emitText(redactor.push(delta)),
+              });
+            } finally {
+              emitText(redactor.flush());
+            }
             usage.inputTokens += result.usage.inputTokens;
             usage.outputTokens += result.usage.outputTokens;
             conversation.push({
               role: 'assistant',
-              content: result.text,
+              content: redactKey(result.text, key),
               ...(result.toolCalls.length ? { toolCalls: result.toolCalls } : {}),
             });
             if (!result.toolCalls.length || !options.tools || !tools?.length) break;
@@ -230,7 +277,7 @@ export function createApiAdapter(options: ApiAdapterOptions): AgentAdapter {
                 role: 'tool',
                 toolCallId: call.id,
                 name: call.name,
-                content: output.output,
+                content: redactKey(output.output, key),
                 isError: output.isError,
               });
             }
