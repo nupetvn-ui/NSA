@@ -2,12 +2,15 @@ import {
   fileUrl,
   gateEnv,
   gateHookFiles,
+  mcpEnv,
+  openCodeMcpConfig,
   probeCli,
   runCommand,
   runJsonLinesProcess,
   type AgentAdapter,
   type CliAdapterOptions,
   type DetectResult,
+  type McpServerSpec,
   type RunOptions,
 } from '@nsa/adapter-sdk';
 import { createPtyAdapter } from '@nsa/adapter-pty';
@@ -54,15 +57,30 @@ export function buildOpenCodeArgs(
  * Cấu hình bổ sung qua OPENCODE_CONFIG_CONTENT: nạp plugin cổng chính sách của NSA.
  * Gộp với giá trị người dùng đã đặt (nếu có) thay vì ghi đè.
  */
-export function openCodeGateConfig(pluginPath: string, existing?: string): string {
+export function openCodeGateConfig(
+  pluginPath: string | undefined,
+  existing?: string,
+  mcpServers: McpServerSpec[] = [],
+): string {
   let base: Record<string, unknown> = {};
   try {
     if (existing) base = JSON.parse(existing) as Record<string, unknown>;
   } catch {
     base = {};
   }
-  const plugins = Array.isArray(base['plugin']) ? (base['plugin'] as unknown[]) : [];
-  return JSON.stringify({ ...base, plugin: [...plugins, fileUrl(pluginPath)] });
+  const result: Record<string, unknown> = { ...base };
+  if (pluginPath) {
+    const plugins = Array.isArray(base['plugin']) ? (base['plugin'] as unknown[]) : [];
+    result['plugin'] = [...plugins, fileUrl(pluginPath)];
+  }
+  if (mcpServers.length) {
+    const mcp =
+      typeof base['mcp'] === 'object' && base['mcp'] !== null
+        ? (base['mcp'] as Record<string, unknown>)
+        : {};
+    result['mcp'] = { ...mcp, ...openCodeMcpConfig(mcpServers) };
+  }
+  return JSON.stringify(result);
 }
 
 export function createOpenCodeAdapter(options: OpenCodeAdapterOptions = {}): AgentAdapter {
@@ -129,14 +147,17 @@ export function createOpenCodeAdapter(options: OpenCodeAdapterOptions = {}): Age
       let env: Record<string, string> | undefined = runOptions.env
         ? { ...runOptions.env }
         : undefined;
-      if (runOptions.gate) {
+      const mcp = runOptions.mcpServers ?? [];
+      if (runOptions.gate || mcp.length) {
         env = {
           ...env,
-          ...gateEnv(runOptions.gate),
+          ...(runOptions.gate ? gateEnv(runOptions.gate) : {}),
+          ...mcpEnv(mcp),
           // Gộp với cấu hình của lượt (nhà cung cấp do NSA cấp key) hoặc của người dùng.
           OPENCODE_CONFIG_CONTENT: openCodeGateConfig(
-            gateHookFiles().opencodePlugin,
+            runOptions.gate ? gateHookFiles().opencodePlugin : undefined,
             runOptions.env?.['OPENCODE_CONFIG_CONTENT'] ?? process.env['OPENCODE_CONFIG_CONTENT'],
+            mcp,
           ),
         };
       }

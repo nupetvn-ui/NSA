@@ -1,5 +1,5 @@
 /**
- * Nối nhà cung cấp model qua API key vào app (ADR-0008). Không import `electron` ở đây để
+ * Nối nhà cung cấp model qua API key vào app (ADR-0009). Không import `electron` ở đây để
  * test quét key chạy được bằng Vitest: bộ mã hoá của hệ điều hành (`safeStorage`) được truyền vào.
  */
 import { readFileSync } from 'node:fs';

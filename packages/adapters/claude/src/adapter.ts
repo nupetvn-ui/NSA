@@ -2,7 +2,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  claudeMcpArgs,
   gateEnv,
+  mcpEnv,
   gateHookFiles,
   nodeRuntime,
   probeCli,
@@ -59,7 +61,7 @@ const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9-]{7,63}$/;
 
 /** Dựng tham số dòng lệnh — tách riêng để test. Prompt KHÔNG nằm ở đây mà đi qua stdin. */
 export function buildClaudeArgs(
-  options: Pick<RunOptions, 'sessionId' | 'permission'>,
+  options: Pick<RunOptions, 'sessionId' | 'permission' | 'mcpServers'>,
   settingsFile?: string,
 ): string[] {
   const args = [
@@ -73,6 +75,7 @@ export function buildClaudeArgs(
     options.permission === 'edit' ? 'acceptEdits' : 'plan',
   ];
   if (settingsFile) args.push('--settings', settingsFile);
+  if (options.mcpServers?.length) args.push(...claudeMcpArgs(options.mcpServers));
   if (options.sessionId) {
     if (!SESSION_ID.test(options.sessionId)) throw new Error('Mã phiên Claude không hợp lệ');
     args.push('--resume', options.sessionId);
@@ -144,11 +147,13 @@ export function createClaudeAdapter(options: ClaudeAdapterOptions = {}): AgentAd
 
     run(runOptions, onEvent) {
       const settings = runOptions.gate ? gateSettingsFile() : undefined;
+      const mcp = runOptions.mcpServers ?? [];
       const env =
-        runOptions.gate || runOptions.env
+        runOptions.gate || mcp.length || runOptions.env
           ? {
               ...runOptions.env,
               ...(runOptions.gate ? { ...gateEnv(runOptions.gate), ...nodeRuntime().env } : {}),
+              ...mcpEnv(mcp),
             }
           : undefined;
       return runJsonLinesProcess(

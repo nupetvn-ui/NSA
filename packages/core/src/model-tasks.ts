@@ -1,6 +1,6 @@
 /**
  * Chạy một việc theo loại (việc nền, nhìn ảnh, kênh chat, embedding…) bằng chuỗi model
- * chính + dự phòng (ADR-0008). Mỗi lần chọn hãng đều hỏi ổ cắm chính sách (`model.use`);
+ * chính + dự phòng (ADR-0009). Mỗi lần chọn hãng đều hỏi ổ cắm chính sách (`model.use`);
  * hãng lỗi / hết hạn mức thì chuyển sang model kế tiếp, báo người dùng và ghi nhật ký.
  *
  * Lõi không biết file dữ liệu hãng: danh sách ứng viên do bên ngoài (ProviderHub) cung cấp.

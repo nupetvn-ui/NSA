@@ -1,5 +1,5 @@
 /**
- * Ghép ổ cắm chính sách cho model qua API key (ADR-0008):
+ * Ghép ổ cắm chính sách cho model qua API key (ADR-0009):
  * - lượt chat với agent dùng hãng (adapter `api` hoặc CLI được cấp key) hỏi thêm `model.use`;
  * - nhiều chính sách ghép lại thì lấy quyết định chặt nhất (deny > ask > allow).
  */

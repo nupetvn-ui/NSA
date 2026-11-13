@@ -6,3 +6,5 @@ coverage
 pnpm-lock.yaml
 # Kế hoạch đã duyệt, giữ nguyên định dạng gốc
 docs/PLAN.md
+# Worktree của các phiên khác nằm trong .claude/
+.claude

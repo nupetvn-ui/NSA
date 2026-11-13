@@ -10,9 +10,9 @@ Ba trụ cột:
 
 Kế hoạch tổng thể: [docs/PLAN.md](docs/PLAN.md) · Quyết định kỹ thuật: [docs/adr/](docs/adr/README.md)
 
-Trạng thái: **giai đoạn 1 (Điều phối)** — chat với Claude Code, Codex, OpenCode (đã chạy thật), Gemini CLI và Antigravity (viết theo tài liệu, chưa chạy thật) hoặc CLI bất kỳ qua tầng PTY, trong cùng một app. Đổi agent giữa chừng vẫn giữ ngữ cảnh. Agent hỏng thì NSA tự lùi tầng hoặc đổi agent. Lệnh nguy hiểm bên trong một lượt bị chặn hoặc phải hỏi (Claude Code, OpenCode). Nền: monorepo, đóng gói Windows, tự cập nhật, CI, test hợp đồng hằng đêm.
+Trạng thái: **giai đoạn 2 (NSA Mem)** — bộ nhớ dùng chung cho mọi agent: dạy một agent, agent khác hãng nhớ (đã chạy thật với Claude Code, Codex, OpenCode, cả trong bản đóng gói). Giai đoạn 1 (Điều phối) — chat với Claude Code, Codex, OpenCode (đã chạy thật), Gemini CLI và Antigravity (viết theo tài liệu, chưa chạy thật) hoặc CLI bất kỳ qua tầng PTY, trong cùng một app. Đổi agent giữa chừng vẫn giữ ngữ cảnh. Agent hỏng thì NSA tự lùi tầng hoặc đổi agent. Lệnh nguy hiểm bên trong một lượt bị chặn hoặc phải hỏi (Claude Code, OpenCode). Nền: monorepo, đóng gói Windows, tự cập nhật, CI, test hợp đồng hằng đêm.
 
-**Giai đoạn 1b (API key)** — dán API key của một hãng (Google AI Studio, DeepSeek, OpenAI, Anthropic, xAI, Qwen, Kimi, GLM, MiniMax, OpenRouter, Groq, Together, Fireworks) hoặc dùng Ollama / LM Studio trên máy là chat được; mỗi loại việc có model chính + dự phòng, việc nền mặc định dùng model rẻ; hãng lỗi thì tự chuyển model dự phòng; theo dõi chi phí và hạn mức tháng. Key cất trong kho khoá của Windows. Mới chạy với máy chủ giả, **chưa chạy với hãng thật** — xem [ADR-0008](docs/adr/0008-nguon-model-qua-api-key.md).
+**Giai đoạn 1b (API key)** — dán API key của một hãng (Google AI Studio, DeepSeek, OpenAI, Anthropic, xAI, Qwen, Kimi, GLM, MiniMax, OpenRouter, Groq, Together, Fireworks) hoặc dùng Ollama / LM Studio trên máy là chat được; mỗi loại việc có model chính + dự phòng, việc nền mặc định dùng model rẻ; hãng lỗi thì tự chuyển model dự phòng; theo dõi chi phí và hạn mức tháng. Key cất trong kho khoá của Windows. Mới chạy với máy chủ giả, **chưa chạy với hãng thật** — xem [ADR-0009](docs/adr/0009-nguon-model-qua-api-key.md).
 
 ## Dùng NSA
 
@@ -43,6 +43,19 @@ OpenCode dùng được ngay với model miễn phí của OpenCode Zen (cần b
    - Thẻ **Chi phí**: số token và chi phí ước tính theo model trong tháng, đặt hạn mức tháng; NSA cảnh báo khi gần chạm và (nếu bật) chặn model trả phí khi vượt.
    - Mục **Dùng key này cho CLI có sẵn**: chạy OpenCode / Claude Code bằng key của hãng (theo từng lượt, không sửa cấu hình CLI). Model chưa được đánh dấu gọi tool ổn định thì CLI chỉ được đọc.
    - Hãng khác chưa có trong danh sách: **+ Thêm hãng khác…** (địa chỉ chuẩn OpenAI hoặc Anthropic + tên model).
+
+### Bộ nhớ (NSA Mem)
+
+Bấm **Bộ nhớ** ở thanh bên (số bên cạnh là đề xuất đang chờ duyệt).
+
+- **Dạy**: bấm **Dạy điều mới** và gõ bằng văn bản; hoặc dặn agent khi chat ("hãy nhớ…", "từ nay…") — agent hỗ trợ MCP (Claude Code, Codex, OpenCode) tự đề xuất qua tool `mem_propose`, đồng thời NSA giao một agent chắt lọc đoạn chat. Nút **Ghi nhớ cuộc trò chuyện** ở đầu khung chat chắt lọc ngay.
+- **Hộp duyệt**: điều chắc chắn, không mâu thuẫn được tự nhận theo quy tắc của nhánh. Quy tắc hành vi, thông tin nhạy cảm, độ tin cậy thấp hoặc **mâu thuẫn** với mục đã có thì chờ bạn: **Nhận**, **Sửa rồi nhận**, **Nhận, thay mục cũ** hoặc **Từ chối**.
+- **Dùng**: đầu mỗi lượt chat, NSA chèn các mục liên quan cho agent (lượt đó hiện "dùng N mục nhớ"); mục nhạy cảm không tự chèn.
+- **Hoàn tác**: mỗi thay đổi có trong **Lịch sử** (của cả kho và của từng mục), bấm **Hoàn tác** để trả về như cũ.
+- **Nhập lịch sử chat**: chọn nguồn (NSA, Claude Code, Codex, OpenCode), xem trước, tích các phiên rồi bấm **Nhập**. Không đọc gì khi chưa bấm.
+- **Cài đặt**: bật/tắt tự chèn, tool `mem_*`, ngưỡng tự chắt lọc, agent chắt lọc; nút **Dựng lại** chỉ mục.
+
+Mỗi mục nhớ là một file Markdown trong thư mục `%APPDATA%\NSA\memory` (mỗi nhánh một thư mục con, mở được bằng trình soạn thảo bất kỳ), có lịch sử git riêng trong thư mục đó. Chỉ mục tìm kiếm (`memory\.nsa\index.sqlite`) xoá đi thì NSA tự dựng lại. Hiện chỉ tìm theo từ khoá (gõ không dấu vẫn được), **chưa có tìm theo nghĩa**. Chi tiết: [ADR-0008](docs/adr/0008-nsa-mem.md).
 
 CLI chưa có adapter riêng: khai báo trong `%APPDATA%\NSA\custom-clis.json`, ví dụ `[{"id":"aider","displayName":"Aider","command":"aider","args":["--yes","--message-file","-"],"input":"stdin"}]`, rồi mở lại NSA.
 
@@ -95,7 +108,7 @@ packages/adapter-sdk  hợp đồng adapter, trình chạy CLI, cổng chặn l�
 packages/adapters/*   claude, codex, opencode, gemini, antigravity, pty, api (gọi thẳng bằng API key); contract-live (test với CLI thật)
 packages/providers    file dữ liệu hãng/model, kho khoá, chọn model theo việc, chi phí, cấp key cho CLI
 packages/mcp-gateway  cổng MCP (khung)
-packages/memory       NSA Mem (khung)
+packages/memory       NSA Mem: kho Markdown + git, chỉ mục FTS5, hộp duyệt, chắt lọc, nhập lịch sử, MCP tạm
 packages/plugin-sdk   SDK plugin (khung)
 plugins/*             app của App Store (giai đoạn 3+)
 docs/                 kế hoạch, ADR
@@ -115,6 +128,8 @@ Thử tự cập nhật mà không phát hành lên GitHub:
 3. Mở bản cũ với biến môi trường `NSA_UPDATE_URL` trỏ tới thư mục đó (ví dụ `http://127.0.0.1:8765/`). Muốn thử đúng như khi mở từ Start Menu (không có biến môi trường) thì sửa `resources\app-update.yml` của bản đã cài thành `provider: generic` + `url: http://127.0.0.1:8765/`.
 
 Sau khi bấm **Khởi động lại**, bộ cài cài im lặng rồi mở lại `NSA.exe` (xem `apps/desktop/build/installer.nsh` — mặc định electron-builder mở qua lối tắt Start Menu và Windows báo không tìm thấy lối tắt).
+
+Chạy thử mà không đụng dữ liệu thật: mở app với `NSA_USER_DATA=<thư mục>` — cuộc trò chuyện, bộ nhớ, nhật ký nằm trong thư mục đó.
 
 Thử đường lùi tầng / đổi agent mà không phá CLI thật: mở app với `NSA_SIMULATE_BROKEN=claude` (tầng JSON của Claude hỏng → lùi xuống tầng văn bản thô) hoặc `NSA_SIMULATE_BROKEN=claude:missing` (như chưa cài → đổi agent).
 

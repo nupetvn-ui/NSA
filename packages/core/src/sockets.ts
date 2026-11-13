@@ -4,6 +4,7 @@
  * File này kèm bộ cắm mặc định của bản Cá nhân — đơn giản, không chứa nghiệp vụ doanh nghiệp.
  */
 import type { AgentEvent, PermissionLevel } from '@nsa/adapter-sdk';
+import type { MemoryKind, MemoryOp } from './memory.js';
 
 // ---------------------------------------------------------------- Danh tính
 
@@ -61,7 +62,7 @@ export type PolicyAction =
       input: string;
     }
   /**
-   * Gửi dữ liệu cho một hãng model qua API key (adapter `api` hoặc CLI được cấp key — ADR-0008).
+   * Gửi dữ liệu cho một hãng model qua API key (adapter `api` hoặc CLI được cấp key — ADR-0009).
    * Mọi lần chọn hãng đều hỏi ở đây, để bản Doanh nghiệp chặn được hãng ngoài danh sách.
    */
   | {
@@ -73,6 +74,30 @@ export type PolicyAction =
       task: string;
       /** Model tính tiền (không phải máy cục bộ / miễn phí). */
       paid: boolean;
+    }
+  /**
+   * Ghi / sửa / xoá / hoàn tác một mục nhớ (NSA Mem). `by`: người dùng bấm, bộ tự duyệt,
+   * hay agent (agent chỉ được đề xuất — xem `memory.propose`).
+   */
+  | {
+      kind: 'memory.write';
+      op: MemoryOp;
+      /** Mục nhớ hay nhánh (tạo / sửa cấu hình nhánh). */
+      target: 'entry' | 'branch';
+      by: 'user' | 'auto';
+      branch: string;
+      entryId?: string;
+      title: string;
+      memoryKind: MemoryKind;
+      sensitive: boolean;
+    }
+  /** Agent (qua `mem_propose`) hoặc bộ chắt lọc đưa một đề xuất vào hộp duyệt. */
+  | {
+      kind: 'memory.propose';
+      agentId: string;
+      branch: string;
+      title: string;
+      conversationId?: string;
     };
 
 export interface PolicyRequest {
@@ -140,6 +165,11 @@ export function personalPolicy(options: { homeDir?: string } = {}): Policy {
     check({ action, confirmed }) {
       // Bản Cá nhân: người dùng tự chọn hãng, nên cho phép (hạn mức chi phí kiểm ở chỗ khác).
       if (action.kind === 'model.use') return { decision: 'allow' };
+      // Bộ nhớ của chính người dùng trên máy họ: cho phép. Đề xuất của agent chỉ vào hộp
+      // duyệt; quy tắc hành vi / nhạy cảm / mâu thuẫn do hộp duyệt giữ lại chờ người duyệt.
+      if (action.kind === 'memory.write' || action.kind === 'memory.propose') {
+        return { decision: 'allow' };
+      }
       if (action.kind === 'agent.tool') {
         const destructive = DESTRUCTIVE.find((r) => r.pattern.test(action.input));
         if (destructive) {
@@ -215,6 +245,18 @@ export type AuditEntry = {
   /** Sự kiện của agent (trừ từng mẩu văn bản — văn bản trả lời được ghi gộp khi lượt kết thúc). */
   | { type: 'agent_event'; event: Exclude<AgentEvent, { type: 'text' }> }
   | { type: 'reply'; text: string }
+  /** Mọi thay đổi bộ nhớ (kể cả bị chính sách chặn) và mọi quyết định của hộp duyệt. */
+  | {
+      type: 'memory';
+      op: MemoryOp | 'propose' | 'accept' | 'reject' | 'reindex';
+      by: 'user' | 'auto' | 'agent';
+      branch?: string;
+      entryId?: string;
+      proposalId?: string;
+      title?: string;
+      decision: PolicyDecision['decision'];
+      reason?: string;
+    }
 );
 
 /** Ổ cắm nhật ký: nhận mọi việc đã xảy ra (ai ra lệnh, agent làm gì, sửa gì). */

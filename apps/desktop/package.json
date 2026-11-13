@@ -31,6 +31,7 @@
     "@nsa/adapter-pty": "workspace:*",
     "@nsa/adapter-sdk": "workspace:*",
     "@nsa/core": "workspace:*",
+    "@nsa/memory": "workspace:*",
     "@nsa/providers": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19.3.0",

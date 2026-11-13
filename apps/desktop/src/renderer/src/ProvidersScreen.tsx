@@ -30,7 +30,7 @@ function cleanError(err: unknown): string {
   return String(err).replace(/^Error: Error invoking remote method '[^']+': (Error: )?/, '');
 }
 
-/** Màn hình Nhà cung cấp: dán key, kiểm tra, chọn model theo việc, xem chi phí (ADR-0008). */
+/** Màn hình Nhà cung cấp: dán key, kiểm tra, chọn model theo việc, xem chi phí (ADR-0009). */
 export function ProvidersScreen({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<ProvidersView | null>(null);
   const [tab, setTab] = useState<Tab>('providers');

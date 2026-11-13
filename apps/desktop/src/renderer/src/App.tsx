@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { AUTO_AGENT, type AppInfo, type PermissionLevel, type SendRequest } from '@nsa/core';
+import {
+  AUTO_AGENT,
+  type AppInfo,
+  type DistillStatus,
+  type PermissionLevel,
+  type SendRequest,
+} from '@nsa/core';
 import { AgentsPanel } from './AgentsPanel';
 import logo from '../../../resources/icon.png';
 import { ConfirmSheet } from './ConfirmSheet';
 import { ProvidersScreen } from './ProvidersScreen';
+import { MemoryView } from './MemoryView';
 import { TurnView } from './TurnView';
 import { UpdateBanner } from './UpdateBanner';
 import { useChat } from './useChat';
@@ -32,7 +39,12 @@ export function App() {
   const [sending, setSending] = useState(false);
   /** Yêu cầu đang chờ người dùng xác nhận (chính sách trả lời "hỏi"). */
   const [confirm, setConfirm] = useState<{ reason: string; request: SendRequest } | null>(null);
-  const [showProviders, setShowProviders] = useState(false);
+  const [view, setView] = useState<'chat' | 'memory' | 'providers'>('chat');
+  /** Số đề xuất ghi nhớ chờ duyệt + bộ đếm để màn hình Bộ nhớ tải lại. */
+  const [memPending, setMemPending] = useState(0);
+  const [memVersion, setMemVersion] = useState(0);
+  const [memStatus, setMemStatus] = useState<DistillStatus | null>(null);
+  const [distilling, setDistilling] = useState(false);
   /** Cảnh báo hạn mức chi phí / chuyển model dự phòng ở việc nền. */
   const [providerAlert, setProviderAlert] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,6 +52,17 @@ export function App() {
 
   useEffect(() => {
     void window.nsa.invoke('app:info').then(setInfo);
+    void window.nsa.invoke('mem:info').then((i) => setMemPending(i.pending));
+    void window.nsa.invoke('mem:status').then(setMemStatus);
+    const offChanged = window.nsa.on('mem:changed', ({ pending }) => {
+      setMemPending(pending);
+      setMemVersion((v) => v + 1);
+    });
+    const offStatus = window.nsa.on('mem:status', setMemStatus);
+    return () => {
+      offChanged();
+      offStatus();
+    };
   }, []);
 
   // Thêm / xoá key, bật cặp CLI → danh sách agent trong chat đổi.
@@ -59,6 +82,20 @@ export function App() {
       offNotice();
     };
   }, [checkAgents]);
+
+  /** Chắt lọc ngay cuộc trò chuyện đang mở thành đề xuất ghi nhớ. */
+  async function distillActive() {
+    if (!active || distilling) return;
+    setDistilling(true);
+    setSendError(null);
+    try {
+      await window.nsa.invoke('mem:distill', active.id);
+    } catch (err) {
+      setSendError(cleanError(err));
+    } finally {
+      setDistilling(false);
+    }
+  }
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const lastAgentId = active?.turns.at(-1)?.agentId;
@@ -146,12 +183,14 @@ export function App() {
   }
 
   function openConversation(id: string) {
+    setView('chat');
     setActiveId(id);
     setAgentId(null);
     setSendError(null);
   }
 
   function startNew() {
+    setView('chat');
     setActiveId(null);
     setSendError(null);
   }
@@ -166,10 +205,7 @@ export function App() {
           <button
             type="button"
             className="icon-btn no-drag"
-            onClick={() => {
-              startNew();
-              setShowProviders(false);
-            }}
+            onClick={startNew}
             title="Cuộc trò chuyện mới"
             aria-label="Cuộc trò chuyện mới"
           >
@@ -187,6 +223,44 @@ export function App() {
         </div>
 
         <nav className="conv-list">
+          <button
+            type="button"
+            className={`nav-item ${view === 'memory' ? 'active' : ''}`}
+            onClick={() => setView('memory')}
+          >
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M10 3.5c-1.6-1.3-4.6-.6-4.9 1.8C3.3 5.6 2.6 7.9 3.8 9.2c-1 1.4-.4 3.6 1.4 4 .2 2 2.6 3 4.8 1.8V3.5Zm0 0c1.6-1.3 4.6-.6 4.9 1.8 1.8.3 2.5 2.6 1.3 3.9 1 1.4.4 3.6-1.4 4-.2 2-2.6 3-4.8 1.8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Bộ nhớ</span>
+            {memPending > 0 && (
+              <span className="badge" title="Đề xuất ghi nhớ chờ duyệt">
+                {memPending}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${view === 'providers' ? 'active' : ''}`}
+            onClick={() => setView('providers')}
+          >
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M7.5 11.5a3.5 3.5 0 1 1 3-1.7L17 16.3V18h-2v-1.5h-1.5V15H12l-1.6-1.6a3.5 3.5 0 0 1-2.9-1.9zM6 8.5h.01"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Nhà cung cấp (API key)</span>
+          </button>
           <div className="section-label">Cuộc trò chuyện</div>
           {conversations.length === 0 && <p className="hint pad">Chưa có cuộc trò chuyện nào.</p>}
           {conversations.map((c) => {
@@ -194,11 +268,8 @@ export function App() {
             return (
               <div
                 key={c.id}
-                className={`conv-item ${c.id === activeId ? 'active' : ''}`}
-                onClick={() => {
-                  openConversation(c.id);
-                  setShowProviders(false);
-                }}
+                className={`conv-item ${c.id === activeId && view === 'chat' ? 'active' : ''}`}
+                onClick={() => openConversation(c.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && openConversation(c.id)}
@@ -242,24 +313,6 @@ export function App() {
 
         <UpdateBanner />
 
-        <button
-          type="button"
-          className={`sidebar-btn ${showProviders ? 'active' : ''}`}
-          onClick={() => setShowProviders((v) => !v)}
-        >
-          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
-            <path
-              d="M7.5 11.5a3.5 3.5 0 1 1 3-1.7L17 16.3V18h-2v-1.5h-1.5V15H12l-1.6-1.6a3.5 3.5 0 0 1-2.9-1.9zM6 8.5h.01"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Nhà cung cấp (API key)
-        </button>
-
         <AgentsPanel
           agents={agents}
           checking={checkingAgents}
@@ -269,14 +322,25 @@ export function App() {
         />
       </aside>
 
-      {showProviders ? (
-        <ProvidersScreen onClose={() => setShowProviders(false)} />
+      {view === 'memory' ? (
+        <MemoryView agents={agents} status={memStatus} version={memVersion} />
+      ) : view === 'providers' ? (
+        <ProvidersScreen onClose={() => setView('chat')} />
       ) : (
         <main className="chat">
           <header className="chat-head drag">
             <h1 className="chat-title">{active ? active.title : 'Cuộc trò chuyện mới'}</h1>
             {active && (
               <div className="chat-sub">
+                <button
+                  type="button"
+                  className="link-btn"
+                  disabled={distilling || active.turns.length === 0}
+                  onClick={() => void distillActive()}
+                  title="Giao một agent đọc cuộc trò chuyện này và đề xuất điều đáng nhớ vào hộp duyệt"
+                >
+                  {distilling ? 'Đang chắt lọc…' : 'Ghi nhớ cuộc trò chuyện'}
+                </button>
                 <span className="cwd" title={active.cwd}>
                   {active.cwd}
                 </span>

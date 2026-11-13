@@ -1,5 +1,5 @@
 /**
- * Cấp key cho CLI THẬT (ADR-0008), trỏ vào máy chủ giả trên máy — không tốn token, không cần key.
+ * Cấp key cho CLI THẬT (ADR-0009), trỏ vào máy chủ giả trên máy — không tốn token, không cần key.
  * Chỉ chạy khi NSA_LIVE_CONTRACT=1 (cần CLI đã cài):
  *
  *   NSA_LIVE_CONTRACT=1 pnpm test:live

@@ -1,5 +1,5 @@
 /**
- * Kho khoá (ADR-0008). Lõi chỉ biết interface `SecretStore`; bản desktop cắm bộ mã hoá của
+ * Kho khoá (ADR-0009). Lõi chỉ biết interface `SecretStore`; bản desktop cắm bộ mã hoá của
  * hệ điều hành (Electron `safeStorage` → Windows DPAPI / macOS Keychain / libsecret).
  *
  * Quy tắc:

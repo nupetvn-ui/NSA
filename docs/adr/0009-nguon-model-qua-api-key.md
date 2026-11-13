@@ -1,4 +1,4 @@
-# ADR-0008: Nguồn model qua API key — kho khoá, adapter `api`, cấp key cho CLI, chọn model theo việc
+# ADR-0009: Nguồn model qua API key — kho khoá, adapter `api`, cấp key cho CLI, chọn model theo việc
 
 - Trạng thái: Chấp nhận
 - Ngày: 2026-11-13

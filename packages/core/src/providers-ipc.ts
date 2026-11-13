@@ -1,5 +1,5 @@
 /**
- * Kênh IPC của màn hình Nhà cung cấp (ADR-0008). Giao diện KHÔNG BAO GIỜ nhận key:
+ * Kênh IPC của màn hình Nhà cung cấp (ADR-0009). Giao diện KHÔNG BAO GIỜ nhận key:
  * `ProvidersView` chỉ có bốn ký tự cuối. Key đi một chiều renderer → main qua `providers:setKey`.
  */
 import type { CheckResult, ProviderSettingsPatch, ProvidersView, TaskKind } from '@nsa/providers';

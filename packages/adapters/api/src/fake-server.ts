@@ -1,7 +1,7 @@
 /**
  * Máy chủ giả nói đúng chuẩn OpenAI (chat completions, SSE) và chuẩn Anthropic (messages, SSE).
  * Dùng trong `pnpm test` để thử adapter `api` và CLI thật mà không cần key hay mạng.
- * Định dạng sự kiện theo tài liệu chính thức của hai chuẩn (xem ADR-0008).
+ * Định dạng sự kiện theo tài liệu chính thức của hai chuẩn (xem ADR-0009).
  */
 import { appendFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';

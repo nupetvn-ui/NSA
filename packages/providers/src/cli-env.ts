@@ -2,7 +2,7 @@
  * Cấp key cho CLI sẵn có (PLAN.md, "Key được dùng theo hai đường", đường 1).
  * NSA đặt biến môi trường cho TỪNG LƯỢT chạy; không sửa file cấu hình toàn cục của CLI.
  *
- * Đã chạy thật với máy chủ giả (ADR-0008):
+ * Đã chạy thật với máy chủ giả (ADR-0009):
  * - OpenCode 1.19.5: nhà cung cấp tương thích OpenAI khai báo qua `OPENCODE_CONFIG_CONTENT`,
  *   key qua `{env:NSA_PROVIDER_KEY}` → OpenCode gửi đúng key, không ghi key ra thư mục dữ liệu.
  * - Claude Code 2.1.322: chỉ đặt ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN (hoặc ANTHROPIC_API_KEY)
