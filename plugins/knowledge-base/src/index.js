@@ -169,16 +169,22 @@ export default {
       const ids = new Set((p.ids ?? []).map(String));
       let accepted = 0;
       let skipped = 0;
+      let duplicates = 0;
       for (const item of list) {
         if (!ids.has(item.id)) continue;
         if (item.sensitive && p.includeSensitive !== true) {
           skipped++;
           continue;
         }
-        await ctx.memory.accept(item.id, {});
-        accepted++;
+        try {
+          await ctx.memory.accept(item.id, {});
+          accepted++;
+        } catch {
+          // Nhận mục trước đã tự bỏ đề xuất trùng y hệt (NSA Mem) — không phải lỗi.
+          duplicates++;
+        }
       }
-      return { accepted, skipped };
+      return { accepted, skipped, duplicates };
     },
     rejectMany: async (p, ctx) => {
       let n = 0;

@@ -58,6 +58,38 @@
       ? 'chưa biết giá'
       : '≈ $' + usd.toFixed(usd < 0.1 ? 4 : 2);
   }
+  // Khung plugin chạy với sandbox="allow-scripts": confirm() / alert() bị chặn, nên hỏi ngay trong trang.
+  function ask(text, yesLabel, noLabel) {
+    return new Promise(function (resolve) {
+      var box = $('ask');
+      clear(box);
+      function close(v) {
+        box.classList.add('hidden');
+        resolve(v);
+      }
+      box.appendChild(el('div', { text: text }));
+      box.appendChild(
+        el('div', { class: 'row' }, [
+          el('button', {
+            class: 'primary small',
+            text: yesLabel,
+            onclick: function () {
+              close(true);
+            },
+          }),
+          el('button', {
+            class: 'small',
+            text: noLabel,
+            onclick: function () {
+              close(false);
+            },
+          }),
+        ]),
+      );
+      box.classList.remove('hidden');
+      box.scrollIntoView({ block: 'center' });
+    });
+  }
   function clear(node) {
     while (node.firstChild) node.removeChild(node.firstChild);
   }
@@ -65,11 +97,20 @@
   // ---------------------------------------------------------------- tải dữ liệu
 
   function refresh() {
-    return Promise.all([nsa.call('overview'), nsa.call('pending')]).then(function (r) {
-      state = r[0];
-      pending = r[1];
-      draw();
-    }, fail);
+    return Promise.all([nsa.call('overview'), nsa.call('pending')]).then(
+      function (r) {
+        state = r[0];
+        pending = r[1];
+        draw();
+      },
+      function (err) {
+        // Plugin vừa bật / khởi động lại: thử lại sau ít giây thay vì báo lỗi ngay.
+        if (!state) {
+          say('Plugin đang khởi động…');
+          setTimeout(refresh, 1500);
+        } else fail(err);
+      },
+    );
   }
   var timer = null;
   function soon() {
@@ -326,18 +367,19 @@
           '🗑',
           'danger',
           function () {
-            if (
-              !confirm(
-                'Xoá “' +
-                  s.name +
-                  '”? Các mục nhớ sinh ra từ nguồn này cũng bị gỡ (hoàn tác được ngay sau đó).',
-              )
-            )
-              return;
-            nsa.call('remove', { id: s.id }).then(function (r) {
-              say('Đã xoá nguồn và gỡ ' + r.removed + ' mục nhớ.');
-              refresh();
-            }, fail);
+            ask(
+              'Xoá “' +
+                s.name +
+                '”? Các mục nhớ sinh ra từ nguồn này cũng bị gỡ (hoàn tác được ngay sau đó).',
+              'Xoá nguồn',
+              'Giữ lại',
+            ).then(function (yes) {
+              if (!yes) return;
+              nsa.call('remove', { id: s.id }).then(function (r) {
+                say('Đã xoá nguồn và gỡ ' + r.removed + ' mục nhớ.');
+                refresh();
+              }, fail);
+            });
           },
           'Xoá nguồn và các mục nhớ của nó',
         ),
@@ -807,23 +849,27 @@
     var sens = pending.filter(function (p) {
       return selected[p.id] && p.sensitive;
     }).length;
-    var include = false;
-    if (sens) {
-      include = confirm(
-        sens +
-          ' mục đã chọn có thể chứa thông tin nhạy cảm (số thẻ, CCCD, mật khẩu, khoá…). Vẫn nhận cả những mục này?\n\nChọn Huỷ để chỉ nhận các mục còn lại.',
-      );
-    }
-    nsa.call('acceptMany', { ids: chosen, includeSensitive: include }).then(function (r) {
-      selected = {};
-      done(
-        'Đã nhận ' +
-          r.accepted +
-          ' mục' +
-          (r.skipped ? ', bỏ qua ' + r.skipped + ' mục nhạy cảm' : '') +
-          '.',
-      );
-    }, fail);
+    var decide = sens
+      ? ask(
+          sens +
+            ' mục đã chọn có thể chứa thông tin nhạy cảm (số thẻ, CCCD, mật khẩu, khoá…). Nhận cả những mục này?',
+          'Nhận cả mục nhạy cảm',
+          'Chỉ nhận các mục còn lại',
+        )
+      : Promise.resolve(false);
+    decide.then(function (include) {
+      nsa.call('acceptMany', { ids: chosen, includeSensitive: include }).then(function (r) {
+        selected = {};
+        done(
+          'Đã nhận ' +
+            r.accepted +
+            ' mục' +
+            (r.skipped ? ', bỏ qua ' + r.skipped + ' mục nhạy cảm' : '') +
+            (r.duplicates ? ', ' + r.duplicates + ' mục trùng nội dung đã tự bỏ' : '') +
+            '.',
+        );
+      }, fail);
+    });
   });
   $('btnRejectSel').addEventListener('click', function () {
     var chosen = ids(false);

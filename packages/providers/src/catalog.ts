@@ -124,6 +124,23 @@ export interface CustomProvider {
 
 export const CUSTOM_PREFIX = 'custom-';
 
+/**
+ * Đoán năng lực của model người dùng tự gõ tên (Ollama, LM Studio, địa chỉ tự khai báo) theo tên:
+ * `*embed*` → embedding; `llava`, `*vision*`, `*-vl`, `pixtral`… → nhìn được ảnh. Đoán sai thì người
+ * dùng chỉnh được ở màn hình Nhà cung cấp (model chính / dự phòng theo việc).
+ */
+export function guessLocalModel(id: string): Pick<ModelInfo, 'kind' | 'tasks' | 'vision'> {
+  if (/embed/i.test(id)) return { kind: 'embedding', tasks: ['embedding'], vision: null };
+  const vision = /llava|vision|(^|[-_:.])vl([-_:.d]|$)|pixtral|minicpm-v|moondream|gemma3|internvl|qwen2.5vl/i.test(
+    id,
+  );
+  return {
+    kind: 'chat',
+    tasks: vision ? ['main', 'background', 'channel', 'vision'] : ['main', 'background', 'channel'],
+    vision: vision ? true : null,
+  };
+}
+
 export function customToProvider(custom: CustomProvider): ProviderInfo {
   return {
     id: custom.id,
@@ -143,12 +160,10 @@ export function customToProvider(custom: CustomProvider): ProviderInfo {
     models: custom.models.map((id) => ({
       id,
       name: id,
-      kind: /embed/i.test(id) ? ('embedding' as const) : ('chat' as const),
-      tasks: /embed/i.test(id) ? (['embedding'] as TaskKind[]) : ['main', 'background', 'channel'],
+      ...guessLocalModel(id),
       inputUsdPer1M: null,
       outputUsdPer1M: null,
       freeTier: null,
-      vision: null,
       toolCalling: custom.toolCallingStable ? ('stable' as const) : ('documented' as const),
     })),
   };
@@ -263,12 +278,10 @@ export function findModel(
       model: {
         id: parsed.modelId,
         name: parsed.modelId,
-        kind: /embed/i.test(parsed.modelId) ? 'embedding' : 'chat',
-        tasks: ['main', 'background', 'channel'],
+        ...guessLocalModel(parsed.modelId),
         inputUsdPer1M: provider.group === 'local' ? 0 : null,
         outputUsdPer1M: provider.group === 'local' ? 0 : null,
         freeTier: null,
-        vision: null,
         toolCalling: 'documented',
       },
     };

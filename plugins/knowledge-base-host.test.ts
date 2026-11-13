@@ -290,7 +290,7 @@ describe('Knowledge Base đã đóng gói, chạy trong plugin host thật', () 
     const r = await s.ui<{ accepted: number; skipped: number }>('acceptMany', {
       ids: pending.map((p) => p.id),
     });
-    expect(r).toEqual({ accepted: 2, skipped: 1 }); // mục thường nhận được, mục có thẻ thì bỏ qua
+    expect(r).toMatchObject({ accepted: 2, skipped: 1 }); // mục thường nhận được, mục có thẻ thì bỏ qua
     expect(await s.tool('kb_search', { query: 'thẻ khách 4111' })).not.toContain('4111');
   }, 60_000);
 

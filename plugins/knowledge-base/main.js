@@ -42276,16 +42276,21 @@ var index_default = {
       const ids = new Set((p2.ids ?? []).map(String));
       let accepted = 0;
       let skipped = 0;
+      let duplicates = 0;
       for (const item of list) {
         if (!ids.has(item.id)) continue;
         if (item.sensitive && p2.includeSensitive !== true) {
           skipped++;
           continue;
         }
-        await ctx.memory.accept(item.id, {});
-        accepted++;
+        try {
+          await ctx.memory.accept(item.id, {});
+          accepted++;
+        } catch {
+          duplicates++;
+        }
       }
-      return { accepted, skipped };
+      return { accepted, skipped, duplicates };
     },
     rejectMany: async (p2, ctx) => {
       let n2 = 0;

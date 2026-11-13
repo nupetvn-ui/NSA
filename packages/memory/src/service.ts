@@ -953,14 +953,21 @@ export class MemoryService {
         'Các tool này không sửa file nào nên được gọi ngay cả ở chế độ chỉ đọc / lập kế hoạch; ' +
         'mem_propose chỉ đưa đề xuất vào hộp duyệt của người dùng.'
       : null;
-    const readable = this.#readable();
+    // Nhánh ẩn (của plugin, ví dụ Knowledge Base) KHÔNG tự chèn vào mọi cuộc trò chuyện: kho tri thức
+    // có thể rất lớn và không liên quan; agent tra qua tool của chính plugin (ADR-0014).
+    const branches = new Map(this.listBranches().map((b) => [b.path, b]));
+    const hidden = [...branches.values()].filter((b) => b.hidden).map((b) => b.path);
+    const isHidden = (e: MemoryEntry): boolean =>
+      hidden.some((p) => e.branch === p || e.branch.startsWith(`${p}/`));
+    const readable = this.#readable().filter((e) => !isHidden(e));
     if (readable.length === 0) {
       return toolsHint ? { text: `[Bộ nhớ NSA] ${toolsHint}`, entries: [] } : null;
     }
-    const branches = new Map(this.listBranches().map((b) => [b.path, b]));
     const picked = new Map<string, MemoryEntry>();
     for (const e of readable) if (e.kind === 'rule') picked.set(e.id, e);
-    for (const hit of this.search(prompt, { limit: 12 })) picked.set(hit.entry.id, hit.entry);
+    for (const hit of this.search(prompt, { limit: 12 })) {
+      if (!isHidden(hit.entry)) picked.set(hit.entry.id, hit.entry);
+    }
     if (readable.length <= 60) {
       for (const e of [...readable].sort((a, b) => b.updated.localeCompare(a.updated))) {
         picked.set(e.id, e);
