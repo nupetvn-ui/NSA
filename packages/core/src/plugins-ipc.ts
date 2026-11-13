@@ -42,6 +42,12 @@ export interface PluginsIpcContract {
   'plugins:uninstall': { args: [id: string, deleteData?: boolean]; result: void };
   'plugins:updateGrants': { args: [id: string, grants: PluginGrants]; result: PluginInfo };
   'plugins:runJob': { args: [id: string, jobId: string]; result: void };
+  /** Đặt giá trị một khe bí mật (token…). Giá trị đi thẳng vào kho khoá, không quay lại giao diện. */
+  'plugins:setSecret': {
+    args: [id: string, secretId: string, value: string];
+    result: PluginInfo;
+  };
+  'plugins:deleteSecret': { args: [id: string, secretId: string]; result: PluginInfo };
   /** Người dùng chọn một thư mục để cấp cho plugin. */
   'plugins:pickFolder': { args: [label: string]; result: string | null };
   'plugins:registry': { args: []; result: RegistryEntry[] };
@@ -66,6 +72,8 @@ export const PLUGINS_IPC_CHANNELS = [
   'plugins:uninstall',
   'plugins:updateGrants',
   'plugins:runJob',
+  'plugins:setSecret',
+  'plugins:deleteSecret',
   'plugins:pickFolder',
   'plugins:registry',
   'plugins:ui',

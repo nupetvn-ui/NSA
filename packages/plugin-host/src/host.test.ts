@@ -128,6 +128,7 @@ async function setup(
     ensureBranch: async () => undefined,
     search: async (branch, q) => [{ id: 'm-1', title: `${branch}:${q}`, snippet: 's' }],
     read: async () => null,
+    list: async () => [],
     propose: async (branch, pluginId, input) => {
       proposals.push(`${pluginId}@${branch}:${input.title}`);
       return { status: 'pending', reasons: ['chờ duyệt'] };

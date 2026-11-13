@@ -10,6 +10,7 @@ export const ID_PATTERN = /^[a-z][a-z0-9-]{1,23}$/;
 export const TOOL_PATTERN = /^[a-z][a-z0-9_]{0,31}$/;
 const RESERVED_IDS = new Set(['nsa', 'mem', 'memory', 'core', 'system']);
 const DOMAIN_PATTERN = /^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$|^localhost$/;
+export const SECRET_PATTERN = /^[a-z][a-z0-9_]{0,23}$/;
 const INTERVAL_PATTERN = /^(\d+)(s|m|h)$/;
 
 export type FolderAccess = 'read' | 'readwrite';
@@ -54,6 +55,29 @@ export interface ManifestMemory {
   title: string;
 }
 
+/**
+ * Một "khe" cất bí mật (token bot, khoá OA…) của plugin. Người dùng nhập giá trị ở màn hình
+ * Quản lý (do NSA vẽ, không phải màn hình của plugin); NSA cất trong kho khoá của hệ điều hành.
+ * Plugin KHÔNG BAO GIỜ đọc được giá trị: nó chỉ viết `{{secret:<id>}}` trong URL / header / body
+ * của `fetch`, và lõi thay giá trị thật vào — chỉ khi tên miền đích nằm trong `hosts` (ADR-0011).
+ */
+export interface ManifestSecret {
+  id: string;
+  label: string;
+  /** Hướng dẫn ngắn lấy giá trị ở đâu. */
+  help: string;
+  /** Tên miền được nhận giá trị này (phải nằm trong `permissions.network`). */
+  hosts: string[];
+  /**
+   * Nơi được đặt `{{secret:id}}`: `url` (chỉ phần đường dẫn, không phải query), `header`, `body`.
+   * Mặc định `url` + `header` — KHÔNG cho vào body, để plugin không đem token đăng vào nội dung tin nhắn.
+   */
+  where: ('url' | 'header' | 'body')[];
+}
+
+/** Bản đóng gói NSA mà plugin được phép có mặt. */
+export type ManifestEdition = 'personal' | 'enterprise';
+
 /** Quyền plugin xin được cấp. Không xin thì không bao giờ có. */
 export interface PluginPermissions {
   /** Tên miền được gọi mạng. `*.example.com` khớp mọi tên miền con. */
@@ -62,6 +86,11 @@ export interface PluginPermissions {
   /** Đọc / đề xuất ghi vào nhánh nhớ của chính plugin (qua hộp duyệt). */
   memory: boolean;
   notifications: boolean;
+  /**
+   * Nhờ NSA chạy model của việc "kênh chat" (qua kho khoá + chính sách + chi phí). Nội dung plugin
+   * gửi đi sẽ tới nhà cung cấp model người dùng đã chọn.
+   */
+  model: boolean;
 }
 
 export interface PluginManifest {
@@ -81,6 +110,12 @@ export interface PluginManifest {
   screens: ManifestScreen[];
   jobs: ManifestJob[];
   memory: ManifestMemory | null;
+  /** Khe bí mật (token…) — xem `ManifestSecret`. */
+  secrets: ManifestSecret[];
+  /** Chỉ cài được ở các bản này. Trống = mọi bản. */
+  editions: ManifestEdition[];
+  /** Cảnh báo phải hiện rõ và được người dùng đồng ý riêng trước khi cài (rủi ro của plugin). */
+  warning: string;
 }
 
 export interface ManifestError {
@@ -186,16 +221,17 @@ export function validateManifest(raw: unknown): ManifestResult {
     folders: [],
     memory: false,
     notifications: false,
+    model: false,
   };
   const rawPerm = raw['permissions'];
   if (rawPerm !== undefined) {
     if (!isObj(rawPerm)) err('permissions', '"permissions" phải là một đối tượng.');
     else {
       for (const key of Object.keys(rawPerm)) {
-        if (!['network', 'folders', 'memory', 'notifications'].includes(key)) {
+        if (!['network', 'folders', 'memory', 'notifications', 'model'].includes(key)) {
           err(
             `permissions.${key}`,
-            `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications.`,
+            `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications, model.`,
           );
         }
       }
@@ -239,7 +275,7 @@ export function validateManifest(raw: unknown): ManifestResult {
           });
         }
       }
-      for (const key of ['memory', 'notifications'] as const) {
+      for (const key of ['memory', 'notifications', 'model'] as const) {
         const v = rawPerm[key];
         if (v === undefined) continue;
         if (typeof v !== 'boolean') err(`permissions.${key}`, `"${key}" phải là true hoặc false.`);
@@ -378,6 +414,65 @@ export function validateManifest(raw: unknown): ManifestResult {
     );
   }
 
+  // ---- khe bí mật
+  const secrets: ManifestSecret[] = [];
+  const secretIds = new Set<string>();
+  list(raw, 'secrets', 8).forEach((x, i) => {
+    const p = `secrets[${i}]`;
+    if (!isObj(x)) return err(p, 'Mỗi khe bí mật là một đối tượng { id, label, hosts }.');
+    const sid = str(x, 'id', `${p}.id`);
+    if (sid && !SECRET_PATTERN.test(sid)) {
+      err(`${p}.id`, '"id" khe bí mật chỉ gồm chữ thường, số, gạch dưới.');
+    }
+    if (secretIds.has(sid)) err(`${p}.id`, `Trùng id khe bí mật "${sid}".`);
+    secretIds.add(sid);
+    const label = str(x, 'label', `${p}.label`, { max: 80 });
+    const help = str(x, 'help', `${p}.help`, { max: 300, required: false });
+    const hosts: string[] = [];
+    const rawHosts = x['hosts'];
+    if (!Array.isArray(rawHosts) || rawHosts.length === 0) {
+      err(`${p}.hosts`, '"hosts" phải là danh sách tên miền được nhận giá trị này.');
+    } else {
+      (rawHosts as unknown[]).forEach((h, k) => {
+        if (typeof h !== 'string' || !DOMAIN_PATTERN.test(h)) {
+          err(`${p}.hosts[${k}]`, `"${String(h)}" không phải tên miền hợp lệ.`);
+        } else if (h.startsWith('*.')) {
+          err(`${p}.hosts[${k}]`, 'Khe bí mật chỉ gắn với tên miền cụ thể, không dùng "*.".');
+        } else if (!permissions.network.includes(h)) {
+          err(`${p}.hosts[${k}]`, `"${h}" phải nằm trong permissions.network.`);
+        } else hosts.push(h);
+      });
+    }
+    const where: ('url' | 'header' | 'body')[] = [];
+    const rawWhere = x['where'];
+    if (rawWhere === undefined) where.push('url', 'header');
+    else if (!Array.isArray(rawWhere) || rawWhere.length === 0) {
+      err(`${p}.where`, '"where" phải là danh sách trong "url", "header", "body".');
+    } else {
+      (rawWhere as unknown[]).forEach((w, k) => {
+        if (w !== 'url' && w !== 'header' && w !== 'body') {
+          err(`${p}.where[${k}]`, '"where" chỉ nhận "url", "header" hoặc "body".');
+        } else if (!where.includes(w)) where.push(w);
+      });
+    }
+    if (sid && label && hosts.length > 0) secrets.push({ id: sid, label, help, hosts, where });
+  });
+
+  const editions: ManifestEdition[] = [];
+  if (raw['editions'] !== undefined) {
+    const e = raw['editions'];
+    if (!Array.isArray(e) || e.length === 0) {
+      err('editions', '"editions" phải là danh sách, ví dụ ["personal"].');
+    } else {
+      (e as unknown[]).forEach((v, i) => {
+        if (v !== 'personal' && v !== 'enterprise') {
+          err(`editions[${i}]`, '"editions" chỉ nhận "personal" hoặc "enterprise".');
+        } else if (!editions.includes(v)) editions.push(v);
+      });
+    }
+  }
+  const warning = str(raw, 'warning', 'warning', { max: 1500, required: false });
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
@@ -395,6 +490,9 @@ export function validateManifest(raw: unknown): ManifestResult {
       screens,
       jobs,
       memory,
+      secrets,
+      editions,
+      warning,
     },
   };
 }
@@ -416,6 +514,9 @@ export function domainAllowed(host: string, allowed: string[]): boolean {
     pattern.startsWith('*.') ? h.endsWith(pattern.slice(1)) : h === pattern,
   );
 }
+
+/** Chỗ giữ chỗ plugin viết thay cho giá trị bí mật: `{{secret:bot_token}}`. */
+export const SECRET_PLACEHOLDER_SOURCE = '\\{\\{secret:([a-z][a-z0-9_]{0,23})\\}\\}';
 
 /** Tên tool mà agent nhìn thấy qua cổng MCP: `<plugin>__<tool>`. */
 export function gatewayToolName(pluginId: string, tool: string): string {

@@ -133,10 +133,15 @@ let ctx = null;
 function makeContext() {
   const memory = init.grants.memory
     ? {
-        search: (query, options) => request('memory.search', { query, limit: options && options.limit }),
+        search: (query, options) =>
+          request('memory.search', { query, limit: options && options.limit, subBranch: options && options.subBranch }),
         read: (id) => request('memory.read', { id }),
+        list: (options) => request('memory.list', options || {}),
         propose: (input) => request('memory.propose', input),
       }
+    : null;
+  const model = init.grants.model
+    ? { complete: (prompt, options) => request('model.complete', { prompt, options: options || {} }) }
     : null;
   return {
     pluginId: init.pluginId,
@@ -156,6 +161,9 @@ function makeContext() {
       all: () => request('config.all', {}),
     },
     memory,
+    model,
+    secrets: { has: (id) => request('secret.has', { id: String(id) }) },
+    gate: (action) => request('gate', action),
     log: (message, level) => process.send({ t: 'log', level: level || 'info', message: String(message) }),
     notify: (notification) => request('notify', notification),
     fetch: brokerFetch,

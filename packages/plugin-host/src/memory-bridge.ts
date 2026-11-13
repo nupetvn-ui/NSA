@@ -13,6 +13,7 @@ export interface MemoryServiceLike {
   saveBranch(path: string, meta: { title?: string; hidden?: boolean }): Promise<MemoryBranch>;
   search(query: string, options?: { limit?: number; branch?: string }): MemorySearchHit[];
   get(id: string): MemoryEntry | null;
+  listEntries(branch?: string): MemoryEntry[];
   propose(draft: MemoryDraft): Promise<MemoryProposal>;
 }
 
@@ -42,6 +43,12 @@ export function createMemoryBridge(service: MemoryServiceLike): PluginMemoryBrid
         .search(query, { limit, branch })
         .filter((h) => inBranch(h.entry.branch, branch))
         .map((h) => ({ id: h.entry.id, title: h.entry.title, snippet: h.snippet })),
+    list: async (branch, limit) =>
+      service
+        .listEntries(branch)
+        .filter((e) => inBranch(e.branch, branch))
+        .slice(0, limit)
+        .map((e) => ({ id: e.id, title: e.title, body: e.body, updated: e.updated })),
     read: async (branch, id) => {
       const entry = service.get(id);
       if (!entry || !inBranch(entry.branch, branch)) return null;

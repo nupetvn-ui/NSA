@@ -21,6 +21,19 @@ export interface PluginGrants {
   folders: Record<string, string>;
   memory: boolean;
   notifications: boolean;
+  /** Cho plugin nhờ NSA chạy model "kênh chat". */
+  model: boolean;
+}
+
+/** Trạng thái một khe bí mật — giao diện chỉ thấy có / chưa có và bốn ký tự cuối, không bao giờ thấy giá trị. */
+export interface PluginSecretInfo {
+  id: string;
+  label: string;
+  help: string;
+  hosts: string[];
+  where: ('url' | 'header' | 'body')[];
+  set: boolean;
+  hint?: string;
 }
 
 export type PluginStatus = 'stopped' | 'starting' | 'running' | 'crashed' | 'failed';
@@ -53,12 +66,15 @@ export interface PluginInfo {
   manifest: PluginManifest;
   grants: PluginGrants;
   jobs: PluginJobInfo[];
+  secrets: PluginSecretInfo[];
   installedAt: string;
 }
 
 /** Gói đã được đọc và kiểm tra, chờ người dùng xem quyền rồi xác nhận cài. */
 export interface PreparedInstall {
   prepareId: string;
+  /** Cảnh báo riêng của plugin (rủi ro): người dùng phải đồng ý rõ trước khi cài. */
+  riskWarning?: string;
   manifest: PluginManifest;
   icon: PluginIcon;
   signature: SignatureStatus;
