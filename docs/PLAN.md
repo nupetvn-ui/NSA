@@ -180,6 +180,7 @@ Kết quả rà kiến trúc trên `main` (commit `b350699`, đọc mã và ADR)
 - Dựng thử bản đóng gói trong CI (không ký) để bắt lỗi thiếu nhị phân gốc.
 - Chạy workflow hằng đêm lần đầu và sửa cho tới khi xanh; bước cần đăng nhập thì bỏ qua có ghi chú.
 - Xong khi: cố ý đưa lại lỗi `node:os` trong giao diện thì CI đỏ.
+- **Tình trạng (13/11/2026): xong** (ADR-0014). Job `e2e` trên Windows (dev, build, bản đóng gói không ký) xanh; nhánh thử đưa lại `node:os` làm CI đỏ. Workflow hằng đêm chạy lần đầu xanh: OpenCode chạy thật, Claude/Codex/Gemini/Antigravity bỏ qua có ghi chú (CI không có đăng nhập). Chưa có: test nội dung nghiệp vụ từng màn hình, CLI thật trong CI.
 
 **G3. Ranh giới gói.** Phụ thuộc đang ngược chiều: `core` phụ thuộc `providers` và adapter `api`; `providers` phụ thuộc thẳng adapter Claude, Codex, OpenCode; `memory` phụ thuộc `core` và `mcp-gateway`. Lõi vì vậy không còn "chỉ có ổ cắm", và bản Doanh nghiệp khó thay từng mảnh.
 - Lõi chỉ giữ interface; việc lắp ghép dồn về `apps/desktop`.

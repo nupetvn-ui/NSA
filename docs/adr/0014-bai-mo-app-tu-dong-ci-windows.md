@@ -41,3 +41,9 @@ Bản build (`out/`) một mình **không** bắt được lỗi `node:os` (Roll
 - Thêm phụ thuộc dev `playwright-core`.
 
 ## Kết quả
+
+Đã chạy thật (13/11/2026):
+
+- **Job `e2e` trên `windows-latest` xanh** với cả ba đích (dev, build, bản đóng gói không ký). Cùng một PR, job Linux cũ vẫn xanh.
+- **Cố ý đưa lại lỗi `node:os` vào giao diện** (nhánh thử, đã xoá, không nằm trong PR): CI đỏ ở bước "Dựng app" (cảnh báo "externalized for browser compatibility" bị coi là lỗi), job Linux đỏ ở `pnpm test` (`renderer-imports.test.ts`). Tại máy dev, riêng bài mở app đích `dev` cũng đỏ (trang không dựng nổi, `Cannot access "node:os.homedir" in client code`), còn đích `build` thì **xanh** — đúng như đã nói: bản build che lỗi này, nên không dựa vào nó. Gỡ lỗi thì xanh lại.
+- **`contract-nightly.yml` bấm chạy lần đầu** (`gh workflow run`, 13/11/2026, run 43399176315): xanh ngay lần đầu, không phải sửa. Thật sự chạy: **OpenCode** (gửi, resume, huỷ, chặn lệnh đều qua, dùng model miễn phí). **Bỏ qua có ghi chú** vì CI không có đăng nhập: Claude Code, Codex, Gemini CLI ("Chưa đăng nhập"), Antigravity (chưa cài `agy`). Bước bỏ qua không được tính là đã qua; muốn chạy thật thì đặt secret `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` trong repo.
