@@ -25,8 +25,13 @@ export type MemoryProposeResult =
 
 /** Nhánh nhớ riêng của plugin. Chỉ có khi manifest khai `memory` và người dùng đã cấp quyền. */
 export interface PluginMemory {
-  /** Tìm trong nhánh của chính plugin (không thấy nhánh khác). */
-  search(query: string, options?: { limit?: number }): Promise<MemoryHit[]>;
+  /**
+   * Tìm trong nhánh của chính plugin (không thấy nhánh khác). `subBranch` thu hẹp vào nhánh con,
+   * ví dụ `theo-nhom/123` (ADR-0011).
+   */
+  search(query: string, options?: { limit?: number; subBranch?: string }): Promise<MemoryHit[]>;
+  /** Liệt kê mục nhớ đã được duyệt trong một nhánh con (mới nhất trước), kèm nội dung. */
+  list(options?: { subBranch?: string; limit?: number }): Promise<MemoryNote[]>;
   read(id: string): Promise<MemoryNote>;
   /**
    * Đề xuất ghi một mục. Không ghi thẳng: đi qua hộp duyệt và quy tắc tự duyệt của NSA Mem
@@ -38,7 +43,50 @@ export interface PluginMemory {
     kind?: 'fact' | 'preference' | 'rule';
     subject?: string;
     confidence?: number;
+    /** Nhánh con dưới nhánh của plugin, tối đa 3 cấp `a/b/c` (chữ thường, số, `-`, `_`). */
+    subBranch?: string;
   }): Promise<MemoryProposeResult>;
+}
+
+/** Việc plugin nhờ NSA chạy model của loại việc "kênh chat". Có khi được cấp quyền `model`. */
+export interface PluginModel {
+  complete(prompt: string, options?: { system?: string; maxChars?: number }): Promise<string>;
+}
+
+/** Kết quả một lần chạy chương trình dòng lệnh. `code` là mã thoát (null: hết giờ / không chạy được). */
+export interface CliResult {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  /** Có khi không chạy được (chưa cài, hết giờ): lý do đọc được. */
+  error?: string;
+}
+
+/** Chương trình dòng lệnh nhờ NSA chạy hộ (quyền `cli` — ADR-0012). */
+export interface PluginCli {
+  /**
+   * Chạy chương trình `id` (khai ở `permissions.cli`) với các tham số. KHÔNG qua shell: mỗi phần tử là
+   * một tham số. Chỉ chạy được lệnh con nằm trong `allow`; mỗi lần chạy đi qua chính sách + nhật ký.
+   */
+  run(
+    id: string,
+    args: string[],
+    options?: { tool?: string; timeoutMs?: number },
+  ): Promise<CliResult>;
+}
+
+/** Hành động ra ngoài mà plugin xin phép NSA (đi qua Policy + AuditLog). */
+export interface PluginActionRequest {
+  /** Tên ngắn, ví dụ `send_message`, `ban_member`, `broadcast`. */
+  action: string;
+  /** Thao tác nhạy cảm (đổi trưởng nhóm, xoá, gửi hàng loạt…): bản Cá nhân luôn hỏi người dùng. */
+  sensitive?: boolean;
+  /** Đối tượng bị tác động (mã nhóm, mã người…). */
+  target?: string;
+  /** Câu đọc được cho người duyệt và nhật ký. */
+  summary: string;
+  /** Tool đang chạy (để NSA biết người dùng đã xác nhận ở cổng MCP, khỏi hỏi lại lần hai). */
+  tool?: string;
 }
 
 export interface PluginConfig {
@@ -61,6 +109,20 @@ export interface PluginContext {
   readonly config: PluginConfig;
   /** Có khi người dùng đã cấp quyền `memory`. */
   readonly memory: PluginMemory | null;
+  /** Có khi người dùng đã cấp quyền `model`. */
+  readonly model: PluginModel | null;
+  /** Có khi người dùng đã cấp ít nhất một chương trình ở quyền `cli`. */
+  readonly cli: PluginCli | null;
+  /**
+   * Bí mật (token…) khai ở `secrets` của manifest. Plugin không đọc được giá trị — chỉ biết
+   * đã nhập chưa, và dùng `{{secret:<id>}}` trong `fetch`.
+   */
+  readonly secrets: { has(id: string): Promise<boolean> };
+  /**
+   * Xin phép làm một hành động ra ngoài (gửi tin, xoá, cấm…). Chính sách chặn / người dùng từ chối
+   * thì ném lỗi — mã gọi KHÔNG được làm hành động đó. Hành động nhạy cảm luôn hỏi người dùng.
+   */
+  gate(request: PluginActionRequest): Promise<void>;
   log(message: string, level?: 'info' | 'warn' | 'error'): void;
   /** Cần quyền `notifications`. */
   notify(notification: { title: string; body?: string }): Promise<void>;

@@ -25,6 +25,7 @@ import {
   formatManifestErrors,
   isCompatible,
   parseVersion,
+  SECRET_PLACEHOLDER_SOURCE,
   validateManifest,
   type InstallResult,
   type MemoryHit,
@@ -34,6 +35,7 @@ import {
   type PluginIcon,
   type PluginInfo,
   type PluginManifest,
+  type PluginSecretInfo,
   type PluginSettings,
   type PluginStatus,
   type PreparedInstall,
@@ -49,6 +51,14 @@ import {
   type TrustedPublisher,
   type Verification,
 } from './pack.js';
+import {
+  defaultResolver,
+  matchAllow,
+  minimalEnv,
+  runCli,
+  validateArgs,
+  type CliResolver,
+} from './cli-run.js';
 import { PluginProcess, type ReadyInfo } from './process.js';
 import { RUNNER_SOURCE } from './runner-source.js';
 import { PluginRegistry } from './registry.js';
@@ -59,6 +69,8 @@ export interface PluginMemoryBridge {
   ensureBranch(path: string, title: string): Promise<void>;
   search(branch: string, query: string, limit: number): Promise<MemoryHit[]>;
   read(branch: string, id: string): Promise<MemoryNote | null>;
+  /** Mục nhớ đã duyệt trong nhánh (kể cả nhánh con), mới nhất trước. */
+  list(branch: string, limit: number): Promise<MemoryNote[]>;
   propose(
     branch: string,
     pluginId: string,
@@ -72,7 +84,27 @@ export interface PluginMemoryBridge {
   ): Promise<MemoryProposeResult>;
 }
 
+/** Kho khoá cho bí mật của plugin — cùng hình dạng `SecretStore` của gói providers. */
+export interface PluginSecretStore {
+  available(): boolean;
+  get(name: string): string | undefined;
+  set(name: string, value: string): void;
+  delete(name: string): void;
+  has(name: string): boolean;
+  hint(name: string): string | undefined;
+}
+
 export interface PluginHostOptions {
+  /** Tìm chương trình cho quyền `cli` (mặc định: PATH). Test thay bằng `node fake.js`. */
+  cliResolver?: CliResolver;
+  /** Kho khoá của hệ điều hành. Không có thì plugin có khe bí mật sẽ báo "chưa nhập". */
+  secrets?: PluginSecretStore;
+  /** Chạy model của việc "kênh chat" (qua ModelTaskRunner của app: chính sách, chi phí, dự phòng). */
+  model?: (pluginId: string, prompt: string, options: { system?: string }) => Promise<string>;
+  /** Hỏi người dùng (hộp thoại) khi chính sách trả "hỏi" cho hành động nền. Hết hạn = từ chối. */
+  confirm?: (pluginId: string, text: string, signal: AbortSignal) => Promise<boolean>;
+  /** Che thêm các chuỗi bí mật khác của app (key API…) khỏi nội dung gửi model / nhật ký. */
+  redact?: (text: string) => string;
   /** Thư mục gốc của plugin host: `<userData>/plugins`. */
   dir: string;
   /** Phiên bản NSA đang chạy (kiểm tương thích). */
@@ -129,6 +161,8 @@ interface Entry {
   jobs: Map<string, { lastRun?: string; lastError?: string; running: boolean }>;
   configLock: Promise<void>;
   generation: number;
+  /** Số lời gọi tool nhạy cảm đang chạy theo tên — cổng MCP đã hỏi người dùng rồi. */
+  sensitiveInFlight: Map<string, number>;
 }
 
 interface Pending {
@@ -249,8 +283,26 @@ export class PluginHost {
           ...(state?.lastError ? { lastError: state.lastError } : {}),
         };
       }),
+      secrets: this.#secretInfos(e),
       installedAt: e.record.installedAt,
     };
+  }
+
+  #secretInfos(e: Entry): PluginSecretInfo[] {
+    const store = this.#o.secrets;
+    return e.manifest.secrets.map((s) => {
+      const name = secretName(e.id, s.id);
+      const hint = store?.hint(name);
+      return {
+        id: s.id,
+        label: s.label,
+        help: s.help,
+        hosts: s.hosts,
+        where: s.where,
+        set: store?.has(name) ?? false,
+        ...(hint ? { hint } : {}),
+      };
+    });
   }
 
   // ------------------------------------------------------------ Cài đặt
@@ -278,7 +330,10 @@ export class PluginHost {
     let blocked: string | undefined;
     const developerMode = this.#state.settings.developerMode;
 
-    if (verification.status === 'tampered') {
+    const edition = this.#o.identity.current().edition;
+    if (manifest.editions.length > 0 && !manifest.editions.includes(edition)) {
+      blocked = `Plugin "${manifest.name}" chỉ có ở bản ${manifest.editions.join(' / ')}; bạn đang dùng bản ${edition}.`;
+    } else if (verification.status === 'tampered') {
       blocked =
         'Gói đã bị sửa sau khi được ký (hoặc chữ ký hỏng). NSA từ chối cài để bảo vệ bạn — hãy tải lại gói từ nguồn gốc.';
     } else if (!isCompatible(manifest, this.#o.nsaVersion)) {
@@ -314,8 +369,10 @@ export class PluginHost {
       const oldest = this.#pending.keys().next().value;
       if (oldest) this.#pending.delete(oldest);
     }
+    if (manifest.warning) warnings.unshift(manifest.warning);
     const prepared: PreparedInstall = {
       prepareId,
+      ...(manifest.warning ? { riskWarning: manifest.warning } : {}),
       manifest,
       icon: iconFor(manifest, files),
       signature: verification.status,
@@ -356,6 +413,16 @@ export class PluginHost {
         status: 'denied',
         reason: `Plugin cần NSA ${manifest.nsa}, bạn đang dùng ${this.#o.nsaVersion}.`,
       };
+    }
+    const edition = this.#o.identity.current().edition;
+    if (manifest.editions.length > 0 && !manifest.editions.includes(edition)) {
+      return {
+        status: 'denied',
+        reason: `Plugin này chỉ có ở bản ${manifest.editions.join(' / ')}; bạn đang dùng bản ${edition}.`,
+      };
+    }
+    if (manifest.warning && !confirmed) {
+      return { status: 'needs_confirmation', reason: manifest.warning };
     }
     const clean = this.#cleanGrants(manifest, grants);
     const op = existing ? 'update' : 'install';
@@ -443,6 +510,8 @@ export class PluginHost {
       folders,
       memory: want.memory && given.memory === true,
       notifications: want.notifications && given.notifications === true,
+      model: want.model && given.model === true,
+      cli: (given.cli ?? []).filter((id) => want.cli.some((c) => c.id === id)),
     };
   }
 
@@ -509,6 +578,7 @@ export class PluginHost {
     this.#entries.delete(id);
     delete this.#state.plugins[id];
     this.#saveState();
+    for (const s of entry.manifest.secrets) this.#o.secrets?.delete(secretName(id, s.id));
     rmSync(this.#installDir(id), { recursive: true, force: true });
     if (options.deleteData !== false) rmSync(this.#dataDir(id), { recursive: true, force: true });
     this.#audit({
@@ -564,7 +634,12 @@ export class PluginHost {
       dataDir: this.#dataDir(entry.id),
       runnerPath: this.#runnerPath,
       folders,
-      grants: { folders: record.grants.folders, memory: record.grants.memory },
+      grants: {
+        folders: record.grants.folders,
+        memory: record.grants.memory,
+        model: record.grants.model === true,
+        cli: record.grants.cli ?? [],
+      },
       execPath: this.#o.runtime?.execPath ?? process.execPath,
       electron: this.#o.runtime?.electron ?? false,
       maxMemoryMb: this.#o.maxMemoryMb ?? 256,
@@ -754,19 +829,27 @@ export class PluginHost {
     context: { agentId: string; conversationId?: string },
   ): Promise<string> {
     const proc = await this.#whenRunning(entry);
-    const value = await proc.call(
-      'tool',
-      {
-        name: tool,
-        args,
-        caller: {
-          agentId: context.agentId,
-          ...(context.conversationId ? { conversationId: context.conversationId } : {}),
+    // Tool nhạy cảm tới được đây nghĩa là cổng MCP đã hỏi người dùng rồi — ghi lại để `gate` khỏi hỏi lần hai.
+    const sensitive = entry.manifest.tools.find((t) => t.name === tool)?.sensitive === true;
+    if (sensitive) entry.sensitiveInFlight.set(tool, (entry.sensitiveInFlight.get(tool) ?? 0) + 1);
+    try {
+      const value = await proc.call(
+        'tool',
+        {
+          name: tool,
+          args,
+          caller: {
+            agentId: context.agentId,
+            ...(context.conversationId ? { conversationId: context.conversationId } : {}),
+          },
         },
-      },
-      this.#o.toolTimeoutMs ?? 30_000,
-    );
-    return typeof value === 'string' ? value : JSON.stringify(value);
+        this.#o.toolTimeoutMs ?? 30_000,
+      );
+      return typeof value === 'string' ? value : JSON.stringify(value);
+    } finally {
+      if (sensitive)
+        entry.sensitiveInFlight.set(tool, (entry.sensitiveInFlight.get(tool) ?? 1) - 1);
+    }
   }
 
   /** Plugin vừa sập / đang khởi động lại thì chờ một lúc (tối đa 6 giây) thay vì báo lỗi ngay. */
@@ -832,11 +915,24 @@ export class PluginHost {
         this.#o.notify?.(entry.id, { title, body: String(p['body'] ?? '').slice(0, 400) });
         return null;
       }
+      case 'secret.has': {
+        const slot = entry.manifest.secrets.find((s) => s.id === String(p['id']));
+        return slot ? (this.#o.secrets?.has(secretName(entry.id, slot.id)) ?? false) : false;
+      }
+      case 'gate':
+        return this.#gate(entry, p as unknown as GateParams);
+      case 'cli.run':
+        return this.#cliRun(entry, p);
+      case 'model.complete':
+        return this.#complete(entry, p);
       case 'memory.search':
+      case 'memory.list':
       case 'memory.read':
       case 'memory.propose': {
-        const branch = this.#memoryBranch(entry);
-        if (!grants.memory || !branch || !this.#o.memory) return deny('nhớ (NSA Mem)');
+        const root = this.#memoryBranch(entry);
+        if (!grants.memory || !root || !this.#o.memory) return deny('nhớ (NSA Mem)');
+        const sub = subBranchOf(p['subBranch']);
+        const branch = sub ? `${root}/${sub}` : root;
         if (method === 'memory.search') {
           return this.#o.memory.search(
             branch,
@@ -844,10 +940,16 @@ export class PluginHost {
             Math.min(20, Number(p['limit']) || 8),
           );
         }
+        if (method === 'memory.list') {
+          return this.#o.memory.list(branch, Math.min(50, Number(p['limit']) || 20));
+        }
         if (method === 'memory.read') {
           const note = await this.#o.memory.read(branch, String(p['id'] ?? ''));
           if (!note) throw new Error('Không có mục nhớ này trong nhánh của plugin.');
           return note;
+        }
+        if (sub) {
+          await this.#o.memory.ensureBranch(branch, sub.split('/').at(-1) ?? sub);
         }
         const kind = p['kind'];
         return this.#o.memory.propose(branch, entry.id, {
@@ -864,26 +966,104 @@ export class PluginHost {
   }
 
   async #brokerFetch(entry: Entry, p: FetchParams): Promise<unknown> {
-    let url: URL;
-    try {
-      url = new URL(p.url);
-    } catch {
-      throw new Error(`Địa chỉ không hợp lệ: ${p.url}`);
-    }
+    const deniedBy = (message: string): never => {
+      this.#audit({ op: 'denied', pluginId: entry.id, decision: 'deny', detail: message });
+      throw new Error(message);
+    };
     let method = (p.method || 'GET').toUpperCase();
     let body: Buffer | undefined = p.body ? Buffer.from(p.body, 'base64') : undefined;
     const headers: Record<string, string> = {};
     for (const [k, v] of Object.entries(p.headers ?? {})) {
       if (!STRIP_REQUEST_HEADERS.has(k.toLowerCase())) headers[k] = String(v);
     }
+    // Lệnh "lưu giá trị từ phản hồi vào khe bí mật" (xoay vòng token): `x-nsa-capture: khe=truong,khe2=a.b`.
+    const captureHeader = Object.keys(headers).find((k) => k.toLowerCase() === 'x-nsa-capture');
+    const capture = captureHeader ? parseCapture(headers[captureHeader] ?? '') : [];
+    if (captureHeader) delete headers[captureHeader];
+
+    // ---- Bí mật: plugin chỉ viết {{secret:khe}}; lõi thay giá trị thật, chỉ tới tên miền được gắn với khe.
+    const used = new Map<string, ManifestSecretRef>();
+    const secretValues = new Map<string, string>();
+    const bodyText = body && body.includes('{{secret:') ? body.toString('utf8') : undefined;
+    const wherever = (text: string, where: 'url' | 'header' | 'body'): void => {
+      for (const m of text.matchAll(new RegExp(SECRET_PLACEHOLDER_SOURCE, 'g'))) {
+        const id = m[1] as string;
+        const slot = entry.manifest.secrets.find((s) => s.id === id);
+        if (!slot)
+          deniedBy(`NSA: plugin "${entry.id}" dùng bí mật "${id}" mà manifest không khai báo.`);
+        if (!slot?.where.includes(where)) {
+          deniedBy(
+            `NSA: bí mật "${id}" của plugin "${entry.id}" không được đặt trong ${where === 'url' ? 'URL' : where === 'header' ? 'header' : 'nội dung gửi'}.`,
+          );
+        }
+        const value = this.#o.secrets?.get(secretName(entry.id, id));
+        if (!value) {
+          throw new Error(
+            `Chưa nhập "${slot?.label ?? id}" cho plugin "${entry.id}". Mở App Store → Quản lý → ${entry.manifest.name} để nhập.`,
+          );
+        }
+        used.set(id, slot as ManifestSecretRef);
+        secretValues.set(id, value);
+      }
+    };
+    const urlHead = p.url.split(/[?#]/)[0] ?? '';
+    const urlTail = p.url.slice(urlHead.length);
+    if (urlTail.includes('{{secret:')) {
+      deniedBy(`NSA: bí mật chỉ được đặt trong phần đường dẫn của URL, không đặt trong query.`);
+    }
+    wherever(urlHead, 'url');
+    for (const v of Object.values(headers)) wherever(v, 'header');
+    if (bodyText) wherever(bodyText, 'body');
+    const fill = (text: string, encode: boolean): string =>
+      text.replace(new RegExp(SECRET_PLACEHOLDER_SOURCE, 'g'), (_m, id: string) => {
+        const value = secretValues.get(id) ?? '';
+        return encode && !/^[A-Za-z0-9._~:-]+$/.test(value) ? encodeURIComponent(value) : value;
+      });
+
+    let preUrl: URL;
+    try {
+      preUrl = new URL(p.url);
+    } catch {
+      throw new Error(
+        `Địa chỉ không hợp lệ: ${p.url.replace(new RegExp(SECRET_PLACEHOLDER_SOURCE, 'g'), '…')}`,
+      );
+    }
+    let url: URL;
+    try {
+      url = new URL(fill(p.url, true));
+    } catch {
+      throw new Error('Địa chỉ không hợp lệ sau khi điền bí mật.');
+    }
+    if (used.size > 0 && url.hostname !== preUrl.hostname) {
+      deniedBy(`NSA: bí mật không được nằm trong phần tên miền của URL.`);
+    }
+    for (const k of Object.keys(headers)) headers[k] = fill(headers[k] ?? '', false);
+    if (bodyText && body) body = Buffer.from(fill(bodyText, false), 'utf8');
+
+    // Việc ghi dữ liệu bằng bí mật của plugin (gửi tin…) là hành động ra ngoài: đi qua Policy + AuditLog
+    // dù plugin có tự gọi `gate` hay không.
+    if (used.size > 0 && method !== 'GET' && method !== 'HEAD') {
+      await this.#authorize(entry, {
+        action: `http.${method.toLowerCase()}`,
+        sensitive: false,
+        target: preUrl.hostname,
+        summary: `${method} ${preUrl.hostname}${safeDecode(preUrl.pathname).replace(new RegExp(SECRET_PLACEHOLDER_SOURCE, 'g'), '«khoá»')}`,
+      });
+    }
+
     for (let hop = 0; hop <= 5; hop++) {
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         throw new Error(`Chỉ gọi được http / https (nhận được ${url.protocol}).`);
       }
       if (!domainAllowed(url.hostname, entry.record.grants.network)) {
-        const message = `NSA: plugin "${entry.id}" chưa được cấp quyền mạng tới "${url.hostname}".`;
-        this.#audit({ op: 'denied', pluginId: entry.id, decision: 'deny', detail: message });
-        throw new Error(message);
+        deniedBy(`NSA: plugin "${entry.id}" chưa được cấp quyền mạng tới "${url.hostname}".`);
+      }
+      for (const slot of used.values()) {
+        if (!slot.hosts.includes(url.hostname.toLowerCase())) {
+          deniedBy(
+            `NSA: bí mật "${slot.id}" không được gửi tới "${url.hostname}" (chỉ ${slot.hosts.join(', ')}).`,
+          );
+        }
       }
       const response = await fetch(url, {
         method,
@@ -904,15 +1084,223 @@ export class PluginHost {
         }
         continue;
       }
-      const bytes = await readLimited(response);
+      let bytes = await readLimited(response);
+      const captured: string[] = [];
+      if (capture.length > 0 && response.ok) {
+        try {
+          const json = JSON.parse(bytes.toString('utf8')) as unknown;
+          for (const { slot, path } of capture) {
+            const def = entry.manifest.secrets.find((s) => s.id === slot);
+            if (!def || !def.hosts.includes(url.hostname.toLowerCase())) continue;
+            const value = takePath(json, path);
+            if (typeof value === 'string' && value.trim() && !/\s/.test(value)) {
+              this.#o.secrets?.set(secretName(entry.id, slot), value);
+              secretValues.set(slot, value);
+              captured.push(slot);
+            }
+          }
+          bytes = Buffer.from(JSON.stringify(json), 'utf8');
+        } catch {
+          /* phản hồi không phải JSON: không lưu gì */
+        }
+      }
+      if (captured.length > 0) {
+        this.#audit({
+          op: 'secret',
+          pluginId: entry.id,
+          decision: 'allow',
+          detail: `cập nhật từ phản hồi của ${url.hostname}: ${captured.join(', ')}`,
+        });
+      }
+      // Che mọi giá trị bí mật còn sót trong phản hồi (máy chủ đôi khi in lại token / header).
+      const clean = (text: string): string => scrubSecrets(text, [...secretValues.values()]);
+      const text = bytes.toString('utf8');
+      const scrubbed = clean(text);
+      if (scrubbed !== text) bytes = Buffer.from(scrubbed, 'utf8');
       return {
         status: response.status,
         statusText: response.statusText,
-        headers: [...response.headers.entries()],
+        headers: [...response.headers.entries()].map(([k, v]) => [k, clean(v)]),
         body: bytes.toString('base64'),
       };
     }
     throw new Error('Chuyển hướng quá nhiều lần.');
+  }
+
+  // ------------------------------------------------------------ Bí mật, hành động, model
+
+  /** Tất cả giá trị bí mật của plugin này + bí mật khác của app — để che khỏi nhật ký / nội dung gửi model. */
+  #redact(entry: Entry, text: string): string {
+    const own = entry.manifest.secrets
+      .map((s) => this.#o.secrets?.get(secretName(entry.id, s.id)))
+      .filter((v): v is string => !!v);
+    const cleaned = scrubSecrets(text, own);
+    return this.#o.redact ? this.#o.redact(cleaned) : cleaned;
+  }
+
+  /** Người dùng nhập / xoá giá trị một khe bí mật (từ màn hình Quản lý do NSA vẽ). */
+  setSecret(id: string, secretId: string, value: string): PluginInfo {
+    const entry = this.#need(id);
+    const slot = entry.manifest.secrets.find((s) => s.id === secretId);
+    if (!slot) throw new Error(`Plugin không có khe bí mật "${secretId}".`);
+    if (!this.#o.secrets) throw new Error('Kho khoá của hệ điều hành không dùng được.');
+    this.#o.secrets.set(secretName(id, secretId), value);
+    this.#audit({
+      op: 'secret',
+      pluginId: id,
+      decision: 'allow',
+      detail: `đặt "${secretId}" (${this.#o.secrets.hint(secretName(id, secretId)) ?? '••••'})`,
+    });
+    this.#changed();
+    return this.#info(entry);
+  }
+
+  deleteSecret(id: string, secretId: string): PluginInfo {
+    const entry = this.#need(id);
+    if (!entry.manifest.secrets.some((s) => s.id === secretId)) {
+      throw new Error(`Plugin không có khe bí mật "${secretId}".`);
+    }
+    this.#o.secrets?.delete(secretName(id, secretId));
+    this.#audit({ op: 'secret', pluginId: id, decision: 'allow', detail: `xoá "${secretId}"` });
+    this.#changed();
+    return this.#info(entry);
+  }
+
+  /**
+   * Hành động ra ngoài của plugin: Policy → (hỏi người dùng nếu cần) → AuditLog. Ném lỗi nếu bị
+   * chặn / bị từ chối. Mã plugin không được làm hành động đó khi lỗi này được ném.
+   */
+  async #authorize(entry: Entry, req: GateParams): Promise<void> {
+    const sensitive = req.sensitive === true;
+    const action = String(req.action ?? '').slice(0, 60) || 'action';
+    const target = req.target === undefined ? undefined : String(req.target).slice(0, 120);
+    const summary = this.#redact(entry, String(req.summary ?? '')).slice(0, 300);
+    // Tool nhạy cảm đã được cổng MCP hỏi người dùng rồi → không hỏi lần hai.
+    const viaGateway =
+      sensitive && typeof req.tool === 'string' && (entry.sensitiveInFlight.get(req.tool) ?? 0) > 0;
+    const act: PolicyAction = {
+      kind: 'plugin.action',
+      pluginId: entry.id,
+      action,
+      sensitive,
+      ...(target ? { target } : {}),
+      summary,
+    };
+    let verdict = await this.#check(act, viaGateway);
+    let asked = viaGateway;
+    if (verdict.decision === 'ask') {
+      const answer = await this.#askUser(entry, verdict.reason);
+      asked = true;
+      verdict = answer
+        ? await this.#check(act, true)
+        : { decision: 'deny', reason: 'Người dùng không đồng ý (hoặc không trả lời kịp).' };
+    }
+    const detail = `${action}${target ? ` → ${target}` : ''}: ${summary}${asked ? ' [đã xác nhận]' : ''}`;
+    if (verdict.decision !== 'allow') {
+      const reason = 'reason' in verdict ? verdict.reason : '';
+      this.#audit({
+        op: 'action',
+        pluginId: entry.id,
+        decision: verdict.decision,
+        detail: `${detail} — bị chặn: ${reason}`,
+      });
+      throw new Error(`Chính sách không cho phép: ${reason}`);
+    }
+    this.#audit({ op: 'action', pluginId: entry.id, decision: 'allow', detail });
+  }
+
+  /**
+   * Chạy chương trình dòng lệnh hộ plugin: quyền `cli` đã cấp → lệnh con nằm trong `allow` → tham số
+   * hợp lệ → Policy (+ hỏi nếu nhạy cảm) → chạy không qua shell. Mọi lần chạy vào nhật ký.
+   */
+  async #cliRun(entry: Entry, p: Record<string, unknown>): Promise<unknown> {
+    const def = entry.manifest.permissions.cli.find((c) => c.id === String(p['id']));
+    const refuse = (why: string): never => {
+      const message = `NSA: plugin "${entry.id}" ${why}`;
+      this.#audit({ op: 'denied', pluginId: entry.id, decision: 'deny', detail: message });
+      throw new Error(message);
+    };
+    if (!def || !(entry.record.grants.cli ?? []).includes(def.id)) {
+      return refuse('chưa được cấp quyền chạy chương trình này.');
+    }
+    const bad = validateArgs(p['args'], def.denyFlags);
+    if (bad) return refuse(`gọi ${def.command} sai: ${bad}`);
+    const args = p['args'] as string[];
+    const rule = matchAllow(def.allow, args);
+    if (!rule) {
+      return refuse(
+        `không được chạy "${def.command} ${args.slice(0, 3).join(' ')}" (ngoài danh sách lệnh đã khai).`,
+      );
+    }
+    const prefix = args.slice(0, rule.args.length).join(' ');
+    await this.#authorize(entry, {
+      action: `cli.${def.id}`,
+      sensitive: rule.sensitive,
+      target: def.command,
+      summary: `${def.command} ${prefix}`,
+      ...(typeof p['tool'] === 'string' ? { tool: p['tool'] } : {}),
+    });
+    const resolved = (this.#o.cliResolver ?? defaultResolver)(def.command);
+    if ('error' in resolved) {
+      return {
+        code: null,
+        stdout: '',
+        stderr: '',
+        error: `${resolved.error} ${def.install}`.trim(),
+      };
+    }
+    const options = (p['options'] ?? {}) as { timeoutMs?: number };
+    const timeoutMs = Math.min(120_000, Math.max(1_000, Number(options.timeoutMs) || 60_000));
+    return runCli(resolved, args, { timeoutMs, env: minimalEnv() });
+  }
+
+  async #askUser(entry: Entry, text: string): Promise<boolean> {
+    const confirm = this.#o.confirm;
+    if (!confirm) return false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25_000);
+    try {
+      return await confirm(entry.id, this.#redact(entry, text), controller.signal);
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async #gate(entry: Entry, req: GateParams): Promise<null> {
+    await this.#authorize(entry, req);
+    return null;
+  }
+
+  async #complete(entry: Entry, p: Record<string, unknown>): Promise<string> {
+    if (!entry.record.grants.model || !this.#o.model) {
+      this.#audit({
+        op: 'denied',
+        pluginId: entry.id,
+        decision: 'deny',
+        detail: `NSA: plugin "${entry.id}" chưa được cấp quyền dùng model.`,
+      });
+      throw new Error(`NSA: plugin "${entry.id}" chưa được cấp quyền dùng model.`);
+    }
+    const options = (p['options'] ?? {}) as { system?: string; maxChars?: number };
+    const prompt = this.#redact(entry, String(p['prompt'] ?? '')).slice(0, 24_000);
+    const system = options.system
+      ? this.#redact(entry, String(options.system)).slice(0, 8_000)
+      : '';
+    if (!prompt.trim()) throw new Error('Nội dung gửi model trống.');
+    this.#audit({
+      op: 'model',
+      pluginId: entry.id,
+      decision: 'allow',
+      detail: `việc "kênh chat": ${prompt.length + system.length} ký tự`,
+    });
+    const text = await withTimeout(
+      this.#o.model(entry.id, prompt, system ? { system } : {}),
+      90_000,
+      'Model không trả lời trong 90 giây.',
+    );
+    return this.#redact(entry, text).slice(0, Math.min(8_000, Number(options.maxChars) || 8_000));
   }
 
   // ------------------------------------------------------------ Cấu hình riêng của plugin
@@ -1050,6 +1438,7 @@ export class PluginHost {
       jobs: new Map(),
       configLock: Promise.resolve(),
       generation: 0,
+      sensitiveInFlight: new Map(),
     };
   }
 
@@ -1097,6 +1486,103 @@ interface FetchParams {
   body?: string;
 }
 
+interface GateParams {
+  action: string;
+  sensitive?: boolean;
+  target?: string;
+  summary: string;
+  tool?: string;
+}
+
+type ManifestSecretRef = PluginManifest['secrets'][number];
+
+/** Tên khoá trong kho khoá của hệ điều hành cho một khe bí mật. */
+export function secretName(pluginId: string, slot: string): string {
+  return `plugin:${pluginId}:${slot}`;
+}
+
+const SUB_BRANCH = /^[a-z0-9][a-z0-9_-]{0,47}(\/[a-z0-9][a-z0-9_-]{0,47}){0,2}$/;
+
+/** Nhánh nhớ con hợp lệ (không `..`, không rỗng, tối đa 3 cấp) hoặc `null`; sai dạng thì ném lỗi. */
+function subBranchOf(value: unknown): string | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !SUB_BRANCH.test(value)) {
+    throw new Error(
+      'subBranch không hợp lệ: chỉ chữ thường, số, "-", "_", tối đa 3 cấp ngăn bởi "/".',
+    );
+  }
+  return value;
+}
+
+function parseCapture(header: string): { slot: string; path: string }[] {
+  return header
+    .split(',')
+    .map((part) => part.trim().split('='))
+    .filter((kv): kv is [string, string] => kv.length === 2 && !!kv[0] && !!kv[1])
+    .map(([slot, path]) => ({ slot: slot.trim(), path: path.trim() }));
+}
+
+/** Lấy giá trị theo đường dẫn `a.b` trong JSON và thay bằng dấu che; trả giá trị cũ. */
+function takePath(json: unknown, path: string): unknown {
+  const parts = path.split('.');
+  let node = json as Record<string, unknown> | undefined;
+  for (const part of parts.slice(0, -1)) {
+    const next = node?.[part];
+    if (typeof next !== 'object' || next === null) return undefined;
+    node = next as Record<string, unknown>;
+  }
+  const last = parts.at(-1) as string;
+  const value = node?.[last];
+  if (node && typeof value === 'string') node[last] = '[đã lưu vào kho khoá]';
+  return value;
+}
+
+/** Các dạng một bí mật có thể xuất hiện trong văn bản (thô, URL-encode, base64, JSON). */
+export function secretForms(secret: string): string[] {
+  return [
+    secret,
+    encodeURIComponent(secret),
+    Buffer.from(secret).toString('base64'),
+    JSON.stringify(secret).slice(1, -1),
+  ].filter((v, i, a) => a.indexOf(v) === i);
+}
+
+/** Che mọi bí mật đã biết trong một chuỗi bằng «•••». */
+export function scrubSecrets(text: string, secrets: readonly string[]): string {
+  let out = text;
+  for (const secret of secrets) {
+    if (secret.length < 6) continue;
+    for (const form of secretForms(secret)) {
+      if (out.includes(form)) out = out.split(form).join('«bí mật»');
+    }
+  }
+  return out;
+}
+
+function safeDecode(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(timer);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
+}
+
 async function readLimited(response: Response): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let total = 0;
@@ -1118,9 +1604,17 @@ async function readLimited(response: Response): Promise<Buffer> {
 function loadState(file: string): StateFile {
   try {
     const raw = JSON.parse(readFileSync(file, 'utf8')) as Partial<StateFile>;
+    const plugins = raw.plugins ?? {};
+    // Bản ghi cũ (trước giai đoạn 4) chưa có `model`.
+    for (const record of Object.values(plugins)) {
+      if (record.grants) {
+        record.grants.model = record.grants.model === true;
+        record.grants.cli = Array.isArray(record.grants.cli) ? record.grants.cli : [];
+      }
+    }
     return {
       settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
-      plugins: raw.plugins ?? {},
+      plugins,
     };
   } catch {
     return { settings: { ...DEFAULT_SETTINGS }, plugins: {} };
@@ -1142,6 +1636,23 @@ export function describePermissions(manifest: PluginManifest, grants?: PluginGra
   if (want.memory && (!grants || grants.memory))
     out.push('Đọc và đề xuất ghi vào nhánh nhớ riêng của plugin');
   if (want.notifications && (!grants || grants.notifications)) out.push('Hiện thông báo');
+  for (const c of want.cli) {
+    if (!grants || grants.cli.includes(c.id)) {
+      const names = c.allow.map((a) => a.args.join(' ') + (a.sensitive ? ' (nhạy cảm)' : ''));
+      out.push(
+        `Chạy chương trình "${c.label}" (${c.command}) trên máy bạn, chỉ các lệnh: ${names.join('; ')}`,
+      );
+    }
+  }
+  if (want.model && (!grants || grants.model)) {
+    out.push(
+      'Nhờ NSA chạy model "kênh chat" (nội dung tin nhắn được gửi tới nhà cung cấp model bạn chọn)',
+    );
+  }
+  for (const s of manifest.secrets)
+    out.push(
+      `Dùng bí mật "${s.label}" khi gọi ${s.hosts.join(', ')} (plugin không đọc được giá trị)`,
+    );
   return out;
 }
 
@@ -1159,6 +1670,14 @@ function newPermissions(oldM: PluginManifest, newM: PluginManifest): string[] {
   }
   if (newM.permissions.memory && !oldM.permissions.memory) out.push('Nhánh nhớ riêng');
   if (newM.permissions.notifications && !oldM.permissions.notifications) out.push('Hiện thông báo');
+  if (newM.permissions.model && !oldM.permissions.model) out.push('Dùng model "kênh chat"');
+  for (const c of newM.permissions.cli) {
+    const before = oldM.permissions.cli.find((o) => o.id === c.id);
+    if (!before || c.allow.length > before.allow.length) out.push(`Chạy chương trình "${c.label}"`);
+  }
+  for (const s of newM.secrets) {
+    if (!oldM.secrets.some((o) => o.id === s.id)) out.push(`Bí mật "${s.label}"`);
+  }
   return out;
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { VendorLogo } from './VendorLogo';
 import type { ProviderSettingsPatch, ProvidersView, TaskKind, TaskTryResult } from '@nsa/core';
 
 type ProviderView = ProvidersView['providers'][number];
@@ -139,6 +140,7 @@ function ProvidersTab({
                   }}
                 >
                   <span className={`status ${p.usable ? 'ok' : 'off'}`} />
+                  <VendorLogo vendor={p.id} name={p.name} />
                   <span className="provider-item-name">{p.name}</span>
                   {p.keyHint && <span className="hint small">{p.keyHint}</span>}
                 </button>

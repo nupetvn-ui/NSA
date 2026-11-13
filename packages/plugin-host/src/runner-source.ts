@@ -133,11 +133,28 @@ let ctx = null;
 function makeContext() {
   const memory = init.grants.memory
     ? {
-        search: (query, options) => request('memory.search', { query, limit: options && options.limit }),
+        search: (query, options) =>
+          request('memory.search', { query, limit: options && options.limit, subBranch: options && options.subBranch }),
         read: (id) => request('memory.read', { id }),
+        list: (options) => request('memory.list', options || {}),
         propose: (input) => request('memory.propose', input),
       }
     : null;
+  const model = init.grants.model
+    ? { complete: (prompt, options) => request('model.complete', { prompt, options: options || {} }) }
+    : null;
+  const cli =
+    init.grants.cli && init.grants.cli.length > 0
+      ? {
+          run: (id, args, options) =>
+            request('cli.run', {
+              id: String(id),
+              args,
+              tool: options && options.tool,
+              options: { timeoutMs: options && options.timeoutMs },
+            }),
+        }
+      : null;
   return {
     pluginId: init.pluginId,
     version: init.version,
@@ -156,6 +173,10 @@ function makeContext() {
       all: () => request('config.all', {}),
     },
     memory,
+    model,
+    cli,
+    secrets: { has: (id) => request('secret.has', { id: String(id) }) },
+    gate: (action) => request('gate', action),
     log: (message, level) => process.send({ t: 'log', level: level || 'info', message: String(message) }),
     notify: (notification) => request('notify', notification),
     fetch: brokerFetch,

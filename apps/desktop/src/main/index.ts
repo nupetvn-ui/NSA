@@ -163,6 +163,9 @@ if (!app.requestSingleInstanceLock()) {
       policy,
       audit,
       runtime: memory.runtime,
+      cipher: safeStorage,
+      runText: async (task, prompt) => (await providers.runner.runText(task, prompt)).value,
+      redact: (text) => providers.hub.redact(text),
       chat: () => {
         if (!chat) throw new Error('Lõi chat chưa sẵn sàng');
         return chat;

@@ -13,6 +13,7 @@ import type {
 import { McpGateway, memoryToolSource } from '@nsa/mcp-gateway';
 import type { MemoryRuntime } from '@nsa/memory';
 import { PluginHost, createMemoryBridge, type TrustedPublisher } from '@nsa/plugin-host';
+import { createEncryptedFileSecretStore, type OsCipher } from '@nsa/providers';
 import type { PluginGrants } from '@nsa/plugin-sdk';
 
 /** Giao thức riêng cho màn hình plugin: `nsa-plugin://<id>/<đường dẫn>`. Gọi TRƯỚC khi app sẵn sàng. */
@@ -81,6 +82,12 @@ export async function setupPlugins(options: {
   policy: Policy;
   audit: AuditLog;
   runtime: MemoryRuntime;
+  /** Bộ mã hoá của hệ điều hành (Electron safeStorage): bí mật của plugin cũng cất ở đây. */
+  cipher: OsCipher;
+  /** Chạy model của việc "kênh chat" qua ModelTaskRunner (chính sách, chi phí, dự phòng — ADR-0009). */
+  runText: (task: string, prompt: string) => Promise<string>;
+  /** Che mọi key API của app khỏi nội dung gửi model / nhật ký. */
+  redact: (text: string) => string;
   chat: () => ChatService;
   broadcast: <E extends IpcEventChannel>(channel: E, payload: IpcEventContract[E]) => void;
 }): Promise<PluginsSetup> {
@@ -119,6 +126,15 @@ export async function setupPlugins(options: {
       join(options.userData, 'plugins', 'trusted-publishers.json'),
     ),
     memory: bridge,
+    // Token của plugin: kho khoá riêng (mã hoá bằng hệ điều hành), tách khỏi key API. Plugin không đọc được.
+    secrets: createEncryptedFileSecretStore(
+      join(options.userData, 'plugin-secrets.json'),
+      options.cipher,
+    ),
+    model: (pluginId, prompt, o) =>
+      options.runText('channel', o.system ? `${o.system}\n\n--- DỮ LIỆU ---\n${prompt}` : prompt),
+    confirm: (pluginId, text, signal) => confirmPluginAction(pluginId, text, signal),
+    redact: options.redact,
     runtime: { execPath: process.execPath, electron: true },
     notify: (pluginId, n) => {
       if (Notification.isSupported()) {
@@ -198,6 +214,9 @@ export async function setupPlugins(options: {
       host.uninstall(String(id), { deleteData: deleteData !== false }),
     'plugins:updateGrants': (id, grants) => host.updateGrants(String(id), cleanGrants(grants)),
     'plugins:runJob': (id, jobId) => host.runJob(String(id), String(jobId)),
+    'plugins:setSecret': (id, secretId, value) =>
+      host.setSecret(String(id), String(secretId), String(value)),
+    'plugins:deleteSecret': (id, secretId) => host.deleteSecret(String(id), String(secretId)),
     'plugins:pickFolder': async (label) => {
       const win = BrowserWindow.getFocusedWindow();
       const dialogOptions = {
@@ -238,7 +257,40 @@ function cleanGrants(value: unknown): PluginGrants {
     folders,
     memory: g.memory === true,
     notifications: g.notifications === true,
+    model: g.model === true,
+    cli: Array.isArray(g.cli) ? g.cli.filter((id): id is string => typeof id === 'string') : [],
   };
+}
+
+/**
+ * Hộp hỏi người dùng khi một plugin chạy nền xin làm thao tác nhạy cảm (xoá, mời ra khỏi nhóm,
+ * gửi hàng loạt…). Hộp thoại của hệ điều hành; không trả lời kịp / đóng hộp = không đồng ý.
+ */
+async function confirmPluginAction(
+  pluginId: string,
+  text: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const options = {
+    type: 'warning' as const,
+    title: 'NSA — xác nhận thao tác nhạy cảm',
+    message: `Plugin "${pluginId}" muốn làm một thao tác nhạy cảm`,
+    detail: text.slice(0, 600),
+    buttons: ['Từ chối', 'Cho phép'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    signal,
+  };
+  try {
+    const result = win
+      ? await dialog.showMessageBox(win, options)
+      : await dialog.showMessageBox(options);
+    return result.response === 1;
+  } catch {
+    return false;
+  }
 }
 
 /** Khoá nhà phát hành tin cậy: file `plugins/trusted-publishers.json` (người dùng / IT thêm). */

@@ -128,6 +128,19 @@ export type PolicyAction =
       developerMode: boolean;
       /** Quyền xin cấp, dạng câu đọc được. */
       permissions: string[];
+    }
+  /**
+   * Một hành động ra ngoài của plugin (gửi tin, xoá, cấm thành viên, gửi hàng loạt, hoặc một lời
+   * gọi mạng ghi dữ liệu có dùng bí mật của plugin) — ADR-0011. `sensitive`: bản Cá nhân luôn hỏi.
+   */
+  | {
+      kind: 'plugin.action';
+      pluginId: string;
+      action: string;
+      sensitive: boolean;
+      target?: string;
+      /** Câu đọc được (đã cắt ngắn, không chứa bí mật). */
+      summary: string;
     };
 
 export interface PolicyRequest {
@@ -208,6 +221,13 @@ export function personalPolicy(options: { homeDir?: string } = {}): Policy {
               reason: `Plugin "${action.pluginId ?? '?'}" muốn chạy thao tác nhạy cảm "${action.tool}": ${action.input}`,
             }
           : { decision: 'allow' };
+      }
+      if (action.kind === 'plugin.action') {
+        if (!action.sensitive || confirmed) return { decision: 'allow' };
+        return {
+          decision: 'ask',
+          reason: `Plugin "${action.pluginId}" muốn làm thao tác nhạy cảm "${action.action}": ${action.summary}`,
+        };
       }
       if (action.kind === 'plugin.manage') {
         if (action.op !== 'install' && action.op !== 'update') return { decision: 'allow' };
@@ -331,7 +351,13 @@ export type AuditEntry = {
         | 'grant'
         | 'crash'
         | 'denied'
-        | 'job';
+        | 'job'
+        /** Hành động ra ngoài của plugin (kể cả bị chặn) — ADR-0011. */
+        | 'action'
+        /** Người dùng đặt / xoá một bí mật của plugin (không bao giờ ghi giá trị). */
+        | 'secret'
+        /** Plugin nhờ NSA chạy model (không ghi nội dung). */
+        | 'model';
       pluginId: string;
       version?: string;
       decision: PolicyDecision['decision'];

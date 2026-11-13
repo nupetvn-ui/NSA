@@ -14,6 +14,7 @@ import { MemoryView } from './MemoryView';
 import { StoreView } from './StoreView';
 import { TurnView } from './TurnView';
 import { UpdateBanner } from './UpdateBanner';
+import { VendorLogo, vendorOfAgent } from './VendorLogo';
 import { useChat } from './useChat';
 
 export function App() {
@@ -444,6 +445,7 @@ export function App() {
                       title={a.ready ? '' : (a.note ?? 'Chưa sẵn sàng')}
                     >
                       <span className={`status ${a.ready ? 'ok' : a.installed ? 'warn' : 'off'}`} />
+                      <VendorLogo vendor={vendorOfAgent(a.id)} name={a.name} />
                       {a.name}
                     </button>
                   ))}
