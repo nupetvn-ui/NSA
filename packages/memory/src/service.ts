@@ -144,13 +144,85 @@ export class MemoryService {
     mkdirSync(join(options.root, DATA_DIR), { recursive: true });
     const indexPath = join(options.root, DATA_DIR, 'index.sqlite');
     const indexExisted = existsSync(indexPath);
-    const service = new MemoryService(options, SearchIndex.open(indexPath));
+    // Chỉ mục chỉ là bản sao dựng lại được: file hỏng thì xoá đi dựng lại, không báo lỗi làm kẹt app.
+    let index: SearchIndex;
+    let indexReset = false;
+    try {
+      index = SearchIndex.open(indexPath);
+    } catch (err) {
+      console.error('[memory] chỉ mục hỏng, dựng lại từ Markdown:', err);
+      for (const suffix of ['', '-wal', '-shm', '-journal'])
+        rmSync(`${indexPath}${suffix}`, { force: true });
+      index = SearchIndex.open(indexPath);
+      indexReset = true;
+    }
+    const service = new MemoryService(options, index);
     await service.#ensureRepo();
     // Chỉ mục mất / trống mà Markdown có dữ liệu → dựng lại.
-    if (!indexExisted || service.#index.count() !== service.#scanEntries().length) {
+    // Cũng dựng lại khi chỉ mục lệch với file (tắt máy / app chết giữa lúc ghi): số mục khác, hoặc có
+    // mục mà thời điểm sửa khác bản trong chỉ mục (sửa tại chỗ dở dang), hoặc chỉ mục theo phiên bản cũ.
+    await service.#recoverInterrupted();
+    const scanned = service.#scanEntries();
+    const stamps = service.#index.stamps();
+    const drift =
+      stamps.size !== scanned.length || scanned.some((e) => stamps.get(e.id) !== e.updated);
+    if (!indexExisted || indexReset || service.#index.isStale() || drift) {
       await service.rebuildIndex({ audit: indexExisted });
     }
     return service;
+  }
+
+  /**
+   * Dọn dấu vết lần ghi bị ngắt (mất điện, app chết): xoá file tạm, ghi vào lịch sử những file đã
+   * ghi mà chưa commit (để không có mục nhớ nằm ngoài lịch sử, hoàn tác được), và bỏ đề xuất chờ
+   * duyệt mà nội dung đã nằm trong kho (đã nhận nhưng chưa kịp cập nhật hộp duyệt → khỏi nhận đúp).
+   */
+  async #recoverInterrupted(): Promise<void> {
+    const sweep = (dir: string): void => {
+      for (const name of readdirSync(dir)) {
+        if (name === '.git') continue;
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) sweep(full);
+        else if (name.endsWith('.tmp')) rmSync(full, { force: true });
+      }
+    };
+    sweep(this.root);
+    const dirty = await this.#git.uncommitted().catch(() => [] as string[]);
+    if (dirty.length > 0) {
+      await this.#git.commit(
+        {
+          op: 'update',
+          summary: `Khôi phục ${dirty.length} thay đổi dở dang sau khi tắt đột ngột`,
+          paths: dirty,
+        },
+        this.#author(),
+      );
+      this.#log({
+        op: 'update',
+        by: 'auto',
+        title: `khôi phục ${dirty.length} thay đổi dở dang`,
+        decision: 'allow',
+      });
+    }
+    const readable = this.#scanEntries();
+    let changed = false;
+    for (const p of this.#proposals) {
+      if (p.status !== 'pending' || p.targetId) continue;
+      const report = findConflicts(p.draft, readable);
+      if (report.duplicate && report.conflicts.length === 0) {
+        Object.assign(p, {
+          status: 'rejected',
+          decidedAt: this.#now().toISOString(),
+          decidedBy: 'auto',
+          reasons: [
+            ...p.reasons,
+            `Đã có mục y hệt (${report.duplicate.id}) — tự bỏ sau khi khởi động lại`,
+          ],
+        });
+        changed = true;
+      }
+    }
+    if (changed) this.#saveProposals();
   }
 
   get vectorAvailable(): boolean {

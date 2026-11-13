@@ -20,6 +20,25 @@ function openDatabase(path: string): DatabaseSyncType {
   return new DatabaseSync(path);
 }
 
+/**
+ * Phiên bản cách lập chỉ mục. Đổi cách chuẩn hoá chữ thì tăng số này: chỉ mục cũ tự bị dựng lại từ
+ * Markdown khi mở. v2: gập "đ" → "d" (unicode61 không gập được "đ", nên "duoc" không ra "được").
+ */
+export const INDEX_VERSION = 2;
+
+/**
+ * Gập dấu NHƯNG GIỮ NGUYÊN ĐỘ DÀI chuỗi (từng ký tự một: "ế" → "e", "đ" → "d") để chỉ vị trí khớp
+ * trên bản đã gập rồi cắt trích đoạn từ văn bản gốc.
+ */
+export function foldKeepLength(text: string): string {
+  let out = '';
+  for (const ch of text) {
+    const base = ch === 'đ' ? 'd' : ch === 'Đ' ? 'D' : ch.normalize('NFD').charAt(0);
+    out += base.length === ch.length ? base : ch;
+  }
+  return out;
+}
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS entries (
   id TEXT PRIMARY KEY,
@@ -43,8 +62,28 @@ export class SearchIndex {
   static open(path: string): SearchIndex {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     const db = openDatabase(path);
-    db.exec(SCHEMA);
+    try {
+      db.exec(SCHEMA);
+    } catch (err) {
+      db.close(); // file hỏng: nhả tay cầm để bên gọi xoá được (Windows khoá file đang mở)
+      throw err;
+    }
     return new SearchIndex(db);
+  }
+
+  /** Chỉ mục này dựng theo phiên bản cũ (hoặc chưa đánh dấu) → cần dựng lại. */
+  isStale(): boolean {
+    const row = this.#db.prepare('PRAGMA user_version').get() as { user_version: number };
+    return Number(row.user_version) !== INDEX_VERSION;
+  }
+
+  /** id → thời điểm sửa, để so với file Markdown (phát hiện chỉ mục lệch sau khi tắt đột ngột). */
+  stamps(): Map<string, string> {
+    return new Map(
+      (
+        this.#db.prepare('SELECT id, data FROM entries').all() as { id: string; data: string }[]
+      ).map((r) => [r.id, String((JSON.parse(r.data) as MemoryEntry).updated)]),
+    );
   }
 
   count(): number {
@@ -58,6 +97,7 @@ export class SearchIndex {
     try {
       this.#db.exec('DELETE FROM entries; DELETE FROM entries_fts;');
       for (const entry of entries) this.#insert(entry);
+      this.#db.exec(`PRAGMA user_version = ${INDEX_VERSION}`);
       this.#db.exec('COMMIT');
     } catch (err) {
       this.#db.exec('ROLLBACK');
@@ -81,7 +121,13 @@ export class SearchIndex {
       .run(entry.id, entry.branch, JSON.stringify(entry));
     this.#db
       .prepare('INSERT INTO entries_fts (id, title, body, tags, branch) VALUES (?, ?, ?, ?, ?)')
-      .run(entry.id, entry.title, entry.body, entry.tags.join(' '), entry.branch);
+      .run(
+        entry.id,
+        foldKeepLength(entry.title),
+        foldKeepLength(entry.body),
+        foldKeepLength(entry.tags.join(' ')),
+        entry.branch,
+      );
   }
 
   get(id: string): MemoryEntry | null {
@@ -110,13 +156,17 @@ export class SearchIndex {
     params.push(limit);
     const rows = this.#db
       .prepare(
-        `SELECT e.data AS data, snippet(entries_fts, 2, '[', ']', '…', 16) AS snip
+        `SELECT e.data AS data
          FROM entries_fts f JOIN entries e ON e.id = f.id
          WHERE entries_fts MATCH ? ${branchFilter}
          ORDER BY bm25(entries_fts, 0, 4.0, 1.0, 2.0) LIMIT ?`,
       )
-      .all(...params) as { data: string; snip: string }[];
-    return rows.map((r) => ({ entry: JSON.parse(r.data) as MemoryEntry, snippet: r.snip }));
+      .all(...params) as { data: string }[];
+    const terms = [...new Set(tokenize(query))];
+    return rows.map((r) => {
+      const entry = JSON.parse(r.data) as MemoryEntry;
+      return { entry, snippet: makeSnippet(entry.body, terms) };
+    });
   }
 
   close(): void {
@@ -144,4 +194,22 @@ export function toMatchQuery(query: string): string | null {
   const terms = [...new Set(tokenize(query))].slice(0, 24);
   if (terms.length === 0) return null;
   return terms.map((t) => `"${t}"`).join(' OR ');
+}
+
+/** Trích đoạn quanh từ khớp đầu tiên, đặt [ ] quanh từ khớp — cắt từ văn bản GỐC (giữ dấu, giữ đ). */
+export function makeSnippet(body: string, terms: string[], radius = 70): string {
+  const folded = foldKeepLength(body).toLowerCase();
+  let at = -1;
+  let len = 0;
+  for (const t of terms) {
+    const i = folded.indexOf(t);
+    if (i >= 0 && (at < 0 || i < at)) {
+      at = i;
+      len = t.length;
+    }
+  }
+  if (at < 0) return body.length > radius * 2 ? `${body.slice(0, radius * 2)}…` : body;
+  const from = Math.max(0, at - radius);
+  const to = Math.min(body.length, at + len + radius);
+  return `${from > 0 ? '…' : ''}${body.slice(from, at)}[${body.slice(at, at + len)}]${body.slice(at + len, to)}${to < body.length ? '…' : ''}`;
 }
