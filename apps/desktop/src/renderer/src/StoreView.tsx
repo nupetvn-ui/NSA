@@ -437,7 +437,8 @@ function PluginDetail({
     want.folders.length === 0 &&
     !want.memory &&
     !want.notifications &&
-    !want.model;
+    !want.model &&
+    want.cli.length === 0;
 
   return (
     <div className="plugin-detail">
@@ -559,6 +560,27 @@ function PluginDetail({
             />
           </label>
         )}
+        {want.cli.map((c) => (
+          <label key={c.id} className="form-row">
+            <span className="form-label">
+              Chạy chương trình {c.label} (<code>{c.command}</code>) trên máy bạn — {c.allow.length}{' '}
+              lệnh con đã khai ({c.allow.filter((a) => a.sensitive).length} nhạy cảm luôn hỏi)
+            </span>
+            <input
+              type="checkbox"
+              className="switch"
+              checked={p.grants.cli.includes(c.id)}
+              onChange={(e) =>
+                void setGrants({
+                  ...p.grants,
+                  cli: e.target.checked
+                    ? [...p.grants.cli, c.id]
+                    : p.grants.cli.filter((x) => x !== c.id),
+                })
+              }
+            />
+          </label>
+        ))}
         {want.model && (
           <label className="form-row">
             <span className="form-label">
@@ -673,6 +695,9 @@ function InstallSheet({
     memory: want.memory && (current ? current.grants.memory : true),
     notifications: want.notifications && (current ? current.grants.notifications : true),
     model: want.model && (current ? current.grants.model : true),
+    cli: want.cli
+      .map((c) => c.id)
+      .filter((id) => (current ? current.grants.cli.includes(id) : true)),
   }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -703,7 +728,8 @@ function InstallSheet({
     want.folders.length === 0 &&
     !want.memory &&
     !want.notifications &&
-    !want.model;
+    !want.model &&
+    want.cli.length === 0;
   const m = prepared.manifest;
 
   return (
@@ -835,6 +861,32 @@ function InstallSheet({
                   </span>
                 </label>
               )}
+              {want.cli.map((c) => (
+                <label key={c.id} className="perm-row">
+                  <input
+                    type="checkbox"
+                    checked={grants.cli.includes(c.id)}
+                    onChange={(e) =>
+                      setGrants({
+                        ...grants,
+                        cli: e.target.checked
+                          ? [...grants.cli, c.id]
+                          : grants.cli.filter((x) => x !== c.id),
+                      })
+                    }
+                  />
+                  <span>
+                    Chạy chương trình <b>{c.label}</b> (<code>{c.command}</code>) trên máy bạn, chỉ
+                    các lệnh:{' '}
+                    {c.allow
+                      .map((a) => a.args.join(' ') + (a.sensitive ? ' (nhạy cảm)' : ''))
+                      .join('; ')}
+                    {isNew(`Chạy chương trình "${c.label}"`) && (
+                      <span className="tag sig-warn">mới</span>
+                    )}
+                  </span>
+                </label>
+              ))}
               {m.secrets.length > 0 && (
                 <p className="hint small left">
                   Plugin cần nhập: {m.secrets.map((s) => s.label).join('; ')}. Nhập sau khi cài ở

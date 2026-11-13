@@ -23,6 +23,8 @@ export interface PluginGrants {
   notifications: boolean;
   /** Cho plugin nhờ NSA chạy model "kênh chat". */
   model: boolean;
+  /** id các chương trình dòng lệnh (`permissions.cli`) người dùng cho phép chạy. */
+  cli: string[];
 }
 
 /** Trạng thái một khe bí mật — giao diện chỉ thấy có / chưa có và bốn ký tự cuối, không bao giờ thấy giá trị. */

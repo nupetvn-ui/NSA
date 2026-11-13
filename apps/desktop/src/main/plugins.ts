@@ -258,6 +258,7 @@ function cleanGrants(value: unknown): PluginGrants {
     memory: g.memory === true,
     notifications: g.notifications === true,
     model: g.model === true,
+    cli: Array.isArray(g.cli) ? g.cli.filter((id): id is string => typeof id === 'string') : [],
   };
 }
 

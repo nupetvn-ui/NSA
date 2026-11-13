@@ -75,6 +75,28 @@ export interface ManifestSecret {
   where: ('url' | 'header' | 'body')[];
 }
 
+/**
+ * Quyền chạy một chương trình dòng lệnh trên máy người dùng (ví dụ `gws`). Plugin KHÔNG tự sinh
+ * tiến trình con (bị cấm — ADR-0010): nó nhờ lõi chạy, và lõi chỉ chạy các lệnh con đã khai trong
+ * `allow`, không qua shell, với môi trường tối thiểu, qua Policy + AuditLog (ADR-0012).
+ */
+export interface ManifestCli {
+  id: string;
+  /** Nhãn hiển thị trong hộp xin quyền. */
+  label: string;
+  /** Tên chương trình (không có đường dẫn), tìm trong PATH. */
+  command: string;
+  /** Cách cài, hiện khi máy chưa có chương trình. */
+  install: string;
+  /**
+   * Các lệnh con được chạy, mỗi mục là phần đầu của dòng lệnh (từng từ phải khớp đúng), ví dụ
+   * `drive files list`. `sensitive`: luôn hỏi người dùng mỗi lần chạy.
+   */
+  allow: { args: string[]; sensitive: boolean }[];
+  /** Tham số bị cấm trong mọi lệnh (ví dụ ghi file ra đường dẫn tuỳ ý). */
+  denyFlags: string[];
+}
+
 /** Bản đóng gói NSA mà plugin được phép có mặt. */
 export type ManifestEdition = 'personal' | 'enterprise';
 
@@ -91,6 +113,8 @@ export interface PluginPermissions {
    * gửi đi sẽ tới nhà cung cấp model người dùng đã chọn.
    */
   model: boolean;
+  /** Chương trình dòng lệnh nhờ lõi chạy hộ. */
+  cli: ManifestCli[];
 }
 
 export interface PluginManifest {
@@ -222,16 +246,17 @@ export function validateManifest(raw: unknown): ManifestResult {
     memory: false,
     notifications: false,
     model: false,
+    cli: [],
   };
   const rawPerm = raw['permissions'];
   if (rawPerm !== undefined) {
     if (!isObj(rawPerm)) err('permissions', '"permissions" phải là một đối tượng.');
     else {
       for (const key of Object.keys(rawPerm)) {
-        if (!['network', 'folders', 'memory', 'notifications', 'model'].includes(key)) {
+        if (!['network', 'folders', 'memory', 'notifications', 'model', 'cli'].includes(key)) {
           err(
             `permissions.${key}`,
-            `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications, model.`,
+            `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications, model, cli.`,
           );
         }
       }
@@ -272,6 +297,75 @@ export function validateManifest(raw: unknown): ManifestResult {
             if (access !== 'read' && access !== 'readwrite') {
               err(`${p}.access`, '"access" phải là "read" hoặc "readwrite".');
             } else if (fid && label) permissions.folders.push({ id: fid, label, access });
+          });
+        }
+      }
+      const rawCli = rawPerm['cli'];
+      if (rawCli !== undefined) {
+        if (!Array.isArray(rawCli)) err('permissions.cli', '"cli" phải là một danh sách.');
+        else {
+          const seen = new Set<string>();
+          (rawCli as unknown[]).slice(0, 4).forEach((c, i) => {
+            const p = `permissions.cli[${i}]`;
+            if (!isObj(c))
+              return err(p, 'Mỗi mục là một đối tượng { id, label, command, install, allow }.');
+            const cid = str(c, 'id', `${p}.id`);
+            if (cid && !SECRET_PATTERN.test(cid))
+              err(`${p}.id`, '"id" chỉ gồm chữ thường, số, gạch dưới.');
+            if (seen.has(cid)) err(`${p}.id`, `Trùng id "${cid}".`);
+            seen.add(cid);
+            const label = str(c, 'label', `${p}.label`, { max: 80 });
+            const command = str(c, 'command', `${p}.command`, { max: 40 });
+            if (command && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(command)) {
+              err(
+                `${p}.command`,
+                '"command" chỉ là tên chương trình (chữ, số, ., _, -), không có đường dẫn hay dấu cách.',
+              );
+            }
+            const install = str(c, 'install', `${p}.install`, { max: 400, required: false });
+            const allow: ManifestCli['allow'] = [];
+            const rawAllow = c['allow'];
+            if (!Array.isArray(rawAllow) || rawAllow.length === 0) {
+              err(
+                `${p}.allow`,
+                '"allow" phải là danh sách lệnh con được chạy, ví dụ ["drive files list"].',
+              );
+            } else {
+              (rawAllow as unknown[]).slice(0, 60).forEach((a, k) => {
+                const sensitive = isObj(a) && a['sensitive'] === true;
+                const text = typeof a === 'string' ? a : isObj(a) ? a['args'] : undefined;
+                if (typeof text !== 'string' || text.trim() === '') {
+                  return err(
+                    `${p}.allow[${k}]`,
+                    'Mỗi mục là chuỗi "drive files list" hoặc { "args": "…", "sensitive": true }.',
+                  );
+                }
+                const words = text.trim().split(/\s+/);
+                if (words.some((w) => !/^[A-Za-z0-9+_.:-]+$/.test(w))) {
+                  return err(
+                    `${p}.allow[${k}]`,
+                    `"${text}" chỉ gồm các từ chữ / số / +_.:- ngăn bằng dấu cách.`,
+                  );
+                }
+                allow.push({ args: words, sensitive });
+              });
+            }
+            const denyFlags: string[] = [];
+            const rawDeny = c['denyFlags'];
+            if (rawDeny !== undefined) {
+              if (
+                !Array.isArray(rawDeny) ||
+                !rawDeny.every((f) => typeof f === 'string' && /^-{1,2}[A-Za-z0-9-]+$/.test(f))
+              ) {
+                err(
+                  `${p}.denyFlags`,
+                  '"denyFlags" phải là danh sách tham số như ["--output", "-o"].',
+                );
+              } else denyFlags.push(...(rawDeny as string[]));
+            }
+            if (cid && label && command && allow.length > 0) {
+              permissions.cli.push({ id: cid, label, command, install, allow, denyFlags });
+            }
           });
         }
       }

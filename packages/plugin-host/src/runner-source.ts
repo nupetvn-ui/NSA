@@ -143,6 +143,18 @@ function makeContext() {
   const model = init.grants.model
     ? { complete: (prompt, options) => request('model.complete', { prompt, options: options || {} }) }
     : null;
+  const cli =
+    init.grants.cli && init.grants.cli.length > 0
+      ? {
+          run: (id, args, options) =>
+            request('cli.run', {
+              id: String(id),
+              args,
+              tool: options && options.tool,
+              options: { timeoutMs: options && options.timeoutMs },
+            }),
+        }
+      : null;
   return {
     pluginId: init.pluginId,
     version: init.version,
@@ -162,6 +174,7 @@ function makeContext() {
     },
     memory,
     model,
+    cli,
     secrets: { has: (id) => request('secret.has', { id: String(id) }) },
     gate: (action) => request('gate', action),
     log: (message, level) => process.send({ t: 'log', level: level || 'info', message: String(message) }),

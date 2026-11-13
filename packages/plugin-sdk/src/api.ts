@@ -53,6 +53,28 @@ export interface PluginModel {
   complete(prompt: string, options?: { system?: string; maxChars?: number }): Promise<string>;
 }
 
+/** Kết quả một lần chạy chương trình dòng lệnh. `code` là mã thoát (null: hết giờ / không chạy được). */
+export interface CliResult {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  /** Có khi không chạy được (chưa cài, hết giờ): lý do đọc được. */
+  error?: string;
+}
+
+/** Chương trình dòng lệnh nhờ NSA chạy hộ (quyền `cli` — ADR-0012). */
+export interface PluginCli {
+  /**
+   * Chạy chương trình `id` (khai ở `permissions.cli`) với các tham số. KHÔNG qua shell: mỗi phần tử là
+   * một tham số. Chỉ chạy được lệnh con nằm trong `allow`; mỗi lần chạy đi qua chính sách + nhật ký.
+   */
+  run(
+    id: string,
+    args: string[],
+    options?: { tool?: string; timeoutMs?: number },
+  ): Promise<CliResult>;
+}
+
 /** Hành động ra ngoài mà plugin xin phép NSA (đi qua Policy + AuditLog). */
 export interface PluginActionRequest {
   /** Tên ngắn, ví dụ `send_message`, `ban_member`, `broadcast`. */
@@ -89,6 +111,8 @@ export interface PluginContext {
   readonly memory: PluginMemory | null;
   /** Có khi người dùng đã cấp quyền `model`. */
   readonly model: PluginModel | null;
+  /** Có khi người dùng đã cấp ít nhất một chương trình ở quyền `cli`. */
+  readonly cli: PluginCli | null;
   /**
    * Bí mật (token…) khai ở `secrets` của manifest. Plugin không đọc được giá trị — chỉ biết
    * đã nhập chưa, và dùng `{{secret:<id>}}` trong `fetch`.

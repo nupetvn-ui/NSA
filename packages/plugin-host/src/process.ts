@@ -23,7 +23,7 @@ export interface ProcessSpec {
   runnerPath: string;
   /** Thư mục người dùng đã cấp: đường dẫn + quyền ghi. */
   folders: { path: string; write: boolean }[];
-  grants: { folders: Record<string, string>; memory: boolean; model: boolean };
+  grants: { folders: Record<string, string>; memory: boolean; model: boolean; cli: string[] };
   execPath: string;
   /** Chạy bằng Electron (cần `ELECTRON_RUN_AS_NODE=1`). */
   electron: boolean;

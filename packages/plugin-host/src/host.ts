@@ -51,6 +51,14 @@ import {
   type TrustedPublisher,
   type Verification,
 } from './pack.js';
+import {
+  defaultResolver,
+  matchAllow,
+  minimalEnv,
+  runCli,
+  validateArgs,
+  type CliResolver,
+} from './cli-run.js';
 import { PluginProcess, type ReadyInfo } from './process.js';
 import { RUNNER_SOURCE } from './runner-source.js';
 import { PluginRegistry } from './registry.js';
@@ -87,6 +95,8 @@ export interface PluginSecretStore {
 }
 
 export interface PluginHostOptions {
+  /** Tìm chương trình cho quyền `cli` (mặc định: PATH). Test thay bằng `node fake.js`. */
+  cliResolver?: CliResolver;
   /** Kho khoá của hệ điều hành. Không có thì plugin có khe bí mật sẽ báo "chưa nhập". */
   secrets?: PluginSecretStore;
   /** Chạy model của việc "kênh chat" (qua ModelTaskRunner của app: chính sách, chi phí, dự phòng). */
@@ -501,6 +511,7 @@ export class PluginHost {
       memory: want.memory && given.memory === true,
       notifications: want.notifications && given.notifications === true,
       model: want.model && given.model === true,
+      cli: (given.cli ?? []).filter((id) => want.cli.some((c) => c.id === id)),
     };
   }
 
@@ -627,6 +638,7 @@ export class PluginHost {
         folders: record.grants.folders,
         memory: record.grants.memory,
         model: record.grants.model === true,
+        cli: record.grants.cli ?? [],
       },
       execPath: this.#o.runtime?.execPath ?? process.execPath,
       electron: this.#o.runtime?.electron ?? false,
@@ -909,6 +921,8 @@ export class PluginHost {
       }
       case 'gate':
         return this.#gate(entry, p as unknown as GateParams);
+      case 'cli.run':
+        return this.#cliRun(entry, p);
       case 'model.complete':
         return this.#complete(entry, p);
       case 'memory.search':
@@ -1193,6 +1207,51 @@ export class PluginHost {
       throw new Error(`Chính sách không cho phép: ${reason}`);
     }
     this.#audit({ op: 'action', pluginId: entry.id, decision: 'allow', detail });
+  }
+
+  /**
+   * Chạy chương trình dòng lệnh hộ plugin: quyền `cli` đã cấp → lệnh con nằm trong `allow` → tham số
+   * hợp lệ → Policy (+ hỏi nếu nhạy cảm) → chạy không qua shell. Mọi lần chạy vào nhật ký.
+   */
+  async #cliRun(entry: Entry, p: Record<string, unknown>): Promise<unknown> {
+    const def = entry.manifest.permissions.cli.find((c) => c.id === String(p['id']));
+    const refuse = (why: string): never => {
+      const message = `NSA: plugin "${entry.id}" ${why}`;
+      this.#audit({ op: 'denied', pluginId: entry.id, decision: 'deny', detail: message });
+      throw new Error(message);
+    };
+    if (!def || !(entry.record.grants.cli ?? []).includes(def.id)) {
+      return refuse('chưa được cấp quyền chạy chương trình này.');
+    }
+    const bad = validateArgs(p['args'], def.denyFlags);
+    if (bad) return refuse(`gọi ${def.command} sai: ${bad}`);
+    const args = p['args'] as string[];
+    const rule = matchAllow(def.allow, args);
+    if (!rule) {
+      return refuse(
+        `không được chạy "${def.command} ${args.slice(0, 3).join(' ')}" (ngoài danh sách lệnh đã khai).`,
+      );
+    }
+    const prefix = args.slice(0, rule.args.length).join(' ');
+    await this.#authorize(entry, {
+      action: `cli.${def.id}`,
+      sensitive: rule.sensitive,
+      target: def.command,
+      summary: `${def.command} ${prefix}`,
+      ...(typeof p['tool'] === 'string' ? { tool: p['tool'] } : {}),
+    });
+    const resolved = (this.#o.cliResolver ?? defaultResolver)(def.command);
+    if ('error' in resolved) {
+      return {
+        code: null,
+        stdout: '',
+        stderr: '',
+        error: `${resolved.error} ${def.install}`.trim(),
+      };
+    }
+    const options = (p['options'] ?? {}) as { timeoutMs?: number };
+    const timeoutMs = Math.min(120_000, Math.max(1_000, Number(options.timeoutMs) || 60_000));
+    return runCli(resolved, args, { timeoutMs, env: minimalEnv() });
   }
 
   async #askUser(entry: Entry, text: string): Promise<boolean> {
@@ -1548,7 +1607,10 @@ function loadState(file: string): StateFile {
     const plugins = raw.plugins ?? {};
     // Bản ghi cũ (trước giai đoạn 4) chưa có `model`.
     for (const record of Object.values(plugins)) {
-      if (record.grants) record.grants.model = record.grants.model === true;
+      if (record.grants) {
+        record.grants.model = record.grants.model === true;
+        record.grants.cli = Array.isArray(record.grants.cli) ? record.grants.cli : [];
+      }
     }
     return {
       settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
@@ -1574,6 +1636,14 @@ export function describePermissions(manifest: PluginManifest, grants?: PluginGra
   if (want.memory && (!grants || grants.memory))
     out.push('Đọc và đề xuất ghi vào nhánh nhớ riêng của plugin');
   if (want.notifications && (!grants || grants.notifications)) out.push('Hiện thông báo');
+  for (const c of want.cli) {
+    if (!grants || grants.cli.includes(c.id)) {
+      const names = c.allow.map((a) => a.args.join(' ') + (a.sensitive ? ' (nhạy cảm)' : ''));
+      out.push(
+        `Chạy chương trình "${c.label}" (${c.command}) trên máy bạn, chỉ các lệnh: ${names.join('; ')}`,
+      );
+    }
+  }
   if (want.model && (!grants || grants.model)) {
     out.push(
       'Nhờ NSA chạy model "kênh chat" (nội dung tin nhắn được gửi tới nhà cung cấp model bạn chọn)',
@@ -1601,6 +1671,10 @@ function newPermissions(oldM: PluginManifest, newM: PluginManifest): string[] {
   if (newM.permissions.memory && !oldM.permissions.memory) out.push('Nhánh nhớ riêng');
   if (newM.permissions.notifications && !oldM.permissions.notifications) out.push('Hiện thông báo');
   if (newM.permissions.model && !oldM.permissions.model) out.push('Dùng model "kênh chat"');
+  for (const c of newM.permissions.cli) {
+    const before = oldM.permissions.cli.find((o) => o.id === c.id);
+    if (!before || c.allow.length > before.allow.length) out.push(`Chạy chương trình "${c.label}"`);
+  }
   for (const s of newM.secrets) {
     if (!oldM.secrets.some((o) => o.id === s.id)) out.push(`Bí mật "${s.label}"`);
   }
