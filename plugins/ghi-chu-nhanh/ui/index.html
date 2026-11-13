@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ghi chú nhanh</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fff;
+        --fg: #1d1d1f;
+        --muted: #6e6e73;
+        --card: #f2f2f5;
+        --line: rgb(0 0 0 / 0.1);
+        --accent: #007aff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1e1e1e;
+          --fg: #f5f5f7;
+          --muted: #98989d;
+          --card: #2c2c2e;
+          --line: rgb(255 255 255 / 0.1);
+          --accent: #0a84ff;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          13px/1.5 system-ui,
+          'Segoe UI',
+          sans-serif;
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+      input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--card);
+        color: var(--fg);
+        font: inherit;
+      }
+      button {
+        padding: 6px 14px;
+        border: 0;
+        border-radius: 7px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        cursor: pointer;
+      }
+      button.ghost {
+        background: var(--card);
+        color: var(--fg);
+        border: 1px solid var(--line);
+        padding: 3px 10px;
+        font-size: 12px;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: var(--card);
+        border-radius: 10px;
+      }
+      li span {
+        flex: 1;
+        word-break: break-word;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 11.5px;
+        margin-top: 16px;
+      }
+      .msg {
+        color: var(--muted);
+        margin: 0 0 12px;
+        min-height: 1.4em;
+      }
+      .empty {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <form id="form">
+      <input id="text" placeholder="Viết ghi chú rồi bấm Enter…" autocomplete="off" />
+      <button type="submit">Thêm</button>
+    </form>
+    <p class="msg" id="msg"></p>
+    <ul id="list"></ul>
+    <div class="meta" id="stats"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

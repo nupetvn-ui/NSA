@@ -17,3 +17,4 @@ export type {
 export * from './model-tasks.js';
 export * from './model-policy.js';
 export * from './providers-ipc.js';
+export * from './plugins-ipc.js';

@@ -10,11 +10,11 @@ import type {
   MemoryTeachInput,
   Policy,
 } from '@nsa/core';
-import { ChatHistoryImporter, McpHttpServer, MemoryRuntime, MemoryService } from '@nsa/memory';
+import { ChatHistoryImporter, MemoryRuntime, MemoryService } from '@nsa/memory';
 
 /**
  * NSA Mem trong app desktop: kho nhớ ở thư mục dữ liệu người dùng (`%APPDATA%\NSA\memory`),
- * server MCP bộ nhớ trên 127.0.0.1, và phần mở rộng cắm vào ChatService.
+ * và phần mở rộng cắm vào ChatService. Tool `mem_*` cho agent nằm ở cổng MCP chung (plugins.ts).
  */
 export async function setupMemory(options: {
   userData: string;
@@ -25,7 +25,9 @@ export async function setupMemory(options: {
   chat: () => ChatService;
   onChanged: (pending: number) => void;
   onStatus: (status: DistillStatus) => void;
-}): Promise<{ runtime: MemoryRuntime; mcp: McpHttpServer | null; close: () => Promise<void> }> {
+  /** Cổng MCP có đang chạy không (để báo cho agent rằng có tool `mem_*`). */
+  toolsAvailable: () => boolean;
+}): Promise<{ runtime: MemoryRuntime; close: () => Promise<void> }> {
   let runtime: MemoryRuntime | null = null;
   const service = await MemoryService.open({
     root: join(options.userData, 'memory'),
@@ -35,17 +37,9 @@ export async function setupMemory(options: {
     onChange: () => options.onChanged(runtime?.service.listProposals('pending').length ?? 0),
   });
 
-  // Mở không được thì vẫn chạy: agent chỉ nhận phần ngữ cảnh tự chèn, không có tool mem_*.
-  let mcp: McpHttpServer | null = null;
-  try {
-    mcp = await McpHttpServer.start({ name: 'nsa_mem', version: '0.2.0', tools: service.tools() });
-  } catch (err) {
-    console.error('[memory] không mở được server MCP bộ nhớ:', err);
-  }
-
   runtime = new MemoryRuntime({
     service,
-    ...(mcp ? { mcp } : {}),
+    toolsAvailable: options.toolsAvailable,
     importer: new ChatHistoryImporter({ conversations: () => options.chat().listConversations() }),
     settingsFile: join(options.userData, 'memory-settings.json'),
     workDir: join(options.userData, 'memory-work'),
@@ -56,10 +50,8 @@ export async function setupMemory(options: {
 
   return {
     runtime,
-    mcp,
     close: async () => {
       runtime?.dispose();
-      await mcp?.close();
       service.close();
     },
   };

@@ -783,6 +783,24 @@ export class ChatService {
     if (verdict.decision === 'deny') return { allow: false, reason: `NSA chặn: ${verdict.reason}` };
 
     // "Hỏi": hiện yêu cầu trong lượt, chờ người dùng bấm.
+    const allowed = await this.#askUser(state, agentId, verdict.reason);
+    this.#log({ ...base, decision: allowed ? 'allow' : 'deny', confirmed: allowed });
+    return allowed
+      ? { allow: true }
+      : { allow: false, reason: 'NSA: người dùng không cho phép lệnh này' };
+  }
+
+  /**
+   * Hỏi người dùng giữa lượt (hộp Cho phép / Từ chối). Dùng cho cổng chính sách từng lệnh và
+   * cho cổng MCP (tool nhạy cảm của plugin). Lượt không còn chạy, hết giờ hoặc bị dừng → false.
+   */
+  askUser(turnId: string, agentId: string, description: string): Promise<boolean> {
+    const state = this.#running.get(turnId);
+    if (!state || state.cancelled) return Promise.resolve(false);
+    return this.#askUser(state, agentId, description);
+  }
+
+  async #askUser(state: TurnRun, agentId: string, description: string): Promise<boolean> {
     const id = this.#newId();
     const allowed = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
@@ -800,7 +818,7 @@ export class ChatService {
       this.#handle(state.conversationId, state.turnId, agentId, {
         type: 'ask_permission',
         id,
-        description: verdict.reason,
+        description,
       });
     });
     this.#handle(state.conversationId, state.turnId, agentId, {
@@ -809,10 +827,7 @@ export class ChatService {
       allowed,
       ...(allowed ? {} : { reason: 'Người dùng không cho phép' }),
     });
-    this.#log({ ...base, decision: allowed ? 'allow' : 'deny', confirmed: allowed });
-    return allowed
-      ? { allow: true }
-      : { allow: false, reason: 'NSA: người dùng không cho phép lệnh này' };
+    return allowed;
   }
 
   /** Người dùng trả lời một yêu cầu cho phép lệnh. */

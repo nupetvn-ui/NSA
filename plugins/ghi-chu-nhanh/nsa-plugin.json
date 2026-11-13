@@ -1,0 +1,51 @@
+{
+  "id": "ghi-chu-nhanh",
+  "name": "Ghi chú nhanh",
+  "description": "Ví dụ cho tài liệu \"Viết plugin đầu tiên\": ghi chú ngắn mà agent cũng thêm / đọc được qua tool MCP.",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "nsa": ">=0.1.0",
+  "author": "NSA",
+  "main": "main.js",
+  "permissions": {
+    "memory": true
+  },
+  "memory": { "branch": "ghi-chu", "title": "Ghi chú đã ghim" },
+  "tools": [
+    {
+      "name": "add_note",
+      "description": "Thêm một ghi chú ngắn vào app Ghi chú nhanh của người dùng.",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "text": { "type": "string", "description": "Nội dung ghi chú" } },
+        "required": ["text"]
+      }
+    },
+    {
+      "name": "list_notes",
+      "description": "Liệt kê các ghi chú trong app Ghi chú nhanh (mới nhất trước).",
+      "readOnly": true,
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "pin_note",
+      "description": "Ghim một ghi chú vào bộ nhớ NSA (nhánh riêng của app này). Chỉ đưa vào hộp duyệt, không ghi thẳng.",
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "number", "description": "Mã ghi chú (lấy từ list_notes)" }
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "clear_notes",
+      "description": "Xoá TẤT CẢ ghi chú. Thao tác nhạy cảm: NSA luôn hỏi người dùng trước.",
+      "sensitive": true,
+      "inputSchema": { "type": "object", "properties": {} }
+    }
+  ],
+  "screens": [{ "id": "main", "title": "Ghi chú nhanh", "entry": "ui/index.html" }],
+  "jobs": [{ "id": "stats", "title": "Cập nhật thống kê", "every": "30s", "runOnStart": true }]
+}

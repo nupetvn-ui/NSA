@@ -45,7 +45,7 @@ export function personalMemoryAccess(): MemoryAccess {
 /** `rule` là quy tắc hành vi (agent phải làm / không được làm gì) — luôn cần người duyệt. */
 export type MemoryKind = 'fact' | 'preference' | 'rule';
 
-export type MemorySourceKind = 'manual' | 'chat' | 'distill' | 'import' | 'agent';
+export type MemorySourceKind = 'manual' | 'chat' | 'distill' | 'import' | 'agent' | 'plugin';
 
 /** Nguồn gốc của một mục nhớ — bắt buộc, để biết điều gì từ đâu ra. */
 export interface MemorySource {

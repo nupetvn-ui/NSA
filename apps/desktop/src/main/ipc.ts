@@ -1,5 +1,13 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
-import type { ChatService, CliChange, IpcArgs, IpcChannel, IpcResult, NsaCore } from '@nsa/core';
+import type {
+  ChatService,
+  CliChange,
+  IpcArgs,
+  IpcChannel,
+  IpcResult,
+  NsaCore,
+  PluginsIpcContract,
+} from '@nsa/core';
 import type { ProvidersSetup } from './providers';
 import type { MemoryRuntime } from '@nsa/memory';
 import { cleanCommit, cleanIds, cleanPatch, cleanSource, cleanTeach } from './memory';
@@ -15,12 +23,21 @@ export function registerIpc(
   chat: ChatService,
   cliChanges: () => CliChange[],
   providers: ProvidersSetup,
-  memory: { runtime: MemoryRuntime; mcpUrl: string | null },
+  memory: {
+    runtime: MemoryRuntime;
+    mcpUrl: string | null;
+    plugins: {
+      [C in keyof PluginsIpcContract]: (
+        ...args: PluginsIpcContract[C]['args']
+      ) => PluginsIpcContract[C]['result'] | Promise<PluginsIpcContract[C]['result']>;
+    };
+  },
 ): void {
   const mem = memory.runtime.service;
   const runtime = memory.runtime;
   const handlers: Handlers = {
     ...providers.handlers,
+    ...memory.plugins,
     'core:ping': (message) => core.ping(message),
     'app:info': () => ({ name: app.getName(), version: app.getVersion() }),
     'app:updateStatus': () => getUpdateStatus(),

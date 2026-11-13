@@ -1,7 +1,8 @@
 /**
  * Nối NSA Mem vào ChatService (phần mở rộng `ChatExtension` của lõi):
  * - chèn ngữ cảnh bộ nhớ vào đầu mỗi lượt;
- * - gắn server MCP `nsa_mem` (mem_search / mem_read / mem_propose) cho agent hỗ trợ MCP;
+ * - báo cho agent hỗ trợ MCP rằng có tool mem_search / mem_read / mem_propose (chính các tool
+ *   nằm ở cổng MCP chung của NSA — `@nsa/mcp-gateway`);
  * - theo dõi ngưỡng và giao agent chắt lọc đoạn chat thành đề xuất vào hộp duyệt;
  * - nhập lịch sử chat khi người dùng bấm.
  */
@@ -29,13 +30,15 @@ import {
   type Transcript,
 } from './distill.js';
 import type { ChatHistoryImporter } from './importers.js';
-import type { McpHttpServer } from './mcp-server.js';
 import type { MemoryService } from './service.js';
 
 export interface MemoryRuntimeOptions {
   service: MemoryService;
-  /** Server MCP của bộ nhớ (không có thì agent chỉ nhận phần ngữ cảnh tự chèn). */
-  mcp?: McpHttpServer;
+  /**
+   * Tool `mem_*` có đang được lộ cho agent qua cổng MCP không (cổng mở không được thì false:
+   * agent chỉ nhận phần ngữ cảnh tự chèn, không được báo là có tool).
+   */
+  toolsAvailable?: () => boolean;
   importer: ChatHistoryImporter;
   /** File cấu hình bộ nhớ (ngưỡng chắt lọc…). */
   settingsFile: string;
@@ -110,13 +113,13 @@ export class MemoryRuntime implements ChatExtension {
     if (!this.#settings.inject.enabled) return null;
     return this.service.contextFor(input.prompt, {
       maxChars: this.#settings.inject.maxChars,
-      tools: input.mcp && this.#settings.agentTools && this.#options.mcp !== undefined,
+      tools: input.mcp && this.#settings.agentTools && (this.#options.toolsAvailable?.() ?? true),
     });
   }
 
-  mcpFor(input: { agentId: string; conversationId: string; turnId: string }) {
-    if (!this.#settings.agentTools || !this.#options.mcp) return null;
-    return this.#options.mcp.register(input);
+  /** Tool `mem_*` có nên lộ cho agent không (người dùng có thể tắt trong màn hình Bộ nhớ). */
+  get agentToolsEnabled(): boolean {
+    return this.#settings.agentTools;
   }
 
   turnStarted(conversation: Conversation): void {

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type * as NodeSqlite from 'node:sqlite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AgentAdapter, AgentEvent, RunOptions } from '@nsa/adapter-sdk';
+import { McpGateway, memoryToolSource } from '@nsa/mcp-gateway';
 import {
   ChatService,
   DEFAULT_MEMORY_SETTINGS,
@@ -20,7 +21,6 @@ import {
   parseDistillOutput,
 } from './distill.js';
 import { ChatHistoryImporter, parseClaudeSession, parseCodexSession } from './importers.js';
-import { McpHttpServer } from './mcp-server.js';
 import { MemoryRuntime } from './runtime.js';
 import { MemoryService } from './service.js';
 
@@ -82,17 +82,24 @@ function fakeAgent(id: string, answer: (prompt: string) => string, mcp = true, d
   return { adapter, runs };
 }
 
+/** Cổng MCP của NSA với nguồn tool là bộ nhớ (giống cách app nối). */
+async function gateway(service: MemoryService): Promise<McpGateway> {
+  const mcp = await McpGateway.start({
+    version: '0',
+    identity: localIdentity('tester'),
+    policy: personalPolicy(),
+  });
+  mcp.addSource(memoryToolSource(service));
+  cleanups.push(() => mcp.close());
+  return mcp;
+}
+
 const settle = () => new Promise((r) => setTimeout(r, 40));
 
 describe('Agent B nhớ điều đã dạy agent A', () => {
   it('dạy qua mem_propose khi chat với A → cuộc trò chuyện mới với B nhận được điều đó', async () => {
     const service = await memory();
-    const mcp = await McpHttpServer.start({
-      name: 'nsa_mem',
-      version: '0',
-      tools: service.tools(),
-    });
-    cleanups.push(() => mcp.close());
+    const mcp = await gateway(service);
 
     // A: gọi mem_propose qua MCP thật (HTTP) bằng mã bí mật của lượt.
     const a = fakeAgent('claude', () => 'Đã ghi nhớ.', true, 300);
@@ -102,7 +109,6 @@ describe('Agent B nhớ điều đã dạy agent A', () => {
     const ref: { chat?: ChatService } = {};
     const runtime = new MemoryRuntime({
       service,
-      mcp,
       importer: new ChatHistoryImporter({ home: tempDir() }),
       settingsFile: join(tempDir(), 'memory-settings.json'),
       workDir: tempDir(),
@@ -114,7 +120,7 @@ describe('Agent B nhớ điều đã dạy agent A', () => {
     const chat = new ChatService({
       adapters: [a.adapter, b.adapter],
       identity: localIdentity('tester'),
-      extensions: [runtime],
+      extensions: [runtime, mcp],
     });
     ref.chat = chat;
 
@@ -122,7 +128,7 @@ describe('Agent B nhớ điều đã dạy agent A', () => {
     // Kho còn trống nhưng A có MCP → vẫn được báo dùng mem_propose.
     expect(a.runs[0]?.prompt).toContain('mem_propose');
     const attached = a.runs[0]?.mcpServers?.[0];
-    expect(attached?.name).toBe('nsa_mem');
+    expect(attached?.name).toBe('nsa');
     const call = await fetch(attached?.url ?? '', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${attached?.token}` },
@@ -195,15 +201,10 @@ describe('Agent B nhớ điều đã dạy agent A', () => {
   });
 });
 
-describe('MCP server', () => {
+describe('cổng MCP chứa tool bộ nhớ', () => {
   it('initialize / tools/list / thông báo / mã sai', async () => {
     const service = await memory();
-    const mcp = await McpHttpServer.start({
-      name: 'nsa_mem',
-      version: '1',
-      tools: service.tools(),
-    });
-    cleanups.push(() => mcp.close());
+    const mcp = await gateway(service);
     const { server, dispose } = mcp.register({ agentId: 'x' });
     const post = (body: unknown, token = server.token) =>
       fetch(server.url, {

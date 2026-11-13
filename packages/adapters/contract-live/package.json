@@ -18,6 +18,7 @@
     "@nsa/adapter-sdk": "workspace:*",
     "@nsa/adapter-api": "workspace:*",
     "@nsa/core": "workspace:*",
+    "@nsa/mcp-gateway": "workspace:*",
     "@nsa/memory": "workspace:*",
     "@nsa/providers": "workspace:*"
   }

@@ -94,3 +94,23 @@ export function openCodeMcpConfig(servers: McpServerSpec[]): Record<string, unkn
     ]),
   );
 }
+
+/** Ai đang gọi một tool qua cổng MCP: agent nào, cuộc trò chuyện nào, lượt nào. */
+export interface McpCallContext {
+  agentId: string;
+  conversationId?: string;
+  turnId?: string;
+}
+
+/** Một tool lộ ra cho agent qua cổng MCP của NSA (bộ nhớ hoặc tool của plugin). */
+export interface McpTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  /**
+   * Tool không sửa gì trong thư mục làm việc / máy người dùng. Claude Code ở chế độ `plan`
+   * (quyền chỉ đọc của NSA) chỉ cho gọi tool MCP có `readOnlyHint` (đã thử thật).
+   */
+  readOnly?: boolean;
+  call(args: Record<string, unknown>, context: McpCallContext): Promise<string> | string;
+}

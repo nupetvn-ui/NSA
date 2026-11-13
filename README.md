@@ -10,7 +10,7 @@ Ba trụ cột:
 
 Kế hoạch tổng thể: [docs/PLAN.md](docs/PLAN.md) · Quyết định kỹ thuật: [docs/adr/](docs/adr/README.md)
 
-Trạng thái: **giai đoạn 2 (NSA Mem)** — bộ nhớ dùng chung cho mọi agent: dạy một agent, agent khác hãng nhớ (đã chạy thật với Claude Code, Codex, OpenCode, cả trong bản đóng gói). Giai đoạn 1 (Điều phối) — chat với Claude Code, Codex, OpenCode (đã chạy thật), Gemini CLI và Antigravity (viết theo tài liệu, chưa chạy thật) hoặc CLI bất kỳ qua tầng PTY, trong cùng một app. Đổi agent giữa chừng vẫn giữ ngữ cảnh. Agent hỏng thì NSA tự lùi tầng hoặc đổi agent. Lệnh nguy hiểm bên trong một lượt bị chặn hoặc phải hỏi (Claude Code, OpenCode). Nền: monorepo, đóng gói Windows, tự cập nhật, CI, test hợp đồng hằng đêm.
+Trạng thái: **giai đoạn 3 (App Store)** — plugin cài / bật / tắt / gỡ không cần khởi động lại, mỗi plugin một tiến trình riêng chỉ dùng quyền được cấp, gói có chữ ký, một cổng MCP chung đưa tool của plugin và bộ nhớ cho agent (đi qua chính sách + nhật ký). Đã chạy thật với Claude Code và OpenCode, cả bản đóng gói — xem [ADR-0010](docs/adr/0010-app-store-plugin-host-va-cong-mcp.md) (kể cả giới hạn của cách cô lập). Giai đoạn 2 (NSA Mem) — bộ nhớ dùng chung cho mọi agent: dạy một agent, agent khác hãng nhớ (đã chạy thật với Claude Code, Codex, OpenCode, cả trong bản đóng gói). Giai đoạn 1 (Điều phối) — chat với Claude Code, Codex, OpenCode (đã chạy thật), Gemini CLI và Antigravity (viết theo tài liệu, chưa chạy thật) hoặc CLI bất kỳ qua tầng PTY, trong cùng một app. Đổi agent giữa chừng vẫn giữ ngữ cảnh. Agent hỏng thì NSA tự lùi tầng hoặc đổi agent. Lệnh nguy hiểm bên trong một lượt bị chặn hoặc phải hỏi (Claude Code, OpenCode). Nền: monorepo, đóng gói Windows, tự cập nhật, CI, test hợp đồng hằng đêm.
 
 **Giai đoạn 1b (API key)** — dán API key của một hãng (Google AI Studio, DeepSeek, OpenAI, Anthropic, xAI, Qwen, Kimi, GLM, MiniMax, OpenRouter, Groq, Together, Fireworks) hoặc dùng Ollama / LM Studio trên máy là chat được; mỗi loại việc có model chính + dự phòng, việc nền mặc định dùng model rẻ; hãng lỗi thì tự chuyển model dự phòng; theo dõi chi phí và hạn mức tháng. Key cất trong kho khoá của Windows. Mới chạy với máy chủ giả, **chưa chạy với hãng thật** — xem [ADR-0009](docs/adr/0009-nguon-model-qua-api-key.md).
 
@@ -43,6 +43,10 @@ OpenCode dùng được ngay với model miễn phí của OpenCode Zen (cần b
    - Thẻ **Chi phí**: số token và chi phí ước tính theo model trong tháng, đặt hạn mức tháng; NSA cảnh báo khi gần chạm và (nếu bật) chặn model trả phí khi vượt.
    - Mục **Dùng key này cho CLI có sẵn**: chạy OpenCode / Claude Code bằng key của hãng (theo từng lượt, không sửa cấu hình CLI). Model chưa được đánh dấu gọi tool ổn định thì CLI chỉ được đọc.
    - Hãng khác chưa có trong danh sách: **+ Thêm hãng khác…** (địa chỉ chuẩn OpenAI hoặc Anthropic + tên model).
+
+### App Store (plugin)
+
+Bấm **App Store** ở thanh bên: lưới các app đã bật (bấm để mở màn hình của app); **Quản lý** ở góc để bật/tắt/gỡ, xem và thu hồi quyền, cài từ gói `.nsapkg` hoặc từ kho (file chỉ mục). Khi cài, hộp xin quyền liệt kê từng quyền plugin xin — bỏ chọn quyền nào thì plugin không có quyền đó. Plugin chưa ký chỉ cài được khi bật **Chế độ nhà phát triển** (kèm cảnh báo); gói bị sửa sau khi ký luôn bị từ chối. Agent (Claude Code, Codex, OpenCode) gọi tool của plugin qua cổng MCP `nsa`; thao tác plugin đánh dấu nhạy cảm luôn hỏi bạn. Viết plugin: [docs/viet-plugin-dau-tien.md](docs/viet-plugin-dau-tien.md). **Chưa có**: kho trực tuyến và thanh toán (giai đoạn 8), cô lập ở mức hệ điều hành (AppContainer).
 
 ### Bộ nhớ (NSA Mem)
 
