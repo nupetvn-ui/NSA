@@ -1,4 +1,15 @@
 import claudeSpark from './brand/claude-spark.svg';
+import deepseek from './brand/deepseek-favicon.ico';
+import fireworks from './brand/fireworks-icon.svg';
+import gemini from './brand/gemini-sparkle.svg';
+import glm from './brand/glm-logo.svg';
+import groq from './brand/groq-favicon.svg';
+import minimax from './brand/minimax-favicon.ico';
+import ollama from './brand/ollama-apple-touch-icon.png';
+import openai from './brand/openai-favicon.svg';
+import opencode from './brand/opencode-apple-touch-icon.png';
+import qwen from './brand/qwen-icon.png';
+import xai from './brand/xai-favicon.ico';
 import kimiDark from './brand/kimi-logomark-dark.svg';
 import kimiLight from './brand/kimi-logomark-light.svg';
 import lmStudio from './brand/lm-studio-icon.svg';
@@ -11,6 +22,17 @@ import together from './brand/together-icon.svg';
  */
 const LOGOS: Record<string, { src: string; darkSrc?: string }> = {
   anthropic: { src: claudeSpark },
+  openai: { src: openai },
+  google: { src: gemini },
+  xai: { src: xai },
+  deepseek: { src: deepseek },
+  qwen: { src: qwen },
+  glm: { src: glm },
+  minimax: { src: minimax },
+  groq: { src: groq },
+  fireworks: { src: fireworks },
+  ollama: { src: ollama },
+  opencode: { src: opencode },
   openrouter: { src: openRouter },
   lmstudio: { src: lmStudio },
   together: { src: together },
@@ -22,7 +44,7 @@ const AGENT_VENDOR: Record<string, string> = {
   claude: 'anthropic',
   codex: 'openai',
   gemini: 'google',
-  antigravity: 'google',
+  antigravity: 'antigravity',
   opencode: 'opencode',
 };
 
