@@ -5,7 +5,6 @@
  *
  * Lõi không biết file dữ liệu hãng: danh sách ứng viên do bên ngoài (ProviderHub) cung cấp.
  */
-import { tmpdir } from 'node:os';
 import type { AgentAdapter, AgentEvent } from '@nsa/adapter-sdk';
 import type { AuditEntry, AuditLog, IdentityProvider, Policy, PolicyDecision } from './sockets.js';
 
@@ -55,6 +54,11 @@ export interface ModelTaskRunnerOptions {
   /** Thông báo cho người dùng (đổi model dự phòng, bị chính sách chặn). */
   onNotice?: (message: string) => void;
   now?: () => Date;
+  /**
+   * Thư mục làm việc mặc định của việc nền (bên gọi truyền, ví dụ thư mục tạm).
+   * Lõi không import mô-đun Node ở cấp đầu file: giao diện (renderer) cũng nạp `@nsa/core`.
+   */
+  defaultCwd?: () => string;
 }
 
 type AuditBody = AuditEntry extends infer E
@@ -195,7 +199,11 @@ export class ModelTaskRunner {
           let text = '';
           const errors: string[] = [];
           const run = candidate.adapter.run(
-            { prompt, cwd: options.cwd ?? tmpdir(), permission: 'read-only' },
+            {
+              prompt,
+              cwd: options.cwd ?? this.#o.defaultCwd?.() ?? process.cwd(),
+              permission: 'read-only',
+            },
             (event: AgentEvent) => {
               if (event.type === 'text') text += event.text;
               else if (event.type === 'error') errors.push(event.message);
