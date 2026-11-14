@@ -97,6 +97,23 @@ Máy: `ffmpeg`/`ffprobe` 9.0.2 (winget, có sẵn trong PATH), Claude Code 2.1.3
 - Link trang web (`addUrl`) có test với `fetch` giả (trang HTML có tiêu đề / mục, nạp lại không đổi, link sai / HTTP 404 / loại lạ) nhưng **chưa thử với trang web thật trong app**.
 - Chưa thử video dài / lô lớn (hàng trăm file), ảnh lớn hơn 10 MB (bị từ chối, chưa có thu nhỏ).
 
+## Bộ kiểm chất lượng nhớ lại (`plugins/knowledge-base-quality.test.ts`)
+
+Cố định, chạy lặp lại được trong `pnpm test` (in bảng số liệu; chạy hai lần phải ra kết quả y hệt). Kho thử: 6 tài liệu tiếng Việt có dấu (Markdown, XLSX, DOCX, HTML, TXT, PDF chỉ ASCII), 1 ảnh có bảng giá, 1 video 15 giây có lời nói. 22 câu hỏi có đáp án, mỗi câu hỏi **có dấu và không dấu** (44 lượt). "Đúng" = trong 3 kết quả đầu có mục chứa **nguyên văn** chuỗi đáp án (tên riêng, con số, địa chỉ); "đúng nguồn" = mục đó dẫn về đúng file (video: đúng khoảng `mm:ss–mm:ss`).
+
+| Kho                             | top-1         | top-3            | đúng nguồn       |
+| ------------------------------- | ------------- | ---------------- | ---------------- |
+| 8 nguồn, ~13 mục                | 90,9% (40/44) | **100%** (44/44) | **100%** (44/44) |
+| + 150 mục "gây nhiễu" (163 mục) | 77,3% (34/44) | 77,3% (34/44)    | 77,3% (34/44)    |
+
+Có dấu và không dấu **bằng nhau** (cả hai bảng). Tên riêng ("Nguyễn Thị Thu Hà"), con số ("1.250.000đ", "150.000.000đ"), địa chỉ ("12 Nguyễn Huệ, Q.1, TP. Hồ Chí Minh") nằm nguyên văn trong mục; tách đoạn không cắt giữa câu và không tách "TP. Hồ Chí Minh", "Q.1", "3.5", "Nguyễn V. An", "ThS. …" (test riêng).
+
+**Cái bộ kiểm này KHÔNG đo — đừng đọc số trên như chất lượng thật:**
+
+- Ảnh và khung hình video do một "nhà tiên tri" trả lời **đúng đáp án có sẵn**, phụ đề do `whisper-cli` giả → đo đường ống (tách đoạn, ghi mục, duyệt, tìm, dẫn nguồn), **không đo** việc đọc ảnh / nghe tiếng Việt của model thật.
+- Kho nhỏ nên số 100% dễ. Biến thể có nhiễu cố tình dùng 150 chi nhánh **cùng từ vựng, khác số liệu**; 5 câu sai đều là câu chung chung ("Đổi trả trong bao nhiêu ngày?", "Hotline?", "Quán mở cửa lúc mấy giờ?"…) mà 150 mục nhiễu cũng trả lời được — tức câu hỏi mơ hồ theo cách dựng, nhưng cũng cho thấy **tìm từ khoá (FTS5, OR + bm25) không phân biệt được các bản ghi gần giống nhau** và **không có ngưỡng liên quan**: câu hỏi không có đáp án trong kho vẫn trả về mục "gần nhất", không biết nói "không có".
+- Chỉ tìm từ khoá. Tìm theo nghĩa chưa đo bằng model thật nên không đưa vào số liệu; PDF có dấu tiếng Việt (phụ thuộc font) và phụ đề tiếng Việt chưa kiểm.
+
 ## Hệ quả
 
 - Agent có kho tri thức có nguồn; người dùng nắm quyền duyệt, sửa, gỡ và hoàn tác.
