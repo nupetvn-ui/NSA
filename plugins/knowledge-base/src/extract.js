@@ -332,7 +332,7 @@ async function pdfBlocks(bytes) {
  * Tách một tài liệu. `bytes`: Buffer. Trả `{ blocks, warnings, title? }`.
  * Ném lỗi đọc được nếu file hỏng hoặc định dạng không hỗ trợ.
  */
-export async function extractDocument(bytes, name) {
+async function extractRaw(bytes, name) {
   const ext = extOf(name);
   const warnings = [];
   switch (ext) {
@@ -376,4 +376,38 @@ export async function extractDocument(bytes, name) {
         `Chưa hỗ trợ định dạng .${ext || '?'} (hỗ trợ: ${DOC_EXTENSIONS.join(', ')}).`,
       );
   }
+}
+
+/**
+ * Chữ có đọc được không: PDF mã hoá font lạ hay ra rác (ký tự thay thế U+FFFD, ký tự điều khiển,
+ * gần như không có chữ cái). Rác KHÔNG được nhớ như thể là nội dung thật.
+ */
+export function isReadable(text) {
+  const s = String(text).replace(/\s+/g, '');
+  if (s.length < 3) return true;
+  let bad = 0;
+  let good = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    if (c === 0xfffd || c < 9 || (c > 13 && c < 32) || (c >= 0xe000 && c <= 0xf8ff)) bad++;
+    else if (/[\p{L}\p{N}]/u.test(ch)) good++;
+  }
+  return bad / s.length < 0.05 && good / s.length > 0.5;
+}
+
+/** Tách tài liệu rồi loại các khối không đọc được (kèm cảnh báo nêu rõ vị trí), không bịa. */
+export async function extractDocument(bytes, name) {
+  const result = await extractRaw(bytes, name);
+  const dropped = [];
+  const blocks = result.blocks.filter((b) => {
+    if (isReadable(b.text)) return true;
+    dropped.push(b.loc);
+    return false;
+  });
+  if (dropped.length) {
+    result.warnings.push(
+      `Không đọc được chữ ở ${dropped.slice(0, 8).join(', ')}${dropped.length > 8 ? ` và ${dropped.length - 8} chỗ khác` : ''} (chữ bị lỗi mã hoá hoặc là ảnh) — đã BỎ QUA, không đưa vào bộ nhớ.`,
+    );
+  }
+  return { ...result, blocks };
 }

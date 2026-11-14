@@ -4,6 +4,50 @@ import { estimateTokens } from './util.js';
 export const MAX_CHARS = 1400;
 export const MIN_CHARS = 200;
 
+/** Từ viết tắt tiếng Việt / Anh kết thúc bằng dấu chấm nhưng KHÔNG hết câu: "TP. Hồ Chí Minh", "Q.1"… */
+const ABBREVIATION =
+  /(?:^|[\s("'])(?:TP|TX|TT|Tp|Q|P|H|X|Dr|Mr|Mrs|Ms|Prof|ThS|Ths|TS|PGS|GS|BS|KS|CN|vd|VD|tr|St|No|Th|v|vs|etc|ĐT|ĐC|SĐT|Đ\/c)\.$/;
+/** Số thứ tự "1." hoặc chữ cái đầu tên "Nguyễn V. An" — dấu chấm không hết câu. */
+const ORDINAL_OR_INITIAL = /(?:^|[\s("'])(?:\d{1,3}|\p{Lu})\.$/u;
+
+/**
+ * Tách câu mà không cắt giữa "TP. Hồ Chí Minh", "1.250.000đ", "Q.1", "Nguyễn V. An", "3.5".
+ * Ranh giới câu = . ! ? … theo sau là khoảng trắng và (chữ hoa / số / ngoặc / gạch đầu dòng), hoặc xuống dòng.
+ */
+export function splitSentences(text) {
+  const out = [];
+  let start = 0;
+  const re = /([.!?…。])(\s+)|\n/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const end = m.index + (m[1] ? 1 : 0);
+    const head = text.slice(start, end);
+    if (m[1] === '.' && (ABBREVIATION.test(head) || ORDINAL_OR_INITIAL.test(head))) continue;
+    const next = text.slice(m.index + m[0].length, m.index + m[0].length + 1);
+    // câu mới thường bắt đầu bằng chữ hoa, số, ngoặc hoặc gạch đầu dòng; chữ thường → chưa hết câu
+    if (m[1] && next && /\p{Ll}/u.test(next)) continue;
+    if (head.trim()) out.push(head.trim());
+    start = m.index + m[0].length;
+  }
+  const rest = text.slice(start).trim();
+  if (rest) out.push(rest);
+  return out;
+}
+
+/** Cắt chuỗi quá dài thành các phần ≤ max, ưu tiên cắt ở khoảng trắng (không cắt giữa từ / con số). */
+export function cutAtSpaces(text, max) {
+  const out = [];
+  let rest = text.trim();
+  while (rest.length > max) {
+    let at = rest.lastIndexOf(' ', max);
+    if (at < max * 0.5) at = max;
+    out.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
 /** Cắt một khối văn bản dài thành các đoạn ≤ max ký tự, ưu tiên ranh giới đoạn / câu. */
 export function splitText(text, max = MAX_CHARS) {
   const clean = String(text ?? '')
@@ -20,11 +64,11 @@ export function splitText(text, max = MAX_CHARS) {
   };
   const pushLong = (para) => {
     // đoạn dài hơn max: cắt theo câu, rồi theo ký tự
-    const sentences = para.split(/(?<=[.!?…。])\s+|\n/);
+    const sentences = splitSentences(para);
     for (const s of sentences) {
       if (s.length > max) {
         flush();
-        for (let i = 0; i < s.length; i += max) out.push(s.slice(i, i + max).trim());
+        for (const piece of cutAtSpaces(s, max)) out.push(piece);
       } else if ((cur + ' ' + s).length > max) {
         flush();
         cur = s;
