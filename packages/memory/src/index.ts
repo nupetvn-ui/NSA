@@ -2,6 +2,7 @@ export * from './markdown.js';
 export * from './history.js';
 export * from './search-index.js';
 export * from './vector.js';
+export * from './embedding-index.js';
 export * from './review.js';
 export * from './service.js';
 export * from './distill.js';

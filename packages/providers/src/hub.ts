@@ -385,6 +385,30 @@ export class ProviderHub {
     });
   }
 
+  /** Hàm tính embedding cho một model embedding (chuẩn OpenAI `/embeddings`). */
+  embedClient(
+    ref: ModelRef,
+  ): ((texts: string[], signal?: AbortSignal) => Promise<number[][]>) | undefined {
+    const found = findModel(this.#providersWithModels(), ref);
+    if (!found || found.model.kind !== 'embedding') return undefined;
+    const { provider, model } = found;
+    const baseUrl = this.#baseUrl(provider);
+    if (!baseUrl) return undefined;
+    return (texts, signal) => {
+      const key = this.#key(provider.id);
+      const client = createApiClient(
+        {
+          standard: provider.standard,
+          baseUrl,
+          label: provider.name,
+          ...(key ? { apiKey: key } : {}),
+        },
+        this.#o.fetch,
+      );
+      return client.embed(model.id, texts, signal);
+    };
+  }
+
   /** Adapter `api` cho một model (dùng lại giữa các lượt). */
   apiAdapter(ref: ModelRef): AgentAdapter | undefined {
     const id = apiAgentId(ref);

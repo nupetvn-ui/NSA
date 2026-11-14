@@ -130,6 +130,45 @@ describe(`mở app NSA (${target})`, () => {
     await page.getByRole('heading', { name: 'App Store', level: 1 }).waitFor();
   });
 
+  it('Knowledge Base: cài từ thư mục, mở màn hình (khung cô lập) và bấm qua từng thẻ', async () => {
+    const dir = resolve(repo, 'plugins/knowledge-base');
+    const installed = await page.evaluate(async (path) => {
+      const nsa = (
+        globalThis as unknown as {
+          nsa: {
+            invoke: (c: string, ...a: unknown[]) => Promise<{ prepareId: string; status: string }>;
+          };
+        }
+      ).nsa;
+      await nsa.invoke('plugins:saveSettings', { developerMode: true });
+      const prepared = await nsa.invoke('plugins:prepare', { kind: 'path', path });
+      const res = await nsa.invoke(
+        'plugins:install',
+        prepared.prepareId,
+        {
+          memory: true,
+          model: true,
+          notifications: true,
+          network: ['*'],
+          folders: {},
+          cli: ['ffmpeg', 'ffprobe', 'whisper'],
+        },
+        true,
+      );
+      return res.status;
+    }, dir);
+    expect(installed).toBe('installed');
+    await page.locator('.nav-item', { hasText: 'App Store' }).click();
+    await page.getByText('Knowledge Base', { exact: true }).first().click();
+    const frame = page.frameLocator('iframe.plugin-frame');
+    await frame.getByText('Kéo-thả file hoặc thư mục vào đây').waitFor({ timeout: 30_000 });
+    for (const tab of ['Duyệt', 'Tìm thử', 'Công cụ & cài đặt', 'Nguồn']) {
+      await frame.locator('#tabs button', { hasText: tab }).click();
+    }
+    await frame.locator('#tab-sources').waitFor();
+    await page.getByRole('button', { name: '‹ App Store' }).click();
+  });
+
   it('quay lại chat vẫn thấy câu trả lời', async () => {
     await page.locator('.conv-item').first().click();
     await page.getByText(REPLY).waitFor();

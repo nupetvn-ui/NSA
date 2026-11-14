@@ -14,7 +14,7 @@ import { McpGateway, memoryToolSource } from '@nsa/mcp-gateway';
 import type { MemoryRuntime } from '@nsa/memory';
 import { PluginHost, createMemoryBridge, type TrustedPublisher } from '@nsa/plugin-host';
 import { createEncryptedFileSecretStore, type OsCipher } from '@nsa/providers';
-import type { PluginGrants } from '@nsa/plugin-sdk';
+import type { ModelTaskStatus, PluginGrants } from '@nsa/plugin-sdk';
 
 /** Giao thức riêng cho màn hình plugin: `nsa-plugin://<id>/<đường dẫn>`. Gọi TRƯỚC khi app sẵn sàng. */
 export const PLUGIN_SCHEME = 'nsa-plugin';
@@ -86,6 +86,14 @@ export async function setupPlugins(options: {
   cipher: OsCipher;
   /** Chạy model của việc "kênh chat" qua ModelTaskRunner (chính sách, chi phí, dự phòng — ADR-0009). */
   runText: (task: string, prompt: string) => Promise<string>;
+  /** Việc "nhìn ảnh" / "embedding" / tình trạng model — cho plugin có quyền `model` (ADR-0017). */
+  vision: (
+    prompt: string,
+    images: { mimeType: string; base64: string }[],
+    system?: string,
+  ) => Promise<string>;
+  embed: (texts: string[]) => Promise<number[][]>;
+  taskStatus: (task: 'background' | 'vision' | 'embedding') => ModelTaskStatus;
   /** Che mọi key API của app khỏi nội dung gửi model / nhật ký. */
   redact: (text: string) => string;
   chat: () => ChatService;
@@ -132,7 +140,13 @@ export async function setupPlugins(options: {
       options.cipher,
     ),
     model: (pluginId, prompt, o) =>
-      options.runText('channel', o.system ? `${o.system}\n\n--- DỮ LIỆU ---\n${prompt}` : prompt),
+      options.runText(
+        o.task ?? 'channel',
+        o.system ? `${o.system}\n\n--- DỮ LIỆU ---\n${prompt}` : prompt,
+      ),
+    vision: (pluginId, prompt, images, o) => options.vision(prompt, images, o.system),
+    embed: (pluginId, texts) => options.embed(texts),
+    modelStatus: async (task) => options.taskStatus(task),
     confirm: (pluginId, text, signal) => confirmPluginAction(pluginId, text, signal),
     redact: options.redact,
     runtime: { execPath: process.execPath, electron: true },

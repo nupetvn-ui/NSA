@@ -33,6 +33,7 @@ import {
   pickCatalog,
   type OsCipher,
 } from '@nsa/providers';
+import type { ModelTaskStatus } from '@nsa/plugin-sdk';
 import { cliAdapterFactories } from './agents';
 
 export interface ProvidersSetupOptions {
@@ -56,6 +57,18 @@ type ProvidersHandlers = {
 export interface ProvidersSetup {
   hub: ProviderHub;
   runner: ModelTaskRunner;
+  /** Việc "nhìn ảnh" (ảnh gửi tới model nhìn ảnh người dùng chọn). */
+  vision: (
+    prompt: string,
+    images: { mimeType: string; base64: string }[],
+    system?: string,
+  ) => Promise<string>;
+  /** Việc "embedding" — ném lỗi khi chưa có model embedding. */
+  embed: (texts: string[]) => Promise<number[][]>;
+  /** Có model embedding dùng được không (rẻ, đồng bộ). */
+  embeddingReady: () => boolean;
+  /** Tình trạng một loại việc: model đầu chuỗi, giá, hạn mức tháng. */
+  taskStatus: (task: 'background' | 'vision' | 'embedding') => ModelTaskStatus;
   /** Chính sách đã ghép: hỏi thêm `model.use` + chặn khi vượt hạn mức (nếu người dùng bật). */
   policy: Policy;
   /** Nhật ký đã bọc: che mọi key đang lưu trước khi ghi. */
@@ -245,9 +258,65 @@ export function setupProviders(options: ProvidersSetupOptions): ProvidersSetup {
     },
   };
 
+  const embedChain = () => hub.taskChain('embedding');
+  const estimateTokens = (texts: string[]): number =>
+    Math.ceil(texts.reduce((n, t) => n + t.length, 0) / 3.5);
+
   return {
     hub,
     runner,
+    vision: async (prompt, images, system) => {
+      const out = await runner.runText('vision', system ? `${system}\n\n${prompt}` : prompt, {
+        images,
+      });
+      return out.value;
+    },
+    embed: async (texts) => {
+      const candidates = embedChain().flatMap((e) => {
+        const embed = hub.embedClient(e.ref);
+        return embed
+          ? [
+              {
+                agentId: apiAgentId(e.ref),
+                providerId: e.provider.id,
+                model: e.model.id,
+                label: `${e.model.name} (${e.provider.name})`,
+                paid: hub.isPaid(e.ref),
+                embed,
+                ref: e.ref,
+              },
+            ]
+          : [];
+      });
+      const out = await runner.runWith('embedding', candidates, (c, signal) =>
+        c.embed(texts, signal),
+      );
+      recordUsage(`${out.candidate.providerId}/${out.candidate.model}`, {
+        inputTokens: estimateTokens(texts),
+        outputTokens: 0,
+      });
+      return out.value;
+    },
+    embeddingReady: () => embedChain().length > 0,
+    taskStatus: (task) => {
+      const first = hub.taskChain(task)[0];
+      const b = hub.budget();
+      return {
+        available: first !== undefined,
+        ...(first
+          ? {
+              label: `${first.model.name} (${first.provider.name})`,
+              inputUsdPer1M: first.model.inputUsdPer1M,
+              outputUsdPer1M: first.model.outputUsdPer1M,
+            }
+          : {}),
+        budget: {
+          limitUsd: b.limitUsd,
+          spentUsd: b.spentUsd,
+          level: b.level === 'warn' || b.level === 'over' ? b.level : 'ok',
+        },
+      };
+    },
     policy,
     audit,
     wrapStore: (store) => ({

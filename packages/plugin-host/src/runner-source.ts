@@ -138,10 +138,26 @@ function makeContext() {
         read: (id) => request('memory.read', { id }),
         list: (options) => request('memory.list', options || {}),
         propose: (input) => request('memory.propose', input),
+        searchSemantic: (query, options) =>
+          request('memory.semantic', { query, limit: options && options.limit, subBranch: options && options.subBranch, semantic: options && options.semantic }),
+        entries: (options) => request('memory.entries', options || {}),
+        pending: (options) => request('memory.pending', options || {}),
+        accept: (proposalId, edits) => request('memory.accept', { proposalId, edits: edits || {} }),
+        reject: (proposalId) => request('memory.reject', { proposalId }),
+        remove: (ids) => request('memory.remove', { ids }),
+        restore: (undo) => request('memory.restore', { undo }),
+        setAutoApprove: (subBranch, autoApprove, minConfidence) =>
+          request('memory.setAuto', { subBranch, autoApprove, minConfidence }),
       }
     : null;
   const model = init.grants.model
-    ? { complete: (prompt, options) => request('model.complete', { prompt, options: options || {} }) }
+    ? {
+        complete: (prompt, options) => request('model.complete', { prompt, options: options || {} }),
+        vision: (prompt, images, options) =>
+          request('model.vision', { prompt, images, options: options || {} }),
+        embed: (texts) => request('model.embed', { texts }),
+        status: (task) => request('model.status', { task }),
+      }
     : null;
   const cli =
     init.grants.cli && init.grants.cli.length > 0

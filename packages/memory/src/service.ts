@@ -144,13 +144,85 @@ export class MemoryService {
     mkdirSync(join(options.root, DATA_DIR), { recursive: true });
     const indexPath = join(options.root, DATA_DIR, 'index.sqlite');
     const indexExisted = existsSync(indexPath);
-    const service = new MemoryService(options, SearchIndex.open(indexPath));
+    // Chỉ mục chỉ là bản sao dựng lại được: file hỏng thì xoá đi dựng lại, không báo lỗi làm kẹt app.
+    let index: SearchIndex;
+    let indexReset = false;
+    try {
+      index = SearchIndex.open(indexPath);
+    } catch (err) {
+      console.error('[memory] chỉ mục hỏng, dựng lại từ Markdown:', err);
+      for (const suffix of ['', '-wal', '-shm', '-journal'])
+        rmSync(`${indexPath}${suffix}`, { force: true });
+      index = SearchIndex.open(indexPath);
+      indexReset = true;
+    }
+    const service = new MemoryService(options, index);
     await service.#ensureRepo();
     // Chỉ mục mất / trống mà Markdown có dữ liệu → dựng lại.
-    if (!indexExisted || service.#index.count() !== service.#scanEntries().length) {
+    // Cũng dựng lại khi chỉ mục lệch với file (tắt máy / app chết giữa lúc ghi): số mục khác, hoặc có
+    // mục mà thời điểm sửa khác bản trong chỉ mục (sửa tại chỗ dở dang), hoặc chỉ mục theo phiên bản cũ.
+    await service.#recoverInterrupted();
+    const scanned = service.#scanEntries();
+    const stamps = service.#index.stamps();
+    const drift =
+      stamps.size !== scanned.length || scanned.some((e) => stamps.get(e.id) !== e.updated);
+    if (!indexExisted || indexReset || service.#index.isStale() || drift) {
       await service.rebuildIndex({ audit: indexExisted });
     }
     return service;
+  }
+
+  /**
+   * Dọn dấu vết lần ghi bị ngắt (mất điện, app chết): xoá file tạm, ghi vào lịch sử những file đã
+   * ghi mà chưa commit (để không có mục nhớ nằm ngoài lịch sử, hoàn tác được), và bỏ đề xuất chờ
+   * duyệt mà nội dung đã nằm trong kho (đã nhận nhưng chưa kịp cập nhật hộp duyệt → khỏi nhận đúp).
+   */
+  async #recoverInterrupted(): Promise<void> {
+    const sweep = (dir: string): void => {
+      for (const name of readdirSync(dir)) {
+        if (name === '.git') continue;
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) sweep(full);
+        else if (name.endsWith('.tmp')) rmSync(full, { force: true });
+      }
+    };
+    sweep(this.root);
+    const dirty = await this.#git.uncommitted().catch(() => [] as string[]);
+    if (dirty.length > 0) {
+      await this.#git.commit(
+        {
+          op: 'update',
+          summary: `Khôi phục ${dirty.length} thay đổi dở dang sau khi tắt đột ngột`,
+          paths: dirty,
+        },
+        this.#author(),
+      );
+      this.#log({
+        op: 'update',
+        by: 'auto',
+        title: `khôi phục ${dirty.length} thay đổi dở dang`,
+        decision: 'allow',
+      });
+    }
+    const readable = this.#scanEntries();
+    let changed = false;
+    for (const p of this.#proposals) {
+      if (p.status !== 'pending' || p.targetId) continue;
+      const report = findConflicts(p.draft, readable);
+      if (report.duplicate && report.conflicts.length === 0) {
+        Object.assign(p, {
+          status: 'rejected',
+          decidedAt: this.#now().toISOString(),
+          decidedBy: 'auto',
+          reasons: [
+            ...p.reasons,
+            `Đã có mục y hệt (${report.duplicate.id}) — tự bỏ sau khi khởi động lại`,
+          ],
+        });
+        changed = true;
+      }
+    }
+    if (changed) this.#saveProposals();
   }
 
   get vectorAvailable(): boolean {
@@ -263,6 +335,54 @@ export class MemoryService {
   search(query: string, options: { limit?: number; branch?: string } = {}): MemorySearchHit[] {
     const actor = this.#identity.current();
     return this.#index.search(query, options).filter((h) => this.#access.canRead(actor, h.entry));
+  }
+
+  /**
+   * Tìm lai: FTS5 (từ khoá) + vector (nghĩa) trộn theo thứ hạng (RRF). Chưa có model embedding,
+   * hoặc tính vector lỗi (mất mạng, hết hạn mức) thì lùi về FTS5 và `mode` = `keyword`.
+   */
+  async searchHybrid(
+    query: string,
+    options: { limit?: number; branch?: string } = {},
+  ): Promise<{ mode: 'semantic' | 'keyword'; hits: MemorySearchHit[]; note?: string }> {
+    const limit = options.limit ?? 8;
+    const keyword = this.search(query, { ...options, limit: limit * 2 });
+    if (!this.#vector.available) return { mode: 'keyword', hits: keyword.slice(0, limit) };
+    let semantic: { id: string; score: number }[];
+    try {
+      semantic = await this.#vector.query(query, limit * 3);
+    } catch (err) {
+      return {
+        mode: 'keyword',
+        hits: keyword.slice(0, limit),
+        note: `Tìm theo nghĩa lỗi, dùng từ khoá: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+    const branch = options.branch;
+    const inBranch = (e: MemoryEntry): boolean =>
+      !branch || e.branch === branch || e.branch.startsWith(`${branch}/`);
+    const score = new Map<string, number>();
+    const hits = new Map<string, MemorySearchHit>();
+    keyword.forEach((h, i) => {
+      score.set(h.entry.id, (score.get(h.entry.id) ?? 0) + 1 / (60 + i));
+      hits.set(h.entry.id, h);
+    });
+    semantic.forEach((r, i) => {
+      const entry = this.get(r.id);
+      if (!entry || entry.sensitive || !inBranch(entry)) return;
+      score.set(entry.id, (score.get(entry.id) ?? 0) + 1 / (60 + i));
+      if (!hits.has(entry.id)) {
+        hits.set(entry.id, { entry, snippet: entry.body.replace(/s+/g, ' ').slice(0, 200) });
+      }
+    });
+    const ordered = [...score.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .flatMap(([id]) => {
+        const h = hits.get(id);
+        return h ? [h] : [];
+      });
+    return { mode: 'semantic', hits: ordered };
   }
 
   // ------------------------------------------------------------ Chính sách + nhật ký
@@ -579,6 +699,7 @@ export class MemoryService {
         summary: c.summary,
         op: c.op,
         ...(c.entryId ? { entryId: c.entryId } : {}),
+        paths: c.paths,
         undoable,
       });
       if (items.length >= (options.limit ?? 100)) break;
@@ -904,14 +1025,21 @@ export class MemoryService {
         'Các tool này không sửa file nào nên được gọi ngay cả ở chế độ chỉ đọc / lập kế hoạch; ' +
         'mem_propose chỉ đưa đề xuất vào hộp duyệt của người dùng.'
       : null;
-    const readable = this.#readable();
+    // Nhánh ẩn (của plugin, ví dụ Knowledge Base) KHÔNG tự chèn vào mọi cuộc trò chuyện: kho tri thức
+    // có thể rất lớn và không liên quan; agent tra qua tool của chính plugin (ADR-0017).
+    const branches = new Map(this.listBranches().map((b) => [b.path, b]));
+    const hidden = [...branches.values()].filter((b) => b.hidden).map((b) => b.path);
+    const isHidden = (e: MemoryEntry): boolean =>
+      hidden.some((p) => e.branch === p || e.branch.startsWith(`${p}/`));
+    const readable = this.#readable().filter((e) => !isHidden(e));
     if (readable.length === 0) {
       return toolsHint ? { text: `[Bộ nhớ NSA] ${toolsHint}`, entries: [] } : null;
     }
-    const branches = new Map(this.listBranches().map((b) => [b.path, b]));
     const picked = new Map<string, MemoryEntry>();
     for (const e of readable) if (e.kind === 'rule') picked.set(e.id, e);
-    for (const hit of this.search(prompt, { limit: 12 })) picked.set(hit.entry.id, hit.entry);
+    for (const hit of this.search(prompt, { limit: 12 })) {
+      if (!isHidden(hit.entry)) picked.set(hit.entry.id, hit.entry);
+    }
     if (readable.length <= 60) {
       for (const e of [...readable].sort((a, b) => b.updated.localeCompare(a.updated))) {
         picked.set(e.id, e);

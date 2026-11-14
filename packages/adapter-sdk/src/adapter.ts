@@ -79,6 +79,11 @@ export interface RunOptions {
    * Có thể chứa bí mật: adapter chỉ được truyền cho tiến trình con, không ghi ra đâu cả.
    */
   env?: Record<string, string>;
+  /**
+   * Ảnh đính kèm lượt này (việc "nhìn ảnh" — ADR-0017). Chỉ adapter có `capabilities().images`
+   * dùng; adapter khác bỏ qua. Dữ liệu base64, không có tiền tố `data:`.
+   */
+  images?: { mimeType: string; base64: string }[];
 }
 
 export interface AgentRun {

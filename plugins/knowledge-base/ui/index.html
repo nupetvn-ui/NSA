@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Knowledge Base</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fff;
+        --fg: #1d1d1f;
+        --muted: #6e6e73;
+        --card: #f2f2f5;
+        --line: rgb(0 0 0 / 0.1);
+        --accent: #007aff;
+        --green: #34c759;
+        --orange: #ff9500;
+        --red: #ff3b30;
+        --red-bg: rgb(255 59 48 / 0.1);
+        --orange-bg: rgb(255 149 0 / 0.12);
+        --accent-bg: rgb(0 122 255 / 0.1);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1e1e1e;
+          --fg: #f5f5f7;
+          --muted: #98989d;
+          --card: #2c2c2e;
+          --line: rgb(255 255 255 / 0.1);
+          --accent: #0a84ff;
+          --green: #30d158;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 20px 24px 40px;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          13px/1.5 system-ui,
+          'Segoe UI',
+          sans-serif;
+      }
+      h1 {
+        font-size: 17px;
+        margin: 0;
+      }
+      h2 {
+        font-size: 13px;
+        margin: 18px 0 8px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      #logo {
+        height: 28px;
+        width: 28px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .pill {
+        font-size: 11.5px;
+        padding: 2px 9px;
+        border-radius: 999px;
+        background: var(--card);
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .pill.ok {
+        color: var(--green);
+      }
+      .pill.warn {
+        color: var(--orange);
+        background: var(--orange-bg);
+      }
+      .pill.bad {
+        color: var(--red);
+        background: var(--red-bg);
+      }
+      .banner {
+        margin: 12px 0 0;
+        padding: 10px 12px;
+        border-radius: 10px;
+        line-height: 1.5;
+      }
+      .banner.warn {
+        background: var(--orange-bg);
+      }
+      .banner.err {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+      .banner.info {
+        background: var(--accent-bg);
+      }
+      nav {
+        display: flex;
+        gap: 4px;
+        margin: 14px 0 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      nav button {
+        background: none;
+        color: var(--muted);
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 6px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+      nav button.on {
+        color: var(--fg);
+        border-bottom-color: var(--accent);
+      }
+      button,
+      select,
+      input,
+      textarea {
+        font: inherit;
+        color: inherit;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 5px 10px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 110px;
+        resize: vertical;
+      }
+      button {
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: transparent;
+      }
+      button.danger {
+        color: var(--red);
+      }
+      button.small {
+        padding: 2px 8px;
+        font-size: 12px;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      #drop {
+        border: 2px dashed var(--line);
+        border-radius: 14px;
+        padding: 22px;
+        text-align: center;
+        color: var(--muted);
+        transition: 0.15s;
+      }
+      #drop.over {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+        color: var(--fg);
+      }
+      #drop .row {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      .fields input {
+        width: 100%;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .row input[type='url'],
+      .row input.grow {
+        flex: 1;
+        min-width: 200px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 500;
+        font-size: 11.5px;
+      }
+      .bar {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--card);
+        overflow: hidden;
+        margin-top: 4px;
+        min-width: 120px;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .warn-line {
+        color: var(--orange);
+        font-size: 12px;
+      }
+      .err-line {
+        color: var(--red);
+        font-size: 12px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin: 8px 0;
+        background: var(--bg);
+      }
+      .card.sens {
+        border-color: var(--red);
+      }
+      .card .head {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .card .body {
+        white-space: pre-wrap;
+        margin: 8px 0;
+        max-height: 220px;
+        overflow: auto;
+        background: var(--card);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+      .card .old {
+        opacity: 0.75;
+        text-decoration: line-through;
+      }
+      .cmp {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 8px;
+        border-left: 3px solid var(--accent);
+        padding-left: 10px;
+      }
+      .cmp img {
+        max-width: 240px;
+        max-height: 160px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+      }
+      .cmp .imgs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .cmp .imgs figure {
+        margin: 0;
+      }
+      .cmp figcaption {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .cmp pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font: inherit;
+      }
+      .hidden {
+        display: none !important;
+      }
+      #msg {
+        min-height: 20px;
+        margin-top: 8px;
+        font-size: 12px;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img id="logo" src="../icon.svg" alt="" />
+      <h1>Knowledge Base</h1>
+      <span id="pPending" class="pill">0 chờ duyệt</span>
+      <span id="pAccepted" class="pill">0 đã nhớ</span>
+      <span id="pQueue" class="pill"></span>
+      <span class="spacer"></span>
+      <button id="btnPauseAll" class="small">Tạm dừng hàng đợi</button>
+    </header>
+    <div id="banners"></div>
+    <nav id="tabs">
+      <button data-tab="sources" class="on">Nguồn</button>
+      <button data-tab="review">Duyệt <span id="tabCount"></span></button>
+      <button data-tab="find">Tìm thử</button>
+      <button data-tab="tools">Công cụ &amp; cài đặt</button>
+    </nav>
+
+    <section id="tab-sources">
+      <div id="drop">
+        <div><strong>Kéo-thả file hoặc thư mục vào đây</strong></div>
+        <div class="hint">
+          PDF · DOCX · XLSX/CSV · Markdown/văn bản · HTML · ảnh (PNG, JPG, WebP) · video (MP4, MOV,
+          MKV…) · âm thanh (MP3, WAV, M4A…)
+        </div>
+        <div class="row">
+          <button id="btnFiles" class="primary">Chọn file…</button>
+          <button id="btnFolder">Chọn thư mục…</button>
+          <button id="btnScan" title="Quét thư mục đã cấp quyền trong Quản lý → Quyền">
+            Quét thư mục đã cấp quyền
+          </button>
+        </div>
+        <input id="fileInput" type="file" multiple class="hidden" />
+        <input id="folderInput" type="file" webkitdirectory class="hidden" />
+      </div>
+      <div class="fields">
+        <label for="collection">Bộ sưu tập</label>
+        <input id="collection" value="chung" maxlength="40" />
+        <label for="note">Lời dặn kèm</label>
+        <input
+          id="note"
+          maxlength="300"
+          placeholder="ví dụ: đây là bảng giá tháng 11 (áp cho các file nạp tiếp theo)"
+        />
+      </div>
+      <div class="row">
+        <input
+          id="url"
+          type="url"
+          placeholder="Dán đường link trang web (hoặc PDF / DOCX trên mạng)"
+        />
+        <button id="btnUrl">Nạp link</button>
+      </div>
+      <div id="upload" class="hint"></div>
+      <div id="estimate"></div>
+      <div id="trash"></div>
+      <table id="sources">
+        <thead>
+          <tr>
+            <th>Nguồn</th>
+            <th>Bộ</th>
+            <th>Trạng thái</th>
+            <th>Mục nhớ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty" class="hint hidden">
+        Chưa có nguồn nào. Thả một file vào khung trên để dạy NSA — mọi điều học được sẽ vào tab
+        “Duyệt” để bạn quyết định.
+      </p>
+    </section>
+
+    <section id="tab-review" class="hidden">
+      <div class="row">
+        <select id="reviewFilter"></select>
+        <button id="btnSelAll" class="small">Chọn tất cả (trừ nhạy cảm)</button>
+        <button id="btnAcceptSel" class="primary small">Nhận mục đã chọn</button>
+        <button id="btnRejectSel" class="small danger">Từ chối mục đã chọn</button>
+        <span class="hint" id="selCount"></span>
+      </div>
+      <div id="cards"></div>
+      <p id="noCards" class="hint hidden">Không có gì chờ duyệt.</p>
+    </section>
+
+    <section id="tab-find" class="hidden">
+      <div class="row">
+        <input id="q" class="grow" placeholder="Hỏi thử Knowledge Base như agent sẽ hỏi…" />
+        <button id="btnFind" class="primary">Tìm</button>
+      </div>
+      <pre id="found" class="card" style="white-space: pre-wrap"></pre>
+      <p class="hint">
+        Chỉ thấy các mục đã nhận (chưa duyệt thì chưa tìm thấy). Agent dùng cùng kết quả này qua
+        tool
+        <code>kb_search</code> / <code>kb_open</code>.
+      </p>
+    </section>
+
+    <section id="tab-tools" class="hidden">
+      <h2>Công cụ trên máy</h2>
+      <div id="toolStatus"></div>
+      <h2>Model nhận dạng giọng nói (whisper.cpp)</h2>
+      <p class="hint">
+        Dùng để chuyển tiếng trong video / âm thanh thành phụ đề có mốc thời gian, chạy hoàn toàn
+        trên máy bạn. Cần có chương trình <code>whisper-cli</code> (xem hướng dẫn ở trên) và một
+        model. Bấm tải sẽ tải file từ huggingface.co về thư mục dữ liệu của plugin.
+      </p>
+      <div class="row" id="models">
+        <button data-model="tiny">Tải “tiny” (~78 MB, nhanh, kém chính xác)</button>
+        <button data-model="base">Tải “base” (~148 MB, cân bằng)</button>
+        <button data-model="small">Tải “small” (~488 MB, chính xác hơn)</button>
+      </div>
+      <div id="dl" class="hint"></div>
+      <h2>Cài đặt</h2>
+      <div class="fields">
+        <label>Hỏi trước khi chạy nếu ước tính ≥ (USD)</label>
+        <input id="setAsk" type="number" min="0" step="0.01" />
+        <label>Số khung hình tối đa mỗi video</label>
+        <input id="setFrames" type="number" min="4" max="80" />
+        <label>Ngôn ngữ giọng nói</label>
+        <input id="setLang" placeholder="auto, vi, en…" />
+        <label>Tự nhận khi đủ tin cậy</label>
+        <span class="row"
+          ><input id="setAuto" type="checkbox" /> theo quy tắc tự duyệt của NSA Mem (mặc định tắt:
+          mọi thứ chờ bạn duyệt; mục nhạy cảm không bao giờ tự nhận)</span
+        >
+        <label>Tìm theo nghĩa (thử nghiệm)</label>
+        <span class="row"
+          ><input id="setSemantic" type="checkbox" /> dùng model embedding để tìm theo nghĩa. Mặc
+          định TẮT: chưa đo chất lượng với model thật, và văn bản tài liệu sẽ được gửi tới nhà cung
+          cấp embedding</span
+        >
+        <label>Ngưỡng tin cậy tự nhận</label>
+        <input id="setMin" type="number" min="0.5" max="1" step="0.05" />
+      </div>
+      <button id="btnSave" class="primary">Lưu cài đặt</button>
+    </section>
+
+    <div id="ask" class="banner warn hidden"></div>
+    <div id="msg"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

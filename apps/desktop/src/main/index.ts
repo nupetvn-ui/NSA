@@ -153,6 +153,8 @@ if (!app.requestSingleInstanceLock()) {
       onChanged: (pending) => broadcast('mem:changed', { pending }),
       onStatus: (status) => broadcast('mem:status', status),
       toolsAvailable: () => plugins?.gateway != null,
+      embed: providers.embed,
+      embeddingReady: providers.embeddingReady,
     });
     app.on('will-quit', () => void memory.close());
 
@@ -165,6 +167,9 @@ if (!app.requestSingleInstanceLock()) {
       runtime: memory.runtime,
       cipher: safeStorage,
       runText: async (task, prompt) => (await providers.runner.runText(task, prompt)).value,
+      vision: providers.vision,
+      embed: providers.embed,
+      taskStatus: providers.taskStatus,
       redact: (text) => providers.hub.redact(text),
       chat: () => {
         if (!chat) throw new Error('Lõi chat chưa sẵn sàng');

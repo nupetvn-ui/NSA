@@ -132,6 +132,8 @@ export interface MemoryHistoryItem {
   summary: string;
   op: MemoryOp | 'branch' | 'init';
   entryId?: string;
+  /** Các file (tương đối kho nhớ) mà thay đổi này chạm tới. */
+  paths?: string[];
   /** Hoàn tác được (mục chưa bị đổi tiếp sau thay đổi này). */
   undoable: boolean;
 }

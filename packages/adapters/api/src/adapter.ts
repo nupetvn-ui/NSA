@@ -217,7 +217,13 @@ export function createApiAdapter(options: ApiAdapterOptions): AgentAdapter {
 
         const conversation: ChatMessage[] = [
           ...history,
-          { role: 'user', content: runOptions.prompt },
+          {
+            role: 'user',
+            content: runOptions.prompt,
+            ...(options.vision === true && runOptions.images?.length
+              ? { images: runOptions.images }
+              : {}),
+          },
         ];
         const system: ChatMessage[] = options.systemPrompt
           ? [{ role: 'system', content: options.systemPrompt }]

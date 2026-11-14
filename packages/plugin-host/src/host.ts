@@ -28,8 +28,12 @@ import {
   SECRET_PLACEHOLDER_SOURCE,
   validateManifest,
   type InstallResult,
+  type MemoryEntryInfo,
   type MemoryHit,
   type MemoryNote,
+  type MemoryPendingInfo,
+  type ModelImage,
+  type ModelTaskStatus,
   type MemoryProposeResult,
   type PluginGrants,
   type PluginIcon,
@@ -80,8 +84,29 @@ export interface PluginMemoryBridge {
       kind?: 'fact' | 'preference' | 'rule';
       subject?: string;
       confidence?: number;
+      sensitive?: boolean;
+      tags?: string[];
+      targetId?: string;
     },
   ): Promise<MemoryProposeResult>;
+  /** Tìm theo nghĩa (vector) nếu có model embedding, không thì từ khoá. */
+  searchSemantic(
+    branch: string,
+    query: string,
+    limit: number,
+    options?: { semantic?: boolean },
+  ): Promise<{ mode: 'semantic' | 'keyword'; hits: MemoryHit[] }>;
+  entries(branch: string, limit: number): Promise<MemoryEntryInfo[]>;
+  pending(branch: string): Promise<MemoryPendingInfo[]>;
+  accept(
+    branch: string,
+    proposalId: string,
+    edits: { title?: string; body?: string },
+  ): Promise<{ entryId: string }>;
+  reject(branch: string, proposalId: string): Promise<void>;
+  remove(branch: string, ids: string[]): Promise<{ undo: string[] }>;
+  restore(branch: string, undo: string[]): Promise<{ restored: number }>;
+  setAutoApprove(branch: string, autoApprove: boolean, minConfidence?: number): Promise<void>;
 }
 
 /** Kho khoá cho bí mật của plugin — cùng hình dạng `SecretStore` của gói providers. */
@@ -100,7 +125,22 @@ export interface PluginHostOptions {
   /** Kho khoá của hệ điều hành. Không có thì plugin có khe bí mật sẽ báo "chưa nhập". */
   secrets?: PluginSecretStore;
   /** Chạy model của việc "kênh chat" (qua ModelTaskRunner của app: chính sách, chi phí, dự phòng). */
-  model?: (pluginId: string, prompt: string, options: { system?: string }) => Promise<string>;
+  model?: (
+    pluginId: string,
+    prompt: string,
+    options: { system?: string; task?: 'channel' | 'background' },
+  ) => Promise<string>;
+  /** Việc "nhìn ảnh" (ảnh gửi tới nhà cung cấp model nhìn ảnh người dùng chọn). */
+  vision?: (
+    pluginId: string,
+    prompt: string,
+    images: ModelImage[],
+    options: { system?: string },
+  ) => Promise<string>;
+  /** Việc "embedding" — ném lỗi khi chưa có model embedding. */
+  embed?: (pluginId: string, texts: string[]) => Promise<number[][]>;
+  /** Tình trạng model + hạn mức tháng của một loại việc. */
+  modelStatus?: (task: 'background' | 'vision' | 'embedding') => Promise<ModelTaskStatus>;
   /** Hỏi người dùng (hộp thoại) khi chính sách trả "hỏi" cho hành động nền. Hết hạn = từ chối. */
   confirm?: (pluginId: string, text: string, signal: AbortSignal) => Promise<boolean>;
   /** Che thêm các chuỗi bí mật khác của app (key API…) khỏi nội dung gửi model / nhật ký. */
@@ -948,7 +988,27 @@ export class PluginHost {
         return this.#cliRun(entry, p);
       case 'model.complete':
         return this.#complete(entry, p);
+      case 'model.vision':
+        return this.#vision(entry, p);
+      case 'model.embed':
+        return this.#embed(entry, p);
+      case 'model.status': {
+        const task = String(p['task']);
+        if (task !== 'background' && task !== 'vision' && task !== 'embedding')
+          throw new Error('Loại việc không hợp lệ.');
+        this.#modelAllowed(entry, task);
+        if (!this.#o.modelStatus) throw new Error('NSA chưa nối model.');
+        return this.#o.modelStatus(task);
+      }
       case 'memory.search':
+      case 'memory.semantic':
+      case 'memory.entries':
+      case 'memory.pending':
+      case 'memory.accept':
+      case 'memory.reject':
+      case 'memory.remove':
+      case 'memory.restore':
+      case 'memory.setAuto':
       case 'memory.list':
       case 'memory.read':
       case 'memory.propose': {
@@ -956,6 +1016,45 @@ export class PluginHost {
         if (!grants.memory || !root || !this.#o.memory) return deny('nhớ (NSA Mem)');
         const sub = subBranchOf(p['subBranch']);
         const branch = sub ? `${root}/${sub}` : root;
+        if (method === 'memory.semantic') {
+          return this.#o.memory.searchSemantic(
+            branch,
+            String(p['query'] ?? ''),
+            Math.min(20, Number(p['limit']) || 8),
+            { semantic: p['semantic'] !== false },
+          );
+        }
+        if (method === 'memory.entries') {
+          return this.#o.memory.entries(branch, Math.min(2000, Number(p['limit']) || 500));
+        }
+        if (method === 'memory.pending') return this.#o.memory.pending(branch);
+        if (method === 'memory.accept') {
+          const edits = (p['edits'] ?? {}) as { title?: unknown; body?: unknown };
+          return this.#o.memory.accept(branch, String(p['proposalId'] ?? ''), {
+            ...(typeof edits.title === 'string' ? { title: edits.title.slice(0, 200) } : {}),
+            ...(typeof edits.body === 'string' ? { body: edits.body.slice(0, 20_000) } : {}),
+          });
+        }
+        if (method === 'memory.reject') {
+          return this.#o.memory.reject(branch, String(p['proposalId'] ?? ''));
+        }
+        if (method === 'memory.remove') {
+          const ids = Array.isArray(p['ids']) ? (p['ids'] as unknown[]).map(String) : [];
+          return this.#o.memory.remove(branch, ids.slice(0, 5000));
+        }
+        if (method === 'memory.restore') {
+          const undo = Array.isArray(p['undo']) ? (p['undo'] as unknown[]).map(String) : [];
+          return this.#o.memory.restore(branch, undo.slice(0, 5000));
+        }
+        if (method === 'memory.setAuto') {
+          if (!sub) throw new Error('Cần nhánh con để đặt tự nhận.');
+          await this.#o.memory.ensureBranch(branch, sub.split('/').at(-1) ?? sub);
+          return this.#o.memory.setAutoApprove(
+            branch,
+            p['autoApprove'] === true,
+            typeof p['minConfidence'] === 'number' ? p['minConfidence'] : undefined,
+          );
+        }
         if (method === 'memory.search') {
           return this.#o.memory.search(
             branch,
@@ -981,6 +1080,11 @@ export class PluginHost {
           ...(kind === 'fact' || kind === 'preference' || kind === 'rule' ? { kind } : {}),
           ...(typeof p['subject'] === 'string' ? { subject: p['subject'] } : {}),
           ...(typeof p['confidence'] === 'number' ? { confidence: p['confidence'] } : {}),
+          ...(p['sensitive'] === true ? { sensitive: true } : {}),
+          ...(Array.isArray(p['tags'])
+            ? { tags: (p['tags'] as unknown[]).map(String).slice(0, 12) }
+            : {}),
+          ...(typeof p['targetId'] === 'string' ? { targetId: p['targetId'] } : {}),
         });
       }
       default:
@@ -1249,6 +1353,13 @@ export class PluginHost {
     const bad = validateArgs(p['args'], def.denyFlags);
     if (bad) return refuse(`gọi ${def.command} sai: ${bad}`);
     const args = p['args'] as string[];
+    if (def.confinePaths) {
+      const roots = [this.#dataDir(entry.id), ...Object.values(entry.record.grants.folders)];
+      const outside = pathsOutside(args, roots);
+      if (outside) {
+        return refuse(`gọi ${def.command} với đường dẫn ngoài thư mục được phép: ${outside}`);
+      }
+    }
     const rule = matchAllow(def.allow, args);
     if (!rule) {
       return refuse(
@@ -1273,7 +1384,10 @@ export class PluginHost {
       };
     }
     const options = (p['options'] ?? {}) as { timeoutMs?: number };
-    const timeoutMs = Math.min(120_000, Math.max(1_000, Number(options.timeoutMs) || 60_000));
+    const timeoutMs = Math.min(
+      def.confinePaths ? 900_000 : 120_000,
+      Math.max(1_000, Number(options.timeoutMs) || 60_000),
+    );
     return runCli(resolved, args, { timeoutMs, env: minimalEnv() });
   }
 
@@ -1306,7 +1420,13 @@ export class PluginHost {
       });
       throw new Error(`NSA: plugin "${entry.id}" chưa được cấp quyền dùng model.`);
     }
-    const options = (p['options'] ?? {}) as { system?: string; maxChars?: number };
+    const options = (p['options'] ?? {}) as {
+      system?: string;
+      maxChars?: number;
+      task?: string;
+    };
+    const task = options.task === 'background' ? 'background' : 'channel';
+    this.#modelAllowed(entry, task);
     const prompt = this.#redact(entry, String(p['prompt'] ?? '')).slice(0, 24_000);
     const system = options.system
       ? this.#redact(entry, String(options.system)).slice(0, 8_000)
@@ -1316,14 +1436,75 @@ export class PluginHost {
       op: 'model',
       pluginId: entry.id,
       decision: 'allow',
-      detail: `việc "kênh chat": ${prompt.length + system.length} ký tự`,
+      detail: `việc "${task === 'background' ? 'nền' : 'kênh chat'}": ${prompt.length + system.length} ký tự`,
     });
     const text = await withTimeout(
-      this.#o.model(entry.id, prompt, system ? { system } : {}),
+      this.#o.model(entry.id, prompt, { ...(system ? { system } : {}), task }),
       90_000,
       'Model không trả lời trong 90 giây.',
     );
     return this.#redact(entry, text).slice(0, Math.min(8_000, Number(options.maxChars) || 8_000));
+  }
+
+  /** Plugin có được nhờ loại việc này không (cần quyền `model` + khai trong `modelTasks`). */
+  #modelAllowed(entry: Entry, task: string): void {
+    const ok =
+      entry.record.grants.model &&
+      (entry.manifest.permissions.modelTasks as string[]).includes(task);
+    if (ok) return;
+    const message = `NSA: plugin "${entry.id}" chưa được cấp quyền dùng model cho việc "${task}".`;
+    this.#audit({ op: 'denied', pluginId: entry.id, decision: 'deny', detail: message });
+    throw new Error(message);
+  }
+
+  async #vision(entry: Entry, p: Record<string, unknown>): Promise<string> {
+    this.#modelAllowed(entry, 'vision');
+    if (!this.#o.vision) throw new Error('NSA chưa nối model nhìn ảnh.');
+    const prompt = this.#redact(entry, String(p['prompt'] ?? '')).slice(0, 12_000);
+    const images = (Array.isArray(p['images']) ? (p['images'] as unknown[]) : [])
+      .slice(0, 8)
+      .map((img) => img as Partial<ModelImage>)
+      .filter(
+        (img): img is ModelImage =>
+          typeof img.mimeType === 'string' &&
+          /^image\/(png|jpeg|webp|gif)$/.test(img.mimeType) &&
+          typeof img.base64 === 'string' &&
+          img.base64.length > 0 &&
+          img.base64.length <= 14_000_000,
+      );
+    if (images.length === 0) throw new Error('Không có ảnh hợp lệ (png / jpeg / webp / gif).');
+    const options = (p['options'] ?? {}) as { system?: string; maxChars?: number };
+    const system = options.system
+      ? this.#redact(entry, String(options.system)).slice(0, 8_000)
+      : undefined;
+    this.#audit({
+      op: 'model',
+      pluginId: entry.id,
+      decision: 'allow',
+      detail: `việc "nhìn ảnh": ${images.length} ảnh`,
+    });
+    const text = await withTimeout(
+      this.#o.vision(entry.id, prompt, images, system ? { system } : {}),
+      180_000,
+      'Model nhìn ảnh không trả lời trong 3 phút.',
+    );
+    return this.#redact(entry, text).slice(0, Math.min(16_000, Number(options.maxChars) || 16_000));
+  }
+
+  async #embed(entry: Entry, p: Record<string, unknown>): Promise<number[][]> {
+    this.#modelAllowed(entry, 'embedding');
+    if (!this.#o.embed) throw new Error('NSA chưa nối model embedding.');
+    const texts = (Array.isArray(p['texts']) ? (p['texts'] as unknown[]) : [])
+      .slice(0, 64)
+      .map((t) => this.#redact(entry, String(t)).slice(0, 8_000));
+    if (texts.length === 0) throw new Error('Không có văn bản để tính embedding.');
+    this.#audit({
+      op: 'model',
+      pluginId: entry.id,
+      decision: 'allow',
+      detail: `việc "embedding": ${texts.length} đoạn`,
+    });
+    return withTimeout(this.#o.embed(entry.id, texts), 90_000, 'Embedding quá 90 giây.');
   }
 
   // ------------------------------------------------------------ Cấu hình riêng của plugin
@@ -1527,6 +1708,29 @@ export function secretName(pluginId: string, slot: string): string {
 const SUB_BRANCH = /^[a-z0-9][a-z0-9_-]{0,47}(\/[a-z0-9][a-z0-9_-]{0,47}){0,2}$/;
 
 /** Nhánh nhớ con hợp lệ (không `..`, không rỗng, tối đa 3 cấp) hoặc `null`; sai dạng thì ném lỗi. */
+/**
+ * Tham số nào là đường dẫn tuyệt đối nằm ngoài `roots` (trả tham số đó), hoặc null.
+ * Tham số bắt đầu bằng `-` thì xét phần sau dấu `=`. Có `..` trong đường dẫn cũng bị coi là ngoài.
+ */
+export function pathsOutside(args: string[], roots: string[]): string | null {
+  const absolute = /^(?:[A-Za-z]:[\\/]|\\\\|\/)/;
+  const inside = (p: string): boolean => {
+    if (p.split(/[\\/]/).includes('..')) return false;
+    const target = resolve(p).toLowerCase();
+    return roots.some((r) => {
+      const root = resolve(r).toLowerCase();
+      return target === root || target.startsWith(root + sep);
+    });
+  };
+  for (const a of args) {
+    const value = a.startsWith('-') && a.includes('=') ? a.slice(a.indexOf('=') + 1) : a;
+    // Địa chỉ mạng (rtmp://, http://…) cũng bị chặn: chương trình ngoài không được gửi dữ liệu đi.
+    if (/^[A-Za-z][A-Za-z0-9+.-]+:\/\//.test(value)) return value;
+    if (absolute.test(value) && !inside(value)) return value;
+  }
+  return null;
+}
+
 function subBranchOf(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   if (typeof value !== 'string' || !SUB_BRANCH.test(value)) {
@@ -1649,7 +1853,13 @@ export function describePermissions(manifest: PluginManifest, grants?: PluginGra
   const want = manifest.permissions;
   const out: string[] = [];
   for (const d of want.network) {
-    if (!grants || grants.network.includes(d)) out.push(`Truy cập mạng tới ${d}`);
+    if (!grants || grants.network.includes(d)) {
+      out.push(
+        d === '*'
+          ? 'Truy cập MỌI trang web công cộng trên mạng (không gồm máy cục bộ / mạng nội bộ)'
+          : `Truy cập mạng tới ${d}`,
+      );
+    }
   }
   for (const f of want.folders) {
     if (!grants || grants.folders[f.id]) {
@@ -1668,8 +1878,14 @@ export function describePermissions(manifest: PluginManifest, grants?: PluginGra
     }
   }
   if (want.model && (!grants || grants.model)) {
+    const labels: Record<string, string> = {
+      channel: 'kênh chat',
+      background: 'việc nền (tóm tắt, chắt lọc)',
+      vision: 'nhìn ảnh / khung hình video',
+      embedding: 'embedding (tìm theo nghĩa)',
+    };
     out.push(
-      'Nhờ NSA chạy model "kênh chat" (nội dung tin nhắn được gửi tới nhà cung cấp model bạn chọn)',
+      `Nhờ NSA chạy model cho: ${manifest.permissions.modelTasks.map((t) => labels[t] ?? t).join(', ')} (nội dung được gửi tới nhà cung cấp model bạn chọn; plugin không thấy key)`,
     );
   }
   for (const s of manifest.secrets)

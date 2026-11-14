@@ -45,7 +45,7 @@ packages/adapters/*   claude, codex, opencode, gemini, pty, api (gọi thẳng b
 packages/mcp-gateway
 packages/memory       NSA Mem
 packages/plugin-sdk   manifest, quyền, API giao diện
-plugins/*             telegram, discord, zalo-oa, zalo-ca-nhan, lark, google-workspace, kiotviet, ghi-chu-nhanh (mẫu); sắp có: knowledge-base, scheduler, browser, content-factory
+plugins/*             telegram, discord, zalo-oa, zalo-ca-nhan, lark, google-workspace, kiotviet, knowledge-base, ghi-chu-nhanh (mẫu); sắp có: scheduler, browser, content-factory
 docs/                 PLAN.md, ADR, đặc tả
 ```
 
@@ -173,7 +173,7 @@ Lõi chỉ định nghĩa ổ cắm, không chứa nghiệp vụ của bản nà
 | 9. Bản Doanh nghiệp | Gói `enterprise-*`: SSO + vai trò, chính sách do quản trị đặt, nhật ký kiểm toán, hộp cát agent, bộ nhớ nhóm mã hoá, kho plugin riêng, bản cài cho IT; hợp đồng và kiểm thử xâm nhập; gói cài tận nơi kèm quy trình làm riêng và bảo trì theo năm | Một công ty triển khai cho cả nhóm, quản trị khoá được chính sách và xuất được nhật ký |
 | G. Gia cố nền | Xem mục "Gia cố nền": G1 adapter cập nhật độc lập, G2 lưới kiểm thử, G3 ranh giới gói làm ngay; G4–G10 làm trước giai đoạn 8 | Đổi adapter không cần ra bản app; CI Windows mở được app và đi qua các màn hình chính; lint chặn phụ thuộc ngược chiều |
 
-Trạng thái (13/11/2026): giai đoạn 0, 1, 1b, 2, 3, 4 đã merge vào `main`; giai đoạn 5 đang làm. Giai đoạn G chen ngang, không theo thứ tự số.
+Trạng thái (13/11/2026): giai đoạn 0, 1, 1b, 2, 3, 4 đã merge vào `main`; giai đoạn 5 (Knowledge Base) xong, chờ merge (PR #11, ADR-0017; model nhìn ảnh / embedding mới chạy với máy chủ giả, whisper mới thử tiếng Anh). Giai đoạn G chen ngang, không theo thứ tự số.
 
 Giai đoạn 1–3 là lõi, làm tuần tự. Giai đoạn 1b độc lập với 2 và 3, chen vào lúc nào cũng được nhưng nên xong trước giai đoạn 4, vì kênh chat và Knowledge Base cần model rẻ cho việc nền. Giai đoạn 4–7 là plugin, làm song song được sau khi xong 3. Việc của giai đoạn 8 liên quan đến ký mã và tự cập nhật được dựng khung từ giai đoạn 0. Giai đoạn 9 làm sau khi bản Cá nhân chạy ổn, và chỉ cắm thêm vào bốn ổ cắm đã có.
 

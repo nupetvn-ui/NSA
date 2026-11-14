@@ -9,7 +9,7 @@ export const MANIFEST_FILE = 'nsa-plugin.json';
 export const ID_PATTERN = /^[a-z][a-z0-9-]{1,23}$/;
 export const TOOL_PATTERN = /^[a-z][a-z0-9_]{0,31}$/;
 const RESERVED_IDS = new Set(['nsa', 'mem', 'memory', 'core', 'system']);
-const DOMAIN_PATTERN = /^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$|^localhost$/;
+const DOMAIN_PATTERN = /^\*$|^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$|^localhost$/;
 export const SECRET_PATTERN = /^[a-z][a-z0-9_]{0,23}$/;
 const INTERVAL_PATTERN = /^(\d+)(s|m|h)$/;
 
@@ -95,10 +95,25 @@ export interface ManifestCli {
   allow: { args: string[]; sensitive: boolean }[];
   /** Tham số bị cấm trong mọi lệnh (ví dụ ghi file ra đường dẫn tuỳ ý). */
   denyFlags: string[];
+  /**
+   * Mọi tham số có dạng đường dẫn tuyệt đối (`C:...`, `/...`, kể cả sau `--cờ=`) phải nằm trong thư mục
+   * dữ liệu của plugin hoặc thư mục người dùng đã cấp — để chương trình như ffmpeg không ghi/đọc
+   * file tuỳ ý trên máy (ADR-0017). Chạy được lâu hơn (tối đa 15 phút) vì việc nặng.
+   */
+  confinePaths: boolean;
 }
 
 /** Bản đóng gói NSA mà plugin được phép có mặt. */
 export type ManifestEdition = 'personal' | 'enterprise';
+
+/** Loại việc model mà plugin có thể nhờ (ADR-0009, ADR-0017). */
+export type ModelTaskKind = 'channel' | 'background' | 'vision' | 'embedding';
+export const MODEL_TASK_KINDS: readonly ModelTaskKind[] = [
+  'channel',
+  'background',
+  'vision',
+  'embedding',
+];
 
 /** Quyền plugin xin được cấp. Không xin thì không bao giờ có. */
 export interface PluginPermissions {
@@ -113,6 +128,11 @@ export interface PluginPermissions {
    * gửi đi sẽ tới nhà cung cấp model người dùng đã chọn.
    */
   model: boolean;
+  /**
+   * Loại việc model plugin được nhờ khi có quyền `model` (mặc định chỉ `channel`). Người dùng thấy
+   * danh sách này lúc cấp quyền: nhìn ảnh / embedding gửi nội dung tới nhà cung cấp model.
+   */
+  modelTasks: ModelTaskKind[];
   /** Chương trình dòng lệnh nhờ lõi chạy hộ. */
   cli: ManifestCli[];
 }
@@ -246,6 +266,7 @@ export function validateManifest(raw: unknown): ManifestResult {
     memory: false,
     notifications: false,
     model: false,
+    modelTasks: ['channel'],
     cli: [],
   };
   const rawPerm = raw['permissions'];
@@ -253,10 +274,14 @@ export function validateManifest(raw: unknown): ManifestResult {
     if (!isObj(rawPerm)) err('permissions', '"permissions" phải là một đối tượng.');
     else {
       for (const key of Object.keys(rawPerm)) {
-        if (!['network', 'folders', 'memory', 'notifications', 'model', 'cli'].includes(key)) {
+        if (
+          !['network', 'folders', 'memory', 'notifications', 'model', 'modelTasks', 'cli'].includes(
+            key,
+          )
+        ) {
           err(
             `permissions.${key}`,
-            `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications, model, cli.`,
+            `Quyền "${key}" không tồn tại. Có: network, folders, memory, notifications, model, modelTasks, cli.`,
           );
         }
       }
@@ -363,11 +388,36 @@ export function validateManifest(raw: unknown): ManifestResult {
                 );
               } else denyFlags.push(...(rawDeny as string[]));
             }
+            const rawConfine = c['confinePaths'];
+            if (rawConfine !== undefined && typeof rawConfine !== 'boolean') {
+              err(`${p}.confinePaths`, '"confinePaths" phải là true hoặc false.');
+            }
             if (cid && label && command && allow.length > 0) {
-              permissions.cli.push({ id: cid, label, command, install, allow, denyFlags });
+              permissions.cli.push({
+                id: cid,
+                label,
+                command,
+                install,
+                allow,
+                denyFlags,
+                confinePaths: rawConfine === true,
+              });
             }
           });
         }
+      }
+      const rawTasks = rawPerm['modelTasks'];
+      if (rawTasks !== undefined) {
+        if (
+          !Array.isArray(rawTasks) ||
+          rawTasks.length === 0 ||
+          !rawTasks.every((t) => MODEL_TASK_KINDS.includes(t as ModelTaskKind))
+        ) {
+          err(
+            'permissions.modelTasks',
+            '"modelTasks" phải là danh sách gồm: channel, background, vision, embedding.',
+          );
+        } else permissions.modelTasks = [...new Set(rawTasks as ModelTaskKind[])];
       }
       for (const key of ['memory', 'notifications', 'model'] as const) {
         const v = rawPerm[key];
@@ -605,8 +655,24 @@ export function isCompatible(manifest: Pick<PluginManifest, 'nsa'>, nsaVersion: 
 export function domainAllowed(host: string, allowed: string[]): boolean {
   const h = host.toLowerCase();
   return allowed.some((pattern) =>
-    pattern.startsWith('*.') ? h.endsWith(pattern.slice(1)) : h === pattern,
+    pattern === '*'
+      ? isPublicHost(h)
+      : pattern.startsWith('*.')
+        ? h.endsWith(pattern.slice(1))
+        : h === pattern,
   );
+}
+
+/**
+ * Trang web công cộng? `*` ("mọi trang web") KHÔNG bao giờ gồm máy cục bộ / mạng nội bộ: localhost,
+ * tên một nhãn, `.local` / `.internal`, địa chỉ IP thuần (nội bộ hoặc không). Muốn tới các nơi đó phải
+ * khai đúng tên (chỉ `localhost` được phép khai).
+ */
+export function isPublicHost(host: string): boolean {
+  const h = host.toLowerCase().replace(/\.$/, '');
+  if (!h.includes('.') || h.includes(':') || h.startsWith('[')) return false;
+  if (/^[0-9.]+$/.test(h)) return false;
+  return !(h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.localhost'));
 }
 
 /** Chỗ giữ chỗ plugin viết thay cho giá trị bí mật: `{{secret:bot_token}}`. */

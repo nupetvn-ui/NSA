@@ -45,12 +45,97 @@ export interface PluginMemory {
     confidence?: number;
     /** Nhánh con dưới nhánh của plugin, tối đa 3 cấp `a/b/c` (chữ thường, số, `-`, `_`). */
     subBranch?: string;
+    /** Đánh dấu nhạy cảm: luôn chờ người duyệt, không tự chèn vào ngữ cảnh agent. */
+    sensitive?: boolean;
+    tags?: string[];
+    /** Sửa mục đã có (cập nhật nội dung) thay vì tạo mục mới. Chỉ trong nhánh của plugin. */
+    targetId?: string;
   }): Promise<MemoryProposeResult>;
+  /**
+   * Tìm theo nghĩa (vector) khi đã có model embedding, lùi về từ khoá (FTS5) khi chưa có.
+   * `mode` cho biết kết quả đến từ đâu.
+   */
+  searchSemantic(
+    query: string,
+    options?: { limit?: number; subBranch?: string; semantic?: boolean },
+  ): Promise<{ mode: 'semantic' | 'keyword'; hits: MemoryHit[] }>;
+  /** Mục nhớ (đã duyệt) kèm thẻ và nguồn — để plugin biết mục nào sinh ra từ nguồn nào. */
+  entries(options?: { subBranch?: string; limit?: number }): Promise<MemoryEntryInfo[]>;
+  /** Đề xuất đang chờ người duyệt trong nhánh của plugin. */
+  pending(options?: { subBranch?: string }): Promise<MemoryPendingInfo[]>;
+  /** Nhận một đề xuất (có thể sửa tiêu đề / nội dung trước). */
+  accept(
+    proposalId: string,
+    edits?: { title?: string; body?: string },
+  ): Promise<{ entryId: string }>;
+  reject(proposalId: string): Promise<void>;
+  /** Xoá mục nhớ (ghi vào lịch sử, hoàn tác được bằng `restore`). Trả mã hoàn tác. */
+  remove(ids: string[]): Promise<{ undo: string[] }>;
+  /** Hoàn tác các lần xoá (mã từ `remove`). */
+  restore(undo: string[]): Promise<{ restored: number }>;
+  /** Cách nhánh con tự nhận đề xuất: tắt thì mọi thứ học được chờ người duyệt. */
+  setAutoApprove(subBranch: string, autoApprove: boolean, minConfidence?: number): Promise<void>;
 }
 
-/** Việc plugin nhờ NSA chạy model của loại việc "kênh chat". Có khi được cấp quyền `model`. */
+export interface MemoryEntryInfo extends MemoryNote {
+  tags: string[];
+  subBranch: string;
+  confidence: number;
+  sensitive: boolean;
+}
+
+export interface MemoryPendingInfo {
+  id: string;
+  createdAt: string;
+  title: string;
+  body: string;
+  confidence: number;
+  sensitive: boolean;
+  tags: string[];
+  subBranch: string;
+  reasons: string[];
+  /** Có thì đây là đề xuất sửa mục này. */
+  targetId?: string;
+  conflicts: { id: string; title: string }[];
+}
+
+/** Ảnh gửi cho model nhìn ảnh. */
+export interface ModelImage {
+  mimeType: string;
+  /** Dữ liệu base64, không có tiền tố `data:`. */
+  base64: string;
+}
+
+/** Tình trạng model của một loại việc: có model nào dùng được, giá, và hạn mức tháng. */
+export interface ModelTaskStatus {
+  available: boolean;
+  /** Tên model đầu chuỗi (để hiện cho người dùng). */
+  label?: string;
+  inputUsdPer1M?: number | null;
+  outputUsdPer1M?: number | null;
+  /** Hạn mức tháng của NSA (USD); `null` = không đặt. */
+  budget: { limitUsd: number | null; spentUsd: number; level: 'ok' | 'warn' | 'over' };
+}
+
+/**
+ * Việc plugin nhờ NSA chạy model. Có khi được cấp quyền `model`; chỉ các loại việc khai ở
+ * `permissions.modelTasks` của manifest. Plugin không có key; qua chính sách, chi phí, hạn mức.
+ */
 export interface PluginModel {
-  complete(prompt: string, options?: { system?: string; maxChars?: number }): Promise<string>;
+  /** `task`: `channel` (mặc định) hoặc `background` (chắt lọc, tóm tắt). */
+  complete(
+    prompt: string,
+    options?: { system?: string; maxChars?: number; task?: 'channel' | 'background' },
+  ): Promise<string>;
+  /** Việc "nhìn ảnh / video": mô tả, rút chữ. */
+  vision(
+    prompt: string,
+    images: ModelImage[],
+    options?: { system?: string; maxChars?: number },
+  ): Promise<string>;
+  /** Việc "embedding". Ném lỗi nếu chưa có model embedding — bên gọi lùi về từ khoá. */
+  embed(texts: string[]): Promise<number[][]>;
+  status(task: 'background' | 'vision' | 'embedding'): Promise<ModelTaskStatus>;
 }
 
 /** Kết quả một lần chạy chương trình dòng lệnh. `code` là mã thoát (null: hết giờ / không chạy được). */

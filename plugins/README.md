@@ -8,4 +8,6 @@ Công cụ Google Workspace cho agent (giai đoạn 4, [ADR-0012](../docs/adr/00
 
 Công cụ bán hàng: [`kiotviet`](kiotviet) — Public API KiotViet cho agent ([ADR-0013](../docs/adr/0013-plugin-kiotviet.md)).
 
+Kho tri thức (giai đoạn 5, [ADR-0015](../docs/adr/0015-knowledge-base.md)): [`knowledge-base`](knowledge-base) — dạy bằng tài liệu / ảnh / video, duyệt, hỏi lại kèm nguồn. Mã nguồn ở `src/`, đóng gói thành `main.js` bằng `pnpm --filter @nsa/plugin-knowledge-base build` (sửa `src/` thì build lại rồi commit `main.js`).
+
 Có sẵn: [`ghi-chu-nhanh`](ghi-chu-nhanh) — plugin mẫu (một tool MCP, một màn hình, một việc nền, một nhánh nhớ). Cách viết: [docs/viet-plugin-dau-tien.md](../docs/viet-plugin-dau-tien.md).

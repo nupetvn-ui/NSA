@@ -55,6 +55,18 @@ export class GitHistory {
     });
   }
 
+  /**
+   * File đã đổi (hoặc mới) nhưng CHƯA có trong commit nào — dấu vết của lần ghi bị ngắt giữa chừng
+   * (đã ghi file mà chưa kịp commit). Bỏ qua thư mục dữ liệu `.nsa/` và file tạm.
+   */
+  async uncommitted(): Promise<string[]> {
+    const rows = await git.statusMatrix({ fs, dir: this.#dir });
+    return rows
+      .filter(([, head, workdir, stage]) => !(head === 1 && workdir === 1 && stage === 1))
+      .map(([path]) => String(path))
+      .filter((p) => !p.startsWith('.nsa/') && !p.endsWith('.tmp') && p !== '.gitignore');
+  }
+
   async log(
     depth = 200,
   ): Promise<(CommitInfo & { commit: string; at: string; parent?: string })[]> {
