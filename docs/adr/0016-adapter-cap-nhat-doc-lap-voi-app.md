@@ -38,7 +38,7 @@ Nguyên tắc 2 của `docs/PLAN.md` chưa thành hiện thực: adapter đượ
 
 ## Chưa làm / chưa chạy thật
 
-- **Chưa tải từ GitHub Releases thật**: chưa có release `adapters`, chưa có khoá của NSA, workflow `release-adapters.yml` chưa chạy lần nào.
+- **Chưa tải từ GitHub Releases thật**: chưa có release `adapters`, chưa có khoá của NSA, workflow `release-adapters.yml` mới chạy thử một lần (14/11/2026, qua trigger tạm khi push vì chưa có trên main): xanh, ký bằng secret, chữ ký của artifact kiểm khớp khoá công khai trong app; chưa đăng lên release.
 - Gói thật chưa thử với CLI thật qua bản tải về (bài thử dùng bản đóng của chính adapter Claude với tên đổi).
 - Cặp CLI + key và file dữ liệu hãng áp dụng ở lần mở sau, chưa nạp nóng.
 - Chưa có cô lập tiến trình cho adapter tải về (G4).

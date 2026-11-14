@@ -8,8 +8,6 @@ name: Phát hành gói adapter
 # khai nằm trong apps/desktop/resources/adapter-trust.json). Thiếu secret thì dừng, không ký giả.
 
 on:
-  push:
-    branches: ['claude/g1-adapter-cap-nhat-doc-lap'] # TẠM: chạy thử trước khi workflow có trên main
   workflow_dispatch:
     inputs:
       only:
