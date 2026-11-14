@@ -1026,7 +1026,7 @@ export class MemoryService {
         'mem_propose chỉ đưa đề xuất vào hộp duyệt của người dùng.'
       : null;
     // Nhánh ẩn (của plugin, ví dụ Knowledge Base) KHÔNG tự chèn vào mọi cuộc trò chuyện: kho tri thức
-    // có thể rất lớn và không liên quan; agent tra qua tool của chính plugin (ADR-0014).
+    // có thể rất lớn và không liên quan; agent tra qua tool của chính plugin (ADR-0015).
     const branches = new Map(this.listBranches().map((b) => [b.path, b]));
     const hidden = [...branches.values()].filter((b) => b.hidden).map((b) => b.path);
     const isHidden = (e: MemoryEntry): boolean =>

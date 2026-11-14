@@ -86,7 +86,7 @@ export async function setupPlugins(options: {
   cipher: OsCipher;
   /** Chạy model của việc "kênh chat" qua ModelTaskRunner (chính sách, chi phí, dự phòng — ADR-0009). */
   runText: (task: string, prompt: string) => Promise<string>;
-  /** Việc "nhìn ảnh" / "embedding" / tình trạng model — cho plugin có quyền `model` (ADR-0014). */
+  /** Việc "nhìn ảnh" / "embedding" / tình trạng model — cho plugin có quyền `model` (ADR-0015). */
   vision: (
     prompt: string,
     images: { mimeType: string; base64: string }[],

@@ -32,7 +32,7 @@ export async function setupMemory(options: {
   onStatus: (status: DistillStatus) => void;
   /** Cổng MCP có đang chạy không (để báo cho agent rằng có tool `mem_*`). */
   toolsAvailable: () => boolean;
-  /** Tìm theo nghĩa (ADR-0014): tính embedding bằng model loại việc "embedding" nếu có. */
+  /** Tìm theo nghĩa (ADR-0015): tính embedding bằng model loại việc "embedding" nếu có. */
   embed: (texts: string[]) => Promise<number[][]>;
   embeddingReady: () => boolean;
 }): Promise<{ runtime: MemoryRuntime; close: () => Promise<void> }> {
