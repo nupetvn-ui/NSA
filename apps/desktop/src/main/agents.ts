@@ -7,6 +7,7 @@ import { createCodexAdapter } from '@nsa/adapter-codex';
 import { createGeminiAdapter } from '@nsa/adapter-gemini';
 import { createOpenCodeAdapter } from '@nsa/adapter-opencode';
 import { createCustomCliAdapter, type CustomCliConfig } from '@nsa/adapter-pty';
+import { createE2eAgent } from './e2e-agent';
 
 /**
  * Danh sách agent của bản Cá nhân. Thêm CLI mới: một gói adapter + một dòng ở đây.
@@ -14,6 +15,8 @@ import { createCustomCliAdapter, type CustomCliConfig } from '@nsa/adapter-pty';
  * của app) và NSA chạy nó qua adapter PTY chung.
  */
 export function createAgents(userData: string): AgentAdapter[] {
+  // Bài mở app tự động (ADR-0014): chỉ có agent giả, không đụng CLI thật trên máy.
+  if (process.env['NSA_E2E_FAKE_AGENT'] === '1') return [createE2eAgent()];
   const adapters: AgentAdapter[] = [
     createClaudeAdapter(),
     createCodexAdapter(),

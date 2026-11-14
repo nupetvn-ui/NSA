@@ -105,16 +105,17 @@ Lần chạy đầu, Electron tự tải file chạy của nó (~100 MB).
 
 ## Lệnh thường dùng
 
-| Lệnh             | Việc                                                                          |
-| ---------------- | ----------------------------------------------------------------------------- |
-| `pnpm dev`       | Mở app desktop ở chế độ dev (sửa giao diện là thấy ngay)                      |
-| `pnpm lint`      | ESLint + kiểm định dạng Prettier                                              |
-| `pnpm format`    | Tự định dạng lại mã                                                           |
-| `pnpm typecheck` | Kiểm kiểu TypeScript cho mọi gói                                              |
-| `pnpm test`      | Chạy test (Vitest)                                                            |
-| `pnpm test:live` | Test hợp đồng với CLI thật — cần `NSA_LIVE_CONTRACT=1` (tốn token)            |
-| `pnpm build`     | Build mọi gói thư viện và app desktop                                         |
-| `pnpm dist:win`  | Tạo bộ cài Windows ở `apps/desktop/release/<version>/NSA-Setup-<version>.exe` |
+| Lệnh                                  | Việc                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm dev`                            | Mở app desktop ở chế độ dev (sửa giao diện là thấy ngay)                        |
+| `pnpm lint`                           | ESLint + kiểm định dạng Prettier                                                |
+| `pnpm format`                         | Tự định dạng lại mã                                                             |
+| `pnpm typecheck`                      | Kiểm kiểu TypeScript cho mọi gói                                                |
+| `pnpm test`                           | Chạy test (Vitest)                                                              |
+| `pnpm test:live`                      | Test hợp đồng với CLI thật — cần `NSA_LIVE_CONTRACT=1` (tốn token)              |
+| `pnpm --filter @nsa/desktop test:e2e` | Bài mở app tự động (Playwright + agent giả); đích chọn bằng `NSA_E2E_TARGET=dev | build | packaged` — [ADR-0014](docs/adr/0014-bai-mo-app-tu-dong-ci-windows.md) |
+| `pnpm build`                          | Build mọi gói thư viện và app desktop                                           |
+| `pnpm dist:win`                       | Tạo bộ cài Windows ở `apps/desktop/release/<version>/NSA-Setup-<version>.exe`   |
 
 Logo gốc ở [`apps/desktop/build/icon.svg`](apps/desktop/build/icon.svg). Sửa xong thì xuất lại các file PNG:
 
