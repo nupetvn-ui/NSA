@@ -114,6 +114,18 @@ Có dấu và không dấu **bằng nhau** (cả hai bảng). Tên riêng ("Nguy
 - Kho nhỏ nên số 100% dễ. Biến thể có nhiễu cố tình dùng 150 chi nhánh **cùng từ vựng, khác số liệu**; 5 câu sai đều là câu chung chung ("Đổi trả trong bao nhiêu ngày?", "Hotline?", "Quán mở cửa lúc mấy giờ?"…) mà 150 mục nhiễu cũng trả lời được — tức câu hỏi mơ hồ theo cách dựng, nhưng cũng cho thấy **tìm từ khoá (FTS5, OR + bm25) không phân biệt được các bản ghi gần giống nhau** và **không có ngưỡng liên quan**: câu hỏi không có đáp án trong kho vẫn trả về mục "gần nhất", không biết nói "không có".
 - Chỉ tìm từ khoá. Tìm theo nghĩa chưa đo bằng model thật nên không đưa vào số liệu; PDF có dấu tiếng Việt (phụ thuộc font) và phụ đề tiếng Việt chưa kiểm.
 
+## An toàn dữ liệu và "không học sai trong im lặng" (bổ sung sau yêu cầu "trí nhớ phải kỹ")
+
+**NSA Mem (lõi):** ghi file luôn tạm-rồi-đổi-tên; khi mở kho, `MemoryService` (1) xoá file `.tmp` dở, (2) **ghi vào lịch sử git** những file đã ghi mà chưa kịp commit (nên hoàn tác được), (3) bỏ đề xuất chờ duyệt mà nội dung đã nằm trong kho (đã nhận nhưng hộp duyệt chưa kịp cập nhật → không nhận đúp), (4) dựng lại chỉ mục SQLite khi file chỉ mục hỏng / mất / theo phiên bản cũ / số mục khác / **thời điểm sửa lệch với file** (sửa tại chỗ dở dang). Sửa lỗi chỉ mục: chữ "đ" không được gập thành "d" nên gõ không dấu không ra "được", "đổi", "đồng" — đã gập, trích đoạn cắt từ văn bản gốc nên vẫn giữ dấu. Test: `packages/memory/src/durability.test.ts`.
+
+**Plugin:** xoá nguồn ghi nhật ký `removing` (kèm mã hoàn tác) **trước** khi gỡ mục nhớ — app chết giữa chừng thì lần mở sau làm nốt, hoàn tác vẫn đủ mục; chạy tiếp sau khi chết không đề xuất đúp (đề xuất đã nằm sẵn trong hộp duyệt được nhận ra theo `kb:loc` + `kb:h`); file cùng nội dung ở tên khác → không nạp lần hai (`status: duplicate`); `integrity()` tìm (và `fix` gỡ, hoàn tác được) mục / đề xuất mồ côi, thư mục dư, nguồn mất file gốc. Mâu thuẫn với mục đã có luôn nằm lại hộp duyệt, kể cả khi bật tự nhận (có test).
+
+**Không bịa:** lời nhắc cho model nhìn ảnh cấm đoán, bắt ghi `[không đọc được]` và báo `ĐỘ CHẮC CHẮN: cao | vừa | thấp` → độ tin cậy 0,8 / 0,6 / 0,4 (không báo = 0,6; có `[không đọc được]` ≤ 0,5), cảnh báo ghi vào mục và nguồn; ảnh model không đọc được gì → nạp lỗi, **không ghi nhớ gì**. Video: độ tin cậy cửa sổ = thấp nhất trong (độ chắc chắn các khung, 0,6 nếu có lời nói tự động, 0,75). Phụ đề: bỏ dòng lặp từ lần thứ 3 và câu "ảo giác" quen thuộc của whisper; lời nói gắn nhãn "phụ đề tự động, có thể sai, nhất là tên riêng và con số". PDF/văn bản có khối chữ rác (ký tự thay thế, ít chữ cái) → **bỏ khối đó và nêu rõ vị trí**, không ghi rác thành nội dung. Mặc định tự nhận TẮT nên mọi mục vẫn qua tay người duyệt; độ tin cậy ≤ 0,6 không bao giờ đạt ngưỡng tự nhận mặc định 0,85.
+
+**Tìm theo nghĩa: để ngoài mặc định.** Chưa đo bằng model embedding thật nên là tuỳ chọn thử nghiệm, **tắt**; mặc định `kb_search` tìm từ khoá (FTS5) — có số liệu ở trên.
+
+**Còn sai / chưa làm (nói thẳng):** tìm từ khoá không có ngưỡng liên quan (câu hỏi không có đáp án vẫn trả mục "gần nhất"; kho có bản ghi gần giống nhau thì top-3 sai — xem biến thể nhiễu 77,3%); chưa có tín hiệu độ tin cậy của whisper (chỉ lọc lặp / câu ảo), chưa kiểm tiếng Việt; chưa có OCR PDF quét; PDF tiếng Việt có dấu chưa thử; `integrity` chưa có nút trong giao diện (gọi qua `plugins:ui` `integrity`).
+
 ## Hệ quả
 
 - Agent có kho tri thức có nguồn; người dùng nắm quyền duyệt, sửa, gỡ và hoàn tác.
