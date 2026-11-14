@@ -17,7 +17,9 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
-    "test:live": "vitest run packages/adapters/contract-live"
+    "test:live": "vitest run packages/adapters/contract-live",
+    "adapters:pack": "node apps/desktop/scripts/adapter-packs.mjs pack",
+    "adapters:keygen": "node apps/desktop/scripts/adapter-packs.mjs keygen"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

@@ -1,0 +1,68 @@
+name: Phát hành gói adapter
+
+# G1 (ADR-0016): phát hành adapter / file dữ liệu hãng TÁCH khỏi phát hành app. Chạy tay.
+# Workflow này KHÔNG tạo tag và KHÔNG tạo release: chỉ dựng, ký và đưa gói + index.json lên
+# artifact. Muốn đăng thật, đặt publish=true và release tên "adapters" PHẢI đã tồn tại (do người
+# duyệt tạo trước); workflow chỉ tải file lên release đó.
+# Cần secret NSA_ADAPTER_SIGNING_KEY (khoá riêng PEM tạo bằng `pnpm adapters:keygen`; phần công
+# khai nằm trong apps/desktop/resources/adapter-trust.json). Thiếu secret thì dừng, không ký giả.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Chỉ các adapter này (cách nhau dấu phẩy), bỏ trống = tất cả'
+        required: false
+        default: ''
+      publish:
+        description: 'Tải lên release "adapters" đã có (không tạo release mới)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    name: Dựng và ký gói
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: Dựng gói và chỉ mục (đã ký)
+        env:
+          NSA_ADAPTER_SIGNING_KEY: ${{ secrets.NSA_ADAPTER_SIGNING_KEY }}
+          ONLY: ${{ inputs.only }}
+        shell: bash
+        run: |
+          if [ -z "$NSA_ADAPTER_SIGNING_KEY" ]; then
+            echo "::error::Thiếu secret NSA_ADAPTER_SIGNING_KEY — không phát hành gói chưa ký."; exit 1
+          fi
+          args=""
+          if [ -n "$ONLY" ]; then args="--only $ONLY"; fi
+          pnpm adapters:pack --out adapter-release $args
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adapter-release
+          path: adapter-release/
+
+      - name: Tải lên release "adapters" đã có (tuỳ chọn)
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view adapters >/dev/null 2>&1 || { echo "::error::Chưa có release 'adapters' — tạo trước, workflow không tự tạo."; exit 1; }
+          gh release upload adapters adapter-release/* --clobber

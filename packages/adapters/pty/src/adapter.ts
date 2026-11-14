@@ -205,9 +205,21 @@ interface PtyModule {
 
 let ptyModule: Promise<PtyModule | null> | null = null;
 
+/**
+ * Nơi chạy adapter (apps/desktop) có thể đặt `globalThis.nsaHostRequire` để nạp node-pty từ chính
+ * app: adapter tải về nằm trong thư mục dữ liệu, không có `node_modules` để tự tìm module native
+ * (G1, ADR-0016).
+ */
+type HostRequire = (id: string) => unknown;
+
 /** Nạp node-pty khi cần (module native, có thể thiếu trên một số máy). */
 export function loadPty(): Promise<PtyModule | null> {
-  ptyModule ??= import('@lydell/node-pty').then(
+  const hostRequire = (globalThis as { nsaHostRequire?: HostRequire }).nsaHostRequire;
+  ptyModule ??= (
+    hostRequire
+      ? Promise.resolve().then(() => hostRequire('@lydell/node-pty'))
+      : import('@lydell/node-pty')
+  ).then(
     (m) => (m as { default?: PtyModule }).default ?? (m as unknown as PtyModule),
     () => null,
   );

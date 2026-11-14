@@ -319,6 +319,17 @@ export type AuditEntry = {
   | { type: 'budget'; level: 'warn' | 'over'; spentUsd: number; limitUsd: number }
   /** Người dùng thêm / xoá key của một hãng (không bao giờ ghi key, chỉ bốn ký tự cuối). */
   | { type: 'provider_key'; action: 'set' | 'delete'; providerId: string; hint?: string }
+  /**
+   * Adapter / file dữ liệu hãng tải về (G1, ADR-0016): đã cài bản mới, từ chối một gói (chữ ký, tương
+   * thích, hợp đồng…), hoặc bản tải về lỗi nên quay về bản kèm app. `agentId` là mã adapter
+   * (hoặc `provider-catalog`).
+   */
+  | {
+      type: 'adapter_update';
+      action: 'installed' | 'rejected' | 'fallback' | 'catalog';
+      version: string;
+      reason: string;
+    }
   /** Phát hiện CLI vừa đổi phiên bản hoặc `--help` so với lần khởi động trước. */
   | { type: 'cli_change'; summary: string }
   /** Sự kiện của agent (trừ từng mẩu văn bản — văn bản trả lời được ghi gộp khi lượt kết thúc). */
