@@ -9,6 +9,7 @@ import {
   detectCliChanges,
   localIdentity,
   personalPolicy,
+  type AuditEntry,
   type AuditLog,
   type CliChange,
   type IpcEventChannel,
@@ -119,6 +120,7 @@ if (!app.requestSingleInstanceLock()) {
     // Adapter cập nhật độc lập với app (G1, ADR-0016): bản kèm app là dự phòng. Thông báo phát sinh
     // trước khi cửa sổ sẵn sàng (ví dụ quay về bản kèm app lúc khởi động) được giữ lại và gửi sau.
     const refs: { chat?: ChatService; reload?: () => void } = {};
+    const auditBuffer: AuditEntry[] = [];
     const noticeBuffer: { level: 'info' | 'warn'; message: string }[] = [];
     let rendererReady = false;
     const adapterSetup = setupAdapters({
@@ -128,7 +130,7 @@ if (!app.requestSingleInstanceLock()) {
       resourcesDir: join(__dirname, '../../resources'),
       audit: (event) => {
         const actor = identity.current();
-        auditRef.current?.record({
+        const entry: AuditEntry = {
           at: new Date().toISOString(),
           actor: { id: actor.id, displayName: actor.displayName },
           agentId: event.adapterId,
@@ -136,11 +138,16 @@ if (!app.requestSingleInstanceLock()) {
           action: event.action,
           version: event.version,
           reason: event.reason,
-        });
+        };
+        // Nhật ký chưa dựng lúc khởi động: giữ lại, ghi ngay khi có.
+        if (auditRef.current) auditRef.current.record(entry);
+        else auditBuffer.push(entry);
       },
       notify: (notice) => {
+        // Giữ vài thông báo gần nhất: gửi lại mỗi khi giao diện nạp xong (kể cả nạp lại trang).
+        noticeBuffer.push(notice);
+        if (noticeBuffer.length > 5) noticeBuffer.shift();
         if (rendererReady) broadcast('adapters:notice', notice);
-        else noticeBuffer.push(notice);
       },
       onChanged: () => refs.reload?.(),
     });
@@ -162,6 +169,7 @@ if (!app.requestSingleInstanceLock()) {
     });
     const audit = providers.audit;
     auditRef.current = audit;
+    for (const entry of auditBuffer.splice(0)) audit.record(entry);
 
     // Cổng chính sách từng lệnh (127.0.0.1, cổng ngẫu nhiên). Mở không được thì vẫn chạy,
     // chỉ là không chặn được từng lệnh bên trong lượt.
@@ -258,9 +266,12 @@ if (!app.requestSingleInstanceLock()) {
       plugins: plugins.handlers,
     });
     const win = createWindow();
-    win.webContents.once('did-finish-load', () => {
+    win.webContents.on('did-finish-load', () => {
       rendererReady = true;
-      for (const notice of noticeBuffer.splice(0)) broadcast('adapters:notice', notice);
+      // React đăng ký bộ nghe ngay sau khi nạp xong: gửi trễ một chút để không bị lỡ.
+      setTimeout(() => {
+        for (const notice of noticeBuffer) broadcast('adapters:notice', notice);
+      }, 700).unref();
     });
     if (adapterSetup.updatesEnabled) {
       const check = (): void => void adapterManager.checkForUpdates();
