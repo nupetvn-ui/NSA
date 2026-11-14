@@ -238,6 +238,7 @@ export function buildWindows(duration, segments, frames, options = {}) {
         start: gStart,
         end: gEnd,
         speech: g.map((s) => s.text).join(' '),
+        lines: g.map((s) => ({ start: s.start, text: s.text })),
         visuals:
           i === 0
             ? fr.filter((f) => f.description).map((f) => ({ time: f.time, text: f.description }))
@@ -255,6 +256,10 @@ export const windowLoc = (w) => `${clock(w.start)}–${clock(w.end)}`;
 export function windowText(w) {
   const lines = [];
   for (const v of w.visuals) lines.push(`Hình ảnh (${clock(v.time)}): ${v.text}`);
-  if (w.speech) lines.push(`Lời nói: ${w.speech}`);
+  if (w.speech) {
+    lines.push('Lời nói (phụ đề tự động, có thể sai, nhất là tên riêng và con số):');
+    for (const l of w.lines ?? [{ start: w.start, text: w.speech }])
+      lines.push(`[${clock(l.start)}] ${l.text}`);
+  }
   return lines.join('\n');
 }

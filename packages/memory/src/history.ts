@@ -62,7 +62,7 @@ export class GitHistory {
   async uncommitted(): Promise<string[]> {
     const rows = await git.statusMatrix({ fs, dir: this.#dir });
     return rows
-      .filter(([path, head, workdir, stage]) => !(head === 1 && workdir === 1 && stage === 1))
+      .filter(([, head, workdir, stage]) => !(head === 1 && workdir === 1 && stage === 1))
       .map(([path]) => String(path))
       .filter((p) => !p.startsWith('.nsa/') && !p.endsWith('.tmp') && p !== '.gitignore');
   }

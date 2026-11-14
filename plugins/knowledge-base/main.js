@@ -39873,6 +39873,38 @@ function safeName(name) {
 
 // plugins/knowledge-base/src/chunk.js
 var MAX_CHARS = 1400;
+var ABBREVIATION = /(?:^|[\s("'])(?:TP|TX|TT|Tp|Q|P|H|X|Dr|Mr|Mrs|Ms|Prof|ThS|Ths|TS|PGS|GS|BS|KS|CN|vd|VD|tr|St|No|Th|v|vs|etc|ĐT|ĐC|SĐT|Đ\/c)\.$/;
+var ORDINAL_OR_INITIAL = new RegExp(`(?:^|[\\s("'])(?:\\d{1,3}|\\p{Lu})\\.$`, "u");
+function splitSentences(text) {
+  const out = [];
+  let start = 0;
+  const re2 = /([.!?…。])(\s+)|\n/g;
+  let m2;
+  while ((m2 = re2.exec(text)) !== null) {
+    const end = m2.index + (m2[1] ? 1 : 0);
+    const head = text.slice(start, end);
+    if (m2[1] === "." && (ABBREVIATION.test(head) || ORDINAL_OR_INITIAL.test(head))) continue;
+    const next = text.slice(m2.index + m2[0].length, m2.index + m2[0].length + 1);
+    if (m2[1] && next && new RegExp("\\p{Ll}", "u").test(next)) continue;
+    if (head.trim()) out.push(head.trim());
+    start = m2.index + m2[0].length;
+  }
+  const rest = text.slice(start).trim();
+  if (rest) out.push(rest);
+  return out;
+}
+function cutAtSpaces(text, max2) {
+  const out = [];
+  let rest = text.trim();
+  while (rest.length > max2) {
+    let at2 = rest.lastIndexOf(" ", max2);
+    if (at2 < max2 * 0.5) at2 = max2;
+    out.push(rest.slice(0, at2).trim());
+    rest = rest.slice(at2).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
 function splitText(text, max2 = MAX_CHARS) {
   const clean = String(text ?? "").replace(/\r\n?/g, "\n").trim();
   if (!clean) return [];
@@ -39885,11 +39917,11 @@ function splitText(text, max2 = MAX_CHARS) {
     cur = "";
   };
   const pushLong = (para) => {
-    const sentences = para.split(/(?<=[.!?…。])\s+|\n/);
+    const sentences = splitSentences(para);
     for (const s2 of sentences) {
       if (s2.length > max2) {
         flush();
-        for (let i3 = 0; i3 < s2.length; i3 += max2) out.push(s2.slice(i3, i3 + max2).trim());
+        for (const piece of cutAtSpaces(s2, max2)) out.push(piece);
       } else if ((cur + " " + s2).length > max2) {
         flush();
         cur = s2;
@@ -40782,7 +40814,7 @@ async function pdfBlocks(bytes) {
   }));
   return { blocks: blocks.filter((b3) => b3.text), totalPages };
 }
-async function extractDocument(bytes, name) {
+async function extractRaw(bytes, name) {
   const ext = extOf(name);
   const warnings = [];
   switch (ext) {
@@ -40826,6 +40858,33 @@ async function extractDocument(bytes, name) {
         `Ch\u01B0a h\u1ED7 tr\u1EE3 \u0111\u1ECBnh d\u1EA1ng .${ext || "?"} (h\u1ED7 tr\u1EE3: ${DOC_EXTENSIONS.join(", ")}).`
       );
   }
+}
+function isReadable(text) {
+  const s2 = String(text).replace(/\s+/g, "");
+  if (s2.length < 3) return true;
+  let bad = 0;
+  let good = 0;
+  for (const ch2 of s2) {
+    const c2 = ch2.codePointAt(0);
+    if (c2 === 65533 || c2 < 9 || c2 > 13 && c2 < 32 || c2 >= 57344 && c2 <= 63743) bad++;
+    else if (/[\p{L}\p{N}]/u.test(ch2)) good++;
+  }
+  return bad / s2.length < 0.05 && good / s2.length > 0.5;
+}
+async function extractDocument(bytes, name) {
+  const result = await extractRaw(bytes, name);
+  const dropped = [];
+  const blocks = result.blocks.filter((b3) => {
+    if (isReadable(b3.text)) return true;
+    dropped.push(b3.loc);
+    return false;
+  });
+  if (dropped.length) {
+    result.warnings.push(
+      `Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c ch\u1EEF \u1EDF ${dropped.slice(0, 8).join(", ")}${dropped.length > 8 ? ` v\xE0 ${dropped.length - 8} ch\u1ED7 kh\xE1c` : ""} (ch\u1EEF b\u1ECB l\u1ED7i m\xE3 ho\xE1 ho\u1EB7c l\xE0 \u1EA3nh) \u2014 \u0111\xE3 B\u1ECE QUA, kh\xF4ng \u0111\u01B0a v\xE0o b\u1ED9 nh\u1EDB.`
+    );
+  }
+  return { ...result, blocks };
 }
 
 // plugins/knowledge-base/src/media.js
@@ -41019,6 +41078,7 @@ function buildWindows(duration, segments, frames, options = {}) {
         start: gStart,
         end: gEnd,
         speech: g2.map((s2) => s2.text).join(" "),
+        lines: g2.map((s2) => ({ start: s2.start, text: s2.text })),
         visuals: i3 === 0 ? fr2.filter((f2) => f2.description).map((f2) => ({ time: f2.time, text: f2.description })) : [],
         frames: i3 === 0 ? fr2.map((f2) => f2.file) : []
       });
@@ -41030,7 +41090,11 @@ var windowLoc = (w2) => `${clock(w2.start)}\u2013${clock(w2.end)}`;
 function windowText(w2) {
   const lines = [];
   for (const v2 of w2.visuals) lines.push(`H\xECnh \u1EA3nh (${clock(v2.time)}): ${v2.text}`);
-  if (w2.speech) lines.push(`L\u1EDDi n\xF3i: ${w2.speech}`);
+  if (w2.speech) {
+    lines.push("L\u1EDDi n\xF3i (ph\u1EE5 \u0111\u1EC1 t\u1EF1 \u0111\u1ED9ng, c\xF3 th\u1EC3 sai, nh\u1EA5t l\xE0 t\xEAn ri\xEAng v\xE0 con s\u1ED1):");
+    for (const l2 of w2.lines ?? [{ start: w2.start, text: w2.speech }])
+      lines.push(`[${clock(l2.start)}] ${l2.text}`);
+  }
   return lines.join("\n");
 }
 

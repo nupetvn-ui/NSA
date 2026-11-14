@@ -657,7 +657,8 @@ describe.runIf(hasFfmpeg())('Engine — video (ffmpeg thật, whisper và model 
     expect(w.visionCalls.length).toBeGreaterThanOrEqual(3); // ít nhất mỗi cảnh một khung
     const pending = await w.engine.pendingList();
     const bodies = pending.map((p: { body: string }) => p.body).join('\n');
-    expect(bodies).toContain('Lời nói: Đầu tiên bấm nút Đăng nhập');
+    expect(bodies).toContain('[00:01] Đầu tiên bấm nút Đăng nhập');
+    expect(bodies).toContain('phụ đề tự động');
     expect(bodies).toContain('Hình ảnh (');
     // vị trí là khoảng phút:giây
     expect(pending.every((p: { loc: string }) => /^\d\d:\d\d–\d\d:\d\d$/.test(p.loc))).toBe(true);
