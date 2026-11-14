@@ -50,6 +50,26 @@ describe(`mở app NSA (${target})`, () => {
     await page.getByText(REPLY).waitFor({ timeout: 20_000 });
   });
 
+  it('Traces: lượt chat vừa rồi hiện ra, mở được từng bước, lọc và tìm được', async () => {
+    const { page } = run;
+    await page.locator('.nav-item', { hasText: 'Traces' }).click();
+    await page.getByRole('heading', { name: 'Traces', level: 1 }).waitFor();
+    const row = page.locator('.trace-row', { hasText: 'Chào bạn' });
+    await row.waitFor({ timeout: 20_000 });
+    await row.click();
+    await page.getByText('Ai ra lệnh', { exact: true }).waitFor();
+    await page.locator('.trace-step', { hasText: REPLY }).waitFor();
+    // Tìm theo chữ không dấu, lọc theo trạng thái.
+    await page.getByLabel('Tìm trong Traces').fill('chao ban');
+    await page.locator('.trace-row', { hasText: 'Chào bạn' }).waitFor();
+    await page.getByLabel('Tìm trong Traces').fill('khong-co-chu-nay');
+    await page.getByText('Chưa có lượt chạy nào khớp bộ lọc.').waitFor();
+    await page.getByLabel('Tìm trong Traces').fill('');
+    await page.getByLabel('Lọc theo trạng thái').selectOption('error');
+    await page.getByText('Chưa có lượt chạy nào khớp bộ lọc.').waitFor();
+    await page.getByLabel('Lọc theo trạng thái').selectOption('');
+  });
+
   it('Bộ nhớ: mở và bấm qua từng thẻ', async () => {
     const { page } = run;
     await page.locator('.nav-item', { hasText: 'Bộ nhớ' }).click();

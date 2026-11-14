@@ -18,6 +18,7 @@ import {
   type PluginsIpcContract,
   type PluginsIpcEventContract,
 } from './plugins-ipc.js';
+import { TRACES_IPC_CHANNELS, type TracesIpcContract } from './traces.js';
 import type {
   DistillStatus,
   ImportCandidate,
@@ -74,7 +75,7 @@ export type UpdateStatus =
   | { state: 'error'; message: string };
 
 /** Lệnh renderer gọi xuống main (yêu cầu → trả lời). */
-export interface IpcContract extends ProvidersIpcContract, PluginsIpcContract {
+export interface IpcContract extends ProvidersIpcContract, PluginsIpcContract, TracesIpcContract {
   'core:ping': { args: [message: string]; result: PingResult };
   'app:info': { args: []; result: AppInfo };
   'app:updateStatus': { args: []; result: UpdateStatus };
@@ -153,6 +154,7 @@ export const IPC_CHANNELS = [
   'dialog:pickFolder',
   ...PROVIDERS_IPC_CHANNELS,
   ...PLUGINS_IPC_CHANNELS,
+  ...TRACES_IPC_CHANNELS,
   'mem:info',
   'mem:branches',
   'mem:saveBranch',

@@ -298,14 +298,26 @@ export class ChatService {
     const confirmed =
       request.confirmed === true || (permission === 'edit' && existing?.editConfirmed === true);
 
-    const base = { agentId: adapter.id, ...(existing ? { conversationId: existing.id } : {}) };
-    this.#log({ ...base, type: 'request', prompt, cwd, permission });
+    // Cấp sẵn mã lượt (và mã cuộc trò chuyện mới) để dòng `request` / `policy` nối được với
+    // phần còn lại của lượt trong Traces (ADR-0018).
+    const conversationId = existing?.id ?? this.#newId();
+    const turnId = this.#newId();
+    const ids = { conversationId, turnId };
+    this.#log({ agentId: adapter.id, ...ids, type: 'request', prompt, cwd, permission });
 
     // ---- Ổ cắm chính sách: không qua thì không có lệnh nào được chạy. ----
     if (existing) this.#pending.add(existing.id);
     let verdict: PolicyDecision;
     try {
-      verdict = await this.#checkRun(adapter.id, cwd, permission, prompt, existing?.id, confirmed);
+      verdict = await this.#checkRun(
+        adapter.id,
+        cwd,
+        permission,
+        prompt,
+        existing?.id,
+        confirmed,
+        ids,
+      );
     } finally {
       if (existing) this.#pending.delete(existing.id);
     }
@@ -336,6 +348,7 @@ export class ChatService {
       existing,
       request.autoSwitch,
       memory,
+      ids,
     );
   }
 
@@ -402,8 +415,11 @@ export class ChatService {
     for (const id of candidates.slice(0, MAX_ATTEMPTS)) {
       const adapter = this.#adapters.get(id);
       if (!adapter) continue;
+      // Mỗi lần thử của việc nền là một "lượt" riêng trong Traces (không có cuộc trò chuyện).
+      const turnId = this.#newId();
       this.#log({
         agentId: id,
+        turnId,
         type: 'request',
         prompt: `[${request.purpose}]`,
         cwd: request.cwd,
@@ -416,6 +432,7 @@ export class ChatService {
         request.prompt,
         undefined,
         false,
+        { turnId },
       );
       if (verdict.decision !== 'allow') {
         errors.push(`${adapter.displayName}: ${verdict.reason}`);
@@ -430,7 +447,7 @@ export class ChatService {
             if (event.type === 'text') text += event.text;
             else {
               if (event.type === 'error') runErrors.push(event.message);
-              this.#log({ agentId: id, type: 'agent_event', event });
+              this.#log({ agentId: id, turnId, type: 'agent_event', event });
             }
           },
         );
@@ -439,7 +456,7 @@ export class ChatService {
         runErrors.push(String(err));
       }
       if (text.trim()) {
-        this.#log({ agentId: id, type: 'reply', text });
+        this.#log({ agentId: id, turnId, type: 'reply', text });
         return { agentId: id, text };
       }
       errors.push(`${adapter.displayName}: ${runErrors.join('; ') || 'không trả lời'}`);
@@ -457,7 +474,9 @@ export class ChatService {
     prompt: string,
     conversationId: string | undefined,
     confirmed: boolean,
+    ids: { conversationId?: string; turnId?: string } = {},
   ): Promise<PolicyDecision> {
+    const logConversationId = ids.conversationId ?? conversationId;
     const action: PolicyAction = {
       kind: 'agent.run',
       agentId,
@@ -474,7 +493,8 @@ export class ChatService {
     }
     this.#log({
       agentId,
-      ...(conversationId ? { conversationId } : {}),
+      ...(logConversationId ? { conversationId: logConversationId } : {}),
+      ...(ids.turnId ? { turnId: ids.turnId } : {}),
       type: 'policy',
       decision: verdict.decision,
       confirmed,
@@ -492,12 +512,13 @@ export class ChatService {
     existing: Conversation | undefined,
     autoSwitch = true,
     memory: MemoryContext | null = null,
+    ids: { conversationId?: string; turnId?: string } = {},
   ): SendResult {
     const now = this.#now().toISOString();
     let conversation: Conversation = existing
       ? { ...(this.#conversations.get(existing.id) ?? existing), permission }
       : {
-          id: this.#newId(),
+          id: ids.conversationId ?? this.#newId(),
           title: titleFromPrompt(prompt),
           cwd,
           permission,
@@ -509,7 +530,7 @@ export class ChatService {
     if (permission === 'edit' && confirmed) conversation = { ...conversation, editConfirmed: true };
 
     const turn: Turn = {
-      id: this.#newId(),
+      id: ids.turnId ?? this.#newId(),
       agentId: adapter.id,
       prompt,
       startedAt: now,
@@ -705,6 +726,7 @@ export class ChatService {
       turn?.prompt ?? '',
       conversation.id,
       state.confirmed || conversation.editConfirmed === true,
+      { turnId: state.turnId },
     ).then((verdict) => {
       if (state.cancelled) return finish();
       if (verdict.decision !== 'allow') {

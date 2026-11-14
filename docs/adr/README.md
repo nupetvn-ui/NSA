@@ -21,3 +21,4 @@ Mỗi quyết định kỹ thuật đáng kể được ghi thành một file đ
 | [0015](0015-ranh-gioi-goi.md)                                    | Ranh giới gói: lõi chỉ giữ interface, lắp ghép ở apps/desktop, lint chặn ngược chiều                     | Chấp nhận  |
 | [0016](0016-adapter-cap-nhat-doc-lap-voi-app.md)                 | Adapter và file dữ liệu hãng cập nhật độc lập với app (gói ký, quay về bản kèm app)                      | Chấp nhận  |
 | [0017](0017-knowledge-base.md)                                   | Knowledge Base: nạp tài liệu / ảnh / video, hộp duyệt riêng, tìm theo nghĩa (thử nghiệm), tool cho agent | Chấp nhận  |
+| [0018](0018-traces.md)                                           | Traces: xem lại từng lượt chạy từ nhật ký, chỉ mục SQLite dựng lại được                                  | Chấp nhận  |
