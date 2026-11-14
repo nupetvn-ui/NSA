@@ -801,11 +801,16 @@ export class PluginHost {
 
   // ------------------------------------------------------------ Tool cho cổng MCP
 
-  /** Tool của mọi plugin đang bật và chạy — cổng MCP hỏi lại mỗi lần agent liệt kê tool. */
+  /**
+   * Tool của mọi plugin đang bật — cổng MCP hỏi lại mỗi lần agent liệt kê tool. Plugin vừa sập /
+   * bị ngắt vì treo và đang chờ khởi động lại VẪN được liệt kê: lời gọi sẽ chờ nó chạy lại
+   * (`#whenRunning`) thay vì báo "không có tool" (lỗi chập chờn trên CI). Chỉ plugin đã bị dừng hẳn
+   * (`failed`) mới biến mất.
+   */
   tools(): GatewayTool[] {
     const tools: GatewayTool[] = [];
     for (const entry of this.#entries.values()) {
-      if (!entry.record.enabled || entry.status !== 'running' || !entry.process) continue;
+      if (!entry.record.enabled || entry.status === 'failed') continue;
       for (const tool of entry.manifest.tools) {
         tools.push({
           name: gatewayToolName(entry.id, tool.name),
