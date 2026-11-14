@@ -20,10 +20,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@nsa/core": "workspace:*",
     "@nsa/adapter-sdk": "workspace:*",
-    "@nsa/adapter-api": "workspace:*",
-    "@nsa/adapter-claude": "workspace:*",
-    "@nsa/adapter-codex": "workspace:*",
-    "@nsa/adapter-opencode": "workspace:*"
+    "@nsa/adapter-api": "workspace:*"
   }
 }

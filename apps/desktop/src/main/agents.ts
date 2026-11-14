@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentAdapter, AgentEvent } from '@nsa/adapter-sdk';
+import type { CliAdapterFactories } from '@nsa/providers';
 import { createAntigravityAdapter } from '@nsa/adapter-antigravity';
 import { createClaudeAdapter } from '@nsa/adapter-claude';
 import { createCodexAdapter } from '@nsa/adapter-codex';
@@ -8,6 +9,20 @@ import { createGeminiAdapter } from '@nsa/adapter-gemini';
 import { createOpenCodeAdapter } from '@nsa/adapter-opencode';
 import { createCustomCliAdapter, type CustomCliConfig } from '@nsa/adapter-pty';
 import { createE2eAgent } from './e2e-agent';
+
+/**
+ * Cách tạo adapter của ba CLI có thể ghép với key của hãng (ProviderHub không import adapter,
+ * ADR-0015): lắp ghép ở đây.
+ */
+export const cliAdapterFactories: CliAdapterFactories = {
+  claude: (params) =>
+    createClaudeAdapter({
+      ...(params.command ? { command: params.command } : {}),
+      ...(params.prefixArgs ? { prefixArgs: params.prefixArgs } : {}),
+    }),
+  codex: (params) => createCodexAdapter(params),
+  opencode: (params) => createOpenCodeAdapter(params),
+};
 
 /**
  * Danh sách agent của bản Cá nhân. Thêm CLI mới: một gói adapter + một dòng ở đây.

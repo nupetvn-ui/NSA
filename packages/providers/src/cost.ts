@@ -6,6 +6,8 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ModelInfo, ModelRef } from './catalog.js';
 import type { BudgetSetting } from './settings.js';
+import type { BudgetLevel, BudgetStatus } from '@nsa/core';
+export type { BudgetLevel, BudgetStatus } from '@nsa/core';
 
 export interface TokenUsage {
   inputTokens: number;
@@ -37,17 +39,6 @@ export interface ModelUsage {
 export interface MonthUsage {
   month: string;
   models: Record<ModelRef, ModelUsage>;
-}
-
-export type BudgetLevel = 'none' | 'ok' | 'warn' | 'over';
-
-export interface BudgetStatus {
-  month: string;
-  spentUsd: number;
-  limitUsd: number | null;
-  level: BudgetLevel;
-  /** Có lượt chưa biết giá — tổng thật có thể cao hơn. */
-  incomplete: boolean;
 }
 
 export function budgetStatus(usage: MonthUsage, budget: BudgetSetting): BudgetStatus {

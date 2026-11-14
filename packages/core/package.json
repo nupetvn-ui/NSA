@@ -21,10 +21,6 @@
   },
   "dependencies": {
     "@nsa/adapter-sdk": "workspace:*",
-    "@nsa/providers": "workspace:*",
     "@nsa/plugin-sdk": "workspace:*"
-  },
-  "devDependencies": {
-    "@nsa/adapter-api": "workspace:*"
   }
 }

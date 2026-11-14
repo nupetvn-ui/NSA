@@ -1,10 +1,19 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApiAdapter, startFakeApiServer, type FakeServer } from '@nsa/adapter-api';
 import type { AgentAdapter } from '@nsa/adapter-sdk';
-import { ChatService, type ChatEvent } from './chat-service.js';
-import { ModelTaskError, ModelTaskRunner, type ModelCandidate } from './model-tasks.js';
-import { composePolicies, withModelPolicy } from './model-policy.js';
-import { localIdentity, memoryAuditLog, personalPolicy, type Policy } from './sockets.js';
+import {
+  ChatService,
+  ModelTaskError,
+  ModelTaskRunner,
+  composePolicies,
+  localIdentity,
+  memoryAuditLog,
+  personalPolicy,
+  withModelPolicy,
+  type ChatEvent,
+  type ModelCandidate,
+  type Policy,
+} from '@nsa/core';
 
 let servers: FakeServer[] = [];
 afterEach(async () => {

@@ -7,99 +7,31 @@
  */
 import bundled from './catalog.json' with { type: 'json' };
 
-/** Chuẩn API: chuẩn OpenAI (chat completions) hoặc chuẩn Anthropic (messages). */
-export type ApiStandard = 'openai' | 'anthropic';
-
-/** Các loại việc có model riêng (PLAN.md, "Chọn model theo việc"). */
-export type TaskKind = 'main' | 'background' | 'vision' | 'embedding' | 'channel';
+import type {
+  ApiStandard,
+  TaskKind,
+  ModelInfo,
+  ProviderInfo,
+  Catalog,
+  ModelRef,
+  CustomProvider,
+} from '@nsa/core';
+export type {
+  ApiStandard,
+  TaskKind,
+  ToolCalling,
+  CliId,
+  CliPairStatus,
+  CliPair,
+  ModelInfo,
+  ProviderField,
+  ProviderData,
+  ProviderInfo,
+  Catalog,
+  ModelRef,
+  CustomProvider,
+} from '@nsa/core';
 export const TASK_KINDS: TaskKind[] = ['main', 'background', 'vision', 'embedding', 'channel'];
-
-/**
- * - `stable`: NSA đã chạy thật việc gọi tool với model này — được giao việc sửa file.
- * - `documented`: tài liệu nói hỗ trợ, NSA chưa thử.
- * - `none`: không hỗ trợ.
- */
-export type ToolCalling = 'stable' | 'documented' | 'none';
-
-export type CliId = 'claude' | 'codex' | 'opencode';
-
-/**
- * - `documented`: tài liệu chính thức hướng dẫn ghép.
- * - `tested-fake`: đã chạy CLI thật với máy chủ giả đúng chuẩn.
- * - `tested`: đã chạy thật với hãng.
- * - `unverified`: chưa xác minh — NSA không ghép.
- * - `unsupported`: không ghép được.
- */
-export type CliPairStatus = 'documented' | 'tested-fake' | 'tested' | 'unverified' | 'unsupported';
-
-export interface CliPair {
-  status: CliPairStatus;
-  note?: string;
-  /** Tên model theo vai trò mà CLI dùng (Claude Code: model chính và model "haiku" cho việc phụ). */
-  models?: { default?: string; haiku?: string };
-  /** Biến môi trường nhận key mà CLI tự đọc (OpenCode với nhà cung cấp có sẵn). */
-  env?: string;
-}
-
-export interface ModelInfo {
-  id: string;
-  name: string;
-  kind: 'chat' | 'embedding';
-  /** Loại việc model này hợp (dùng để tự chọn mặc định). */
-  tasks: TaskKind[];
-  /** USD / 1 triệu token; null = chưa xác minh. */
-  inputUsdPer1M: number | null;
-  outputUsdPer1M: number | null;
-  freeTier: boolean | null;
-  vision: boolean | null;
-  toolCalling: ToolCalling;
-  contextTokens?: number | null;
-  note?: string;
-}
-
-export interface ProviderField {
-  id: string;
-  label: string;
-  hint?: string;
-}
-
-export interface ProviderData {
-  serverLocation: string | null;
-  training: string | null;
-  tier: 'free' | 'paid' | 'both' | 'local';
-  /** Cảnh báo nổi bật cho người dùng (máy chủ nước ngoài, dùng dữ liệu để huấn luyện…). */
-  warning?: string;
-  sources: string[];
-}
-
-export interface ProviderInfo {
-  id: string;
-  name: string;
-  group: 'major' | 'budget' | 'gateway' | 'local' | 'custom';
-  keyRequired: boolean;
-  keyUrl?: string;
-  /** Chuẩn adapter `api` dùng khi gọi thẳng. */
-  standard: ApiStandard;
-  /** Địa chỉ gốc theo từng chuẩn (có thể chứa `{field}` thay bằng giá trị người dùng nhập). */
-  endpoints: Partial<Record<ApiStandard, string>>;
-  /** Thông tin thêm người dùng phải nhập (không bí mật), ví dụ Workspace ID. */
-  fields?: ProviderField[];
-  data: ProviderData;
-  cli: Partial<Record<CliId, CliPair>>;
-  /** Danh sách model lấy từ máy chủ (`GET /models`) — Ollama, LM Studio, OpenRouter. */
-  modelsFromServer?: boolean;
-  models: ModelInfo[];
-}
-
-export interface Catalog {
-  schema: number;
-  version: string;
-  checkedAt: string;
-  providers: ProviderInfo[];
-}
-
-/** Mã model đầy đủ: `<nhà cung cấp>/<model>` (model có thể chứa `/`). */
-export type ModelRef = string;
 
 export function modelRef(providerId: string, modelId: string): ModelRef {
   return `${providerId}/${modelId}`;
@@ -109,17 +41,6 @@ export function parseModelRef(ref: ModelRef): { providerId: string; modelId: str
   const slash = ref.indexOf('/');
   if (slash <= 0 || slash === ref.length - 1) return null;
   return { providerId: ref.slice(0, slash), modelId: ref.slice(slash + 1) };
-}
-
-/** Nhà cung cấp người dùng tự khai báo: địa chỉ + chuẩn + tên model. Không chứa key. */
-export interface CustomProvider {
-  id: string;
-  name: string;
-  standard: ApiStandard;
-  baseUrl: string;
-  models: string[];
-  /** Người dùng xác nhận model gọi tool ổn định (mặc định: không). */
-  toolCallingStable?: boolean;
 }
 
 export const CUSTOM_PREFIX = 'custom-';

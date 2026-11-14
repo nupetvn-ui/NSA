@@ -253,13 +253,6 @@ importers:
       '@nsa/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
-      '@nsa/providers':
-        specifier: workspace:*
-        version: link:../providers
-    devDependencies:
-      '@nsa/adapter-api':
-        specifier: workspace:*
-        version: link:../adapters/api
 
   packages/mcp-gateway:
     dependencies:
@@ -305,18 +298,12 @@ importers:
       '@nsa/adapter-api':
         specifier: workspace:*
         version: link:../adapters/api
-      '@nsa/adapter-claude':
-        specifier: workspace:*
-        version: link:../adapters/claude
-      '@nsa/adapter-codex':
-        specifier: workspace:*
-        version: link:../adapters/codex
-      '@nsa/adapter-opencode':
-        specifier: workspace:*
-        version: link:../adapters/opencode
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../adapter-sdk
+      '@nsa/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 
