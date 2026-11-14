@@ -158,7 +158,10 @@ interface Entry {
   ready: ReadyInfo | null;
   restarts: number[];
   timers: NodeJS.Timeout[];
-  jobs: Map<string, { lastRun?: string; lastError?: string; running: boolean }>;
+  jobs: Map<
+    string,
+    { lastRun?: string; lastError?: string; running: boolean; done?: Promise<void> }
+  >;
   configLock: Promise<void>;
   generation: number;
   /** Số lời gọi tool nhạy cảm đang chạy theo tên — cổng MCP đã hỏi người dùng rồi. */
@@ -759,7 +762,7 @@ export class PluginHost {
       if (!entry.ready?.jobs.includes(job.id)) continue;
       const run = (): void => {
         if (generation === entry.generation)
-          void this.runJob(entry.id, job.id).catch(() => undefined);
+          void this.#runJob(entry.id, job.id, false).catch(() => undefined);
       };
       if (job.runOnStart) setTimeout(run, 50).unref();
       if (job.everySeconds) {
@@ -770,8 +773,17 @@ export class PluginHost {
     }
   }
 
-  /** Chạy một việc nền ngay (cũng dùng cho nút "Chạy thử"). */
-  async runJob(id: string, jobId: string): Promise<void> {
+  /**
+   * Chạy một việc nền ngay (nút "Chạy thử", test). Nếu việc đó đang chạy (ví dụ lượt tự chạy khi
+   * vừa bật plugin) thì CHỜ nó xong rồi chạy lượt của mình — trước đây trả về ngay như đã chạy,
+   * nên người gọi tưởng dữ liệu mới đã được xử lý (test chập chờn ~10%). Lượt theo lịch thì vẫn bỏ
+   * qua khi lượt trước chưa xong.
+   */
+  runJob(id: string, jobId: string): Promise<void> {
+    return this.#runJob(id, jobId, true);
+  }
+
+  async #runJob(id: string, jobId: string, waitIfRunning: boolean): Promise<void> {
     const entry = this.#need(id);
     const job = entry.manifest.jobs.find((j) => j.id === jobId);
     if (!job) throw new Error(`Plugin không có việc nền "${jobId}".`);
@@ -779,8 +791,13 @@ export class PluginHost {
     if (!proc || entry.status !== 'running') throw new Error('Plugin đang không chạy.');
     const state = entry.jobs.get(jobId) ?? { running: false };
     entry.jobs.set(jobId, state);
-    if (state.running) return;
+    while (state.running) {
+      if (!waitIfRunning) return;
+      await state.done?.catch(() => undefined);
+    }
     state.running = true;
+    let finish: () => void = () => undefined;
+    state.done = new Promise<void>((r) => (finish = r));
     try {
       await proc.call('job', { name: jobId }, this.#o.jobTimeoutMs ?? 5 * 60_000);
       delete state.lastError;
@@ -795,6 +812,7 @@ export class PluginHost {
     } finally {
       state.running = false;
       state.lastRun = this.#now().toISOString();
+      finish();
       this.#changed();
     }
   }
