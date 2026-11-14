@@ -1,4 +1,10 @@
 {
-  "_doc": "Khoá công khai của NSA dùng để kiểm gói adapter / file dữ liệu tải về (docs/adr/0016). Để trống thì app KHÔNG tự cập nhật adapter. Tạo khoá: pnpm adapters:keygen; đặt phần công khai vào 'keys' ở đây, khoá riêng vào secret NSA_ADAPTER_SIGNING_KEY của repo.",
-  "keys": []
+  "_doc": "Khoá công khai của NSA dùng để kiểm gói adapter / file dữ liệu tải về (docs/adr/0016). Khoá riêng KHÔNG nằm trong repo: giữ ở máy chủ dự án và trong secret NSA_ADAPTER_SIGNING_KEY. Để trống 'keys' thì app không tự cập nhật adapter. Tạo / đổi khoá: pnpm adapters:keygen.",
+  "keys": [
+    {
+      "keyId": "d1dfd4f02c719a0c",
+      "name": "NSA",
+      "publicKey": "MCowBQYDK2VwAyEA7MBztVVcSRimFKvocUDsLCzrvztGoLNB/Kgm2yjRhts="
+    }
+  ]
 }
