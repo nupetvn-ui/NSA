@@ -19,3 +19,4 @@ Mỗi quyết định kỹ thuật đáng kể được ghi thành một file đ
 | [0013](0013-plugin-kiotviet.md)                                  | Plugin KiotViet: Public API bán lẻ / bán buôn cho agent                              | Chấp nhận  |
 | [0014](0014-bai-mo-app-tu-dong-ci-windows.md)                    | Bài mở app tự động trên CI Windows (Playwright + agent giả)                          | Chấp nhận  |
 | [0015](0015-ranh-gioi-goi.md)                                    | Ranh giới gói: lõi chỉ giữ interface, lắp ghép ở apps/desktop, lint chặn ngược chiều | Chấp nhận  |
+| [0016](0016-adapter-cap-nhat-doc-lap-voi-app.md)                 | Adapter và file dữ liệu hãng cập nhật độc lập với app (gói ký, quay về bản kèm app)  | Chấp nhận  |

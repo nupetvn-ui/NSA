@@ -169,6 +169,18 @@ export function packDirectory(
 ): Buffer {
   const files = collectDirectory(dir);
   readManifestFromFiles(files); // báo lỗi manifest sớm, trước khi đóng gói
+  return packFiles(files, options);
+}
+
+/**
+ * Đóng một bảng file (đường dẫn → base64) thành `.nsapkg`, ký nếu có khoá. Không kiểm manifest
+ * plugin — gói adapter / file dữ liệu (G1, ADR-0016) dùng lại đúng định dạng và chữ ký này.
+ */
+export function packFiles(
+  files: Record<string, string>,
+  options: { key?: SigningKey; publisher?: string } = {},
+): Buffer {
+  for (const path of Object.keys(files)) safeRelativePath(path);
   const pkg: PluginPackage = { format: PACKAGE_FORMAT, files };
   if (options.key) {
     const publisher = options.publisher?.trim();

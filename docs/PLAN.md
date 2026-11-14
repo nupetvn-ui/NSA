@@ -188,6 +188,7 @@ Kết quả rà kiến trúc trên `main` (commit `b350699`, đọc mã và ADR)
 - Bản kèm app là bản dự phòng; bản tải về mới hơn thì dùng, lỗi thì tự quay về bản kèm app.
 - File dữ liệu hãng/model tự tải theo cùng kênh.
 - Xong khi: phát hành một bản adapter mới và app đang cài nhận được nó mà không cần cập nhật app.
+- **Tình trạng (14/11/2026): xong phần mã, chờ khoá** (ADR-0016). Gói `adapter-host`, gói ký dùng lại định dạng plugin, quay về bản kèm app + báo người dùng + `AuditLog`, file dữ liệu hãng cùng kênh, workflow `release-adapters.yml` (không tạo tag/release). Đã chạy thật với máy chủ chỉ mục cục bộ ở dev, build và bản đóng gói. **Chưa**: đặt khoá riêng vào secret `NSA_ADAPTER_SIGNING_KEY` (khoá công khai đã có trong app), chưa phát hành / tải từ GitHub Releases thật, workflow chưa chạy.
 
 **G2. Lưới kiểm thử.** Lỗi màn hình đen sau PR #5 lọt qua vì CI chỉ chạy lint, typecheck, test trên Linux, không dựng app; giao diện (khoảng 4.300 dòng) chưa có test; workflow hằng đêm với CLI thật chưa chạy lần nào.
 - Thêm lượt CI trên Windows: dựng app, mở app tự động, đi qua chat, Bộ nhớ, Nhà cung cấp, App Store, bắt lỗi console.

@@ -49,6 +49,10 @@ export function App() {
   const [distilling, setDistilling] = useState(false);
   /** Cảnh báo hạn mức chi phí / chuyển model dự phòng ở việc nền. */
   const [providerAlert, setProviderAlert] = useState<string | null>(null);
+  const [adapterNotice, setAdapterNotice] = useState<{
+    level: 'info' | 'warn';
+    message: string;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,7 +82,12 @@ export function App() {
       ),
     );
     const offNotice = window.nsa.on('providers:notice', setProviderAlert);
+    const offAdapters = window.nsa.on('adapters:notice', (notice) => {
+      setAdapterNotice(notice);
+      void checkAgents(); // adapter vừa đổi bản: tên / năng lực agent có thể khác
+    });
     return () => {
+      offAdapters();
       offChanged();
       offBudget();
       offNotice();
@@ -318,6 +327,16 @@ export function App() {
             );
           })}
         </nav>
+
+        {adapterNotice && (
+          <div className="update-banner">
+            <div className="update-title">Adapter agent</div>
+            <div className="hint">{adapterNotice.message}</div>
+            <button type="button" className="link-btn" onClick={() => setAdapterNotice(null)}>
+              Đã hiểu
+            </button>
+          </div>
+        )}
 
         {providerAlert && (
           <div className="update-banner">

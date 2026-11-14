@@ -25,6 +25,7 @@ export const PACKAGE_DIRS = {
   'packages/mcp-gateway': '@nsa/mcp-gateway',
   'packages/memory': '@nsa/memory',
   'packages/plugin-host': '@nsa/plugin-host',
+  'packages/adapter-host': '@nsa/adapter-host',
 };
 
 /** Gói nào được import gói nào (chỉ tính @nsa/*). `apps/desktop` không bị giới hạn. */
@@ -47,6 +48,8 @@ export const ALLOWED = {
   '@nsa/mcp-gateway': ['@nsa/core', '@nsa/adapter-sdk'],
   '@nsa/memory': ['@nsa/core', '@nsa/adapter-sdk', '@nsa/mcp-gateway'],
   '@nsa/plugin-host': ['@nsa/core', '@nsa/mcp-gateway', '@nsa/plugin-sdk'],
+  // Cập nhật adapter độc lập với app: dùng lại định dạng gói ký của plugin-host (ADR-0016).
+  '@nsa/adapter-host': ['@nsa/core', '@nsa/adapter-sdk', '@nsa/plugin-host', '@nsa/plugin-sdk'],
   // Gói test với CLI thật: ghép mọi thứ như apps/desktop.
   '@nsa/contract-live': [
     '@nsa/core',
