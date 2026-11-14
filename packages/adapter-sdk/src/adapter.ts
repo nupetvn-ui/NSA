@@ -80,7 +80,7 @@ export interface RunOptions {
    */
   env?: Record<string, string>;
   /**
-   * Ảnh đính kèm lượt này (việc "nhìn ảnh" — ADR-0015). Chỉ adapter có `capabilities().images`
+   * Ảnh đính kèm lượt này (việc "nhìn ảnh" — ADR-0017). Chỉ adapter có `capabilities().images`
    * dùng; adapter khác bỏ qua. Dữ liệu base64, không có tiền tố `data:`.
    */
   images?: { mimeType: string; base64: string }[];

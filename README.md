@@ -137,7 +137,7 @@ pnpm --filter @nsa/desktop icons
 
 ```
 apps/desktop          Electron + React (main / preload / renderer)
-packages/core         lõi NSA: hợp đồng IPC, ChatService, định tuyến, ổ cắm, phát hiện thay đổi CLI
+packages/core         lõi NSA: hợp đồng IPC, ChatService, định tuyến, ổ cắm, phát hiện thay đổi CLI — chỉ import adapter-sdk và plugin-sdk ([ADR-0015](docs/adr/0015-ranh-gioi-goi.md); lint chặn vi phạm, bảng ở `package-boundaries.js`)
 packages/adapter-sdk  hợp đồng adapter, trình chạy CLI, cổng chặn lệnh, bộ test hợp đồng
 packages/adapters/*   claude, codex, opencode, gemini, antigravity, pty, api (gọi thẳng bằng API key); contract-live (test với CLI thật)
 packages/providers    file dữ liệu hãng/model, kho khoá, chọn model theo việc, chi phí, cấp key cho CLI

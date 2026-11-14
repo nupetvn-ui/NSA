@@ -34,6 +34,7 @@ import {
   type OsCipher,
 } from '@nsa/providers';
 import type { ModelTaskStatus } from '@nsa/plugin-sdk';
+import { cliAdapterFactories } from './agents';
 
 export interface ProvidersSetupOptions {
   userData: string;
@@ -99,6 +100,7 @@ export function setupProviders(options: ProvidersSetupOptions): ProvidersSetup {
   // File dữ liệu hãng: bản tải về (nếu mới hơn và hợp lệ) hoặc bản đóng gói kèm app.
   const picked = pickCatalog(readJson(join(userData, 'provider-catalog.json')));
   const hub = new ProviderHub({
+    cliAdapters: cliAdapterFactories,
     catalog: picked.catalog,
     settings: createFileSettingsStore(join(userData, 'providers.json')),
     secrets: createEncryptedFileSecretStore(join(userData, 'secrets.json'), options.cipher),

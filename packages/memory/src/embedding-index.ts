@@ -1,5 +1,5 @@
 /**
- * Tìm theo nghĩa (vector) — hiện thực `VectorIndex` bằng model loại việc "embedding" (ADR-0015).
+ * Tìm theo nghĩa (vector) — hiện thực `VectorIndex` bằng model loại việc "embedding" (ADR-0017).
  *
  * - Không nhị phân gốc, không model đóng gói kèm: vector tính bằng model embedding của hãng người
  *   dùng đã có key (hoặc máy cục bộ như Ollama / LM Studio). Chưa có model → `available = false`

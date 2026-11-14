@@ -1,7 +1,7 @@
 /**
- * Plugin Knowledge Base (giai đoạn 5, ADR-0015). Hai lớp kiểm:
+ * Plugin Knowledge Base (giai đoạn 5, ADR-0017). Hai lớp kiểm:
  * 1. Mô-đun thuần + Engine với NSA Mem THẬT (MemoryService + cầu nối plugin → hộp duyệt, tự duyệt,
- *    xoá / hoàn tác) và model GIẢ (không có key nhìn ảnh thật — xem ADR-0015 mục "Chưa chạy thật").
+ *    xoá / hoàn tác) và model GIẢ (không có key nhìn ảnh thật — xem ADR-0017 mục "Chưa chạy thật").
  * 2. Plugin đã đóng gói (main.js) chạy trong PluginHost thật: tiến trình riêng, `node --permission`,
  *    cổng MCP — trong plugins/knowledge-base-host.test.ts.
  */

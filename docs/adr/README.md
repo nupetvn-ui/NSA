@@ -18,4 +18,5 @@ Mỗi quyết định kỹ thuật đáng kể được ghi thành một file đ
 | [0012](0012-quyen-cli-va-plugin-google-workspace.md)             | Quyền cli: lõi chạy chương trình dòng lệnh hộ plugin; plugin Google Workspace (gws)                      | Chấp nhận  |
 | [0013](0013-plugin-kiotviet.md)                                  | Plugin KiotViet: Public API bán lẻ / bán buôn cho agent                                                  | Chấp nhận  |
 | [0014](0014-bai-mo-app-tu-dong-ci-windows.md)                    | Bài mở app tự động trên CI Windows (Playwright + agent giả)                                              | Chấp nhận  |
-| [0015](0015-knowledge-base.md)                                   | Knowledge Base: nạp tài liệu / ảnh / video, hộp duyệt riêng, tìm theo nghĩa (thử nghiệm), tool cho agent | Chấp nhận  |
+| [0015](0015-ranh-gioi-goi.md)                                    | Ranh giới gói: lõi chỉ giữ interface, lắp ghép ở apps/desktop, lint chặn ngược chiều                     | Chấp nhận  |
+| [0017](0017-knowledge-base.md)                                   | Knowledge Base: nạp tài liệu / ảnh / video, hộp duyệt riêng, tìm theo nghĩa (thử nghiệm), tool cho agent | Chấp nhận  |

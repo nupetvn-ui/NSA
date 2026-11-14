@@ -98,7 +98,7 @@ export interface ManifestCli {
   /**
    * Mọi tham số có dạng đường dẫn tuyệt đối (`C:...`, `/...`, kể cả sau `--cờ=`) phải nằm trong thư mục
    * dữ liệu của plugin hoặc thư mục người dùng đã cấp — để chương trình như ffmpeg không ghi/đọc
-   * file tuỳ ý trên máy (ADR-0015). Chạy được lâu hơn (tối đa 15 phút) vì việc nặng.
+   * file tuỳ ý trên máy (ADR-0017). Chạy được lâu hơn (tối đa 15 phút) vì việc nặng.
    */
   confinePaths: boolean;
 }
@@ -106,7 +106,7 @@ export interface ManifestCli {
 /** Bản đóng gói NSA mà plugin được phép có mặt. */
 export type ManifestEdition = 'personal' | 'enterprise';
 
-/** Loại việc model mà plugin có thể nhờ (ADR-0009, ADR-0015). */
+/** Loại việc model mà plugin có thể nhờ (ADR-0009, ADR-0017). */
 export type ModelTaskKind = 'channel' | 'background' | 'vision' | 'embedding';
 export const MODEL_TASK_KINDS: readonly ModelTaskKind[] = [
   'channel',

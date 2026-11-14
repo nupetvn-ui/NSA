@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { startFakeApiServer, type FakeServer } from '@nsa/adapter-api';
+import type { AgentAdapter } from '@nsa/adapter-sdk';
 import {
   ProviderHub,
   apiAgentId,
@@ -21,6 +22,7 @@ import {
   defaultSettings,
   validateCatalog,
   type Catalog,
+  type CliAdapterFactories,
   type OsCipher,
 } from './index.js';
 
@@ -259,6 +261,32 @@ describe('cấp key cho CLI sẵn có', () => {
   });
 });
 
+/** Adapter CLI giả: hub không import adapter thật (ADR-0015), test tự cắm vào. */
+function fakeCli(id: string): () => AgentAdapter {
+  return () => ({
+    id,
+    displayName: id,
+    detect: () => Promise.resolve({ installed: true, ready: true }),
+    capabilities: () => ({
+      streaming: false,
+      resume: false,
+      tools: true,
+      editFiles: true,
+      images: false,
+      mcp: false,
+      subagents: false,
+      toolGate: false,
+      tier: 'headless' as const,
+    }),
+    run: () => ({ cancel: () => undefined, finished: Promise.resolve() }),
+  });
+}
+const fakeCliAdapters: CliAdapterFactories = {
+  claude: fakeCli('claude'),
+  codex: fakeCli('codex'),
+  opencode: fakeCli('opencode'),
+};
+
 describe('ProviderHub', () => {
   function hub(fetchUrl?: string) {
     const catalog = structuredClone(bundledCatalog());
@@ -266,6 +294,7 @@ describe('ProviderHub', () => {
       for (const p of catalog.providers) if (p.id === 'deepseek') p.endpoints.openai = fetchUrl;
     }
     return new ProviderHub({
+      cliAdapters: fakeCliAdapters,
       catalog,
       settings: memorySettingsStore(),
       secrets: memorySecretStore(),

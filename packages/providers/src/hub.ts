@@ -13,9 +13,6 @@ import {
   type ChatMessage,
   type FetchLike,
 } from '@nsa/adapter-api';
-import { createClaudeAdapter } from '@nsa/adapter-claude';
-import { createCodexAdapter } from '@nsa/adapter-codex';
-import { createOpenCodeAdapter } from '@nsa/adapter-opencode';
 import {
   CUSTOM_PREFIX,
   TASK_KINDS,
@@ -26,19 +23,27 @@ import {
   resolveEndpoint,
   type Catalog,
   type CliId,
-  type CliPairStatus,
   type CustomProvider,
   type ModelInfo,
   type ModelRef,
-  type ProviderData,
   type ProviderInfo,
   type TaskKind,
 } from './catalog.js';
 import { buildPairingLaunch, pairingAllowed, pairingStatus } from './cli-env.js';
 import { budgetStatus, estimateCostUsd, type BudgetStatus, type UsageLedger } from './cost.js';
 import { providerSecretName, redactSecrets, type SecretStore } from './secrets.js';
-import type { ProviderSettings, SettingsStore, TaskModelSetting } from './settings.js';
+import type { ProviderSettings, SettingsStore } from './settings.js';
 import { TASK_LABELS, resolveTaskChain, type ChainOptions } from './tasks.js';
+import type { UsageRow, ProvidersView, ProviderSettingsPatch, CheckResult } from '@nsa/core';
+export type {
+  ModelView,
+  ProviderView,
+  TaskView,
+  UsageRow,
+  ProvidersView,
+  ProviderSettingsPatch,
+  CheckResult,
+} from '@nsa/core';
 
 export const API_AGENT_PREFIX = 'api:';
 export const CLI_NAMES: Record<CliId, string> = {
@@ -57,79 +62,6 @@ export function pairedAgentId(cli: CliId, ref: ModelRef): string {
 }
 
 // ---------------------------------------------------------------- dữ liệu cho giao diện
-
-export interface ModelView extends ModelInfo {
-  ref: ModelRef;
-}
-
-export interface ProviderView {
-  id: string;
-  name: string;
-  group: ProviderInfo['group'];
-  keyRequired: boolean;
-  keyUrl?: string;
-  standard: ProviderInfo['standard'];
-  endpoints: ProviderInfo['endpoints'];
-  fields: NonNullable<ProviderInfo['fields']>;
-  fieldValues: Record<string, string>;
-  data: ProviderData;
-  /** Bốn ký tự cuối của key (••••abcd) — KHÔNG bao giờ là cả key. */
-  keyHint: string | null;
-  usable: boolean;
-  enabled: boolean;
-  lastCheck?: { at: string; ok: boolean; message: string };
-  models: ModelView[];
-  cli: { cli: CliId; status: CliPairStatus; allowed: boolean; note?: string }[];
-  custom?: CustomProvider;
-}
-
-export interface TaskView {
-  task: TaskKind;
-  label: string;
-  setting: TaskModelSetting;
-  /** Chuỗi model NSA sẽ thử theo thứ tự (gồm cả phần tự thêm). */
-  chain: { ref: ModelRef; name: string; providerName: string; chosen: boolean }[];
-}
-
-export interface UsageRow {
-  ref: ModelRef;
-  providerName: string;
-  modelName: string;
-  inputTokens: number;
-  outputTokens: number;
-  costUsd: number;
-  calls: number;
-  unpricedCalls: number;
-}
-
-export interface ProvidersView {
-  catalogVersion: string;
-  catalogCheckedAt: string;
-  catalogNote?: string;
-  /** Kho khoá của hệ điều hành dùng được không. */
-  keystore: boolean;
-  providers: ProviderView[];
-  tasks: TaskView[];
-  pairings: { cli: CliId; model: ModelRef; agentId: string }[];
-  budget: BudgetStatus & { warnAt: number; stopAtLimit: boolean };
-  usage: UsageRow[];
-}
-
-export type ProviderSettingsPatch =
-  | { kind: 'fields'; providerId: string; fields: Record<string, string> }
-  | { kind: 'enabled'; providerId: string; enabled: boolean }
-  | { kind: 'extraModels'; providerId: string; models: string[] }
-  | { kind: 'task'; task: TaskKind; setting: TaskModelSetting }
-  | { kind: 'budget'; monthlyUsd: number | null; warnAt?: number; stopAtLimit?: boolean }
-  | { kind: 'pairing'; cli: CliId; model: ModelRef; on: boolean }
-  | { kind: 'custom'; provider: CustomProvider }
-  | { kind: 'removeCustom'; providerId: string };
-
-export interface CheckResult {
-  ok: boolean;
-  message: string;
-  models?: string[];
-}
 
 // ---------------------------------------------------------------- lịch sử phiên API
 
@@ -168,7 +100,22 @@ export function createFileApiSessionStore(file: string, limit = 200): ApiSession
 
 // ---------------------------------------------------------------- hub
 
+/** Tham số hub truyền khi nhờ lắp ráp một adapter CLI (lệnh thay thế trong test, model của cặp). */
+export interface CliAdapterParams {
+  command?: string;
+  prefixArgs?: string[];
+  model?: string;
+}
+
+/**
+ * Hub không import adapter của từng CLI (ADR-0015): nơi lắp ghép (`apps/desktop`) đăng ký hàm
+ * tạo adapter cho từng CLI — nhờ vậy đổi / cập nhật adapter không đụng gói này.
+ */
+export type CliAdapterFactories = Record<CliId, (params: CliAdapterParams) => AgentAdapter>;
+
 export interface ProviderHubOptions {
+  /** Hàm tạo adapter cho các CLI có thể ghép với key của hãng. */
+  cliAdapters: CliAdapterFactories;
   catalog: Catalog;
   settings: SettingsStore;
   secrets: SecretStore;
@@ -517,18 +464,10 @@ export class ProviderHub {
     const cliOptions = cmd
       ? { command: cmd.command, ...(cmd.prefixArgs ? { prefixArgs: cmd.prefixArgs } : {}) }
       : {};
-    const base =
-      cli === 'claude'
-        ? createClaudeAdapter(cliOptions)
-        : cli === 'codex'
-          ? createCodexAdapter({
-              ...cliOptions,
-              ...(probe?.cliModel ? { model: probe.cliModel } : {}),
-            })
-          : createOpenCodeAdapter({
-              ...cliOptions,
-              ...(probe?.cliModel ? { model: probe.cliModel } : {}),
-            });
+    const base = this.#o.cliAdapters[cli]({
+      ...cliOptions,
+      ...(cli !== 'claude' && probe?.cliModel ? { model: probe.cliModel } : {}),
+    });
     const toolsStable = model.toolCalling === 'stable';
     const adapter = withProviderKey(base, {
       id,

@@ -1,7 +1,7 @@
 /**
  * Plugin Knowledge Base ĐÃ ĐÓNG GÓI (main.js) chạy trong PluginHost thật: tiến trình riêng,
  * `node --permission`, NSA Mem thật (hộp duyệt, tìm lai FTS5 + vector), cổng MCP thật cho agent.
- * Model nhìn ảnh và embedding là GIẢ (chưa có key thật) — xem ADR-0015 mục "Chưa chạy thật".
+ * Model nhìn ảnh và embedding là GIẢ (chưa có key thật) — xem ADR-0017 mục "Chưa chạy thật".
  */
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';

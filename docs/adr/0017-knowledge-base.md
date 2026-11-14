@@ -1,4 +1,4 @@
-# ADR-0015: Knowledge Base — dạy NSA bằng tài liệu, ảnh, video; hộp duyệt riêng; tìm theo nghĩa; tool cho agent
+# ADR-0017: Knowledge Base — dạy NSA bằng tài liệu, ảnh, video; hộp duyệt riêng; tìm theo nghĩa; tool cho agent
 
 - Trạng thái: Chấp nhận
 - Ngày: 2026-11-13
