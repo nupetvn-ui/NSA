@@ -134,7 +134,11 @@ describe(`mở app NSA (${target})`, () => {
     const dir = resolve(repo, 'plugins/knowledge-base');
     const installed = await page.evaluate(async (path) => {
       const nsa = (
-        window as unknown as { nsa: { invoke: (c: string, ...a: unknown[]) => Promise<any> } }
+        globalThis as unknown as {
+          nsa: {
+            invoke: (c: string, ...a: unknown[]) => Promise<{ prepareId: string; status: string }>;
+          };
+        }
       ).nsa;
       await nsa.invoke('plugins:saveSettings', { developerMode: true });
       const prepared = await nsa.invoke('plugins:prepare', { kind: 'path', path });
@@ -151,7 +155,7 @@ describe(`mở app NSA (${target})`, () => {
         },
         true,
       );
-      return res.status as string;
+      return res.status;
     }, dir);
     expect(installed).toBe('installed');
     await page.locator('.nav-item', { hasText: 'App Store' }).click();
@@ -162,7 +166,7 @@ describe(`mở app NSA (${target})`, () => {
       await frame.locator('#tabs button', { hasText: tab }).click();
     }
     await frame.locator('#tab-sources').waitFor();
-    await page.getByRole('button', { name: /App Store/ }).click();
+    await page.getByRole('button', { name: '‹ App Store' }).click();
   });
 
   it('quay lại chat vẫn thấy câu trả lời', async () => {
