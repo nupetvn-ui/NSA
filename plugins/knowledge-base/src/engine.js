@@ -157,6 +157,7 @@ export class Engine {
     this.#changed();
   }
 
+  #finishing = new Set();
   #changedAt = 0;
   #changed() {
     const t = Date.now();
@@ -230,6 +231,15 @@ export class Engine {
     if (kind === 'doc' && stat.size > MAX_DOC_BYTES)
       throw new Error(`Tài liệu "${name}" lớn quá 120 MB.`);
     const hash = await fileHash(file);
+    const same = Object.values(this.cat.sources).find(
+      (s) => s.hash === hash && s.kind === kind && s.status !== 'removing',
+    );
+    const ident0 = relPath || name;
+    if (same && same.key !== sha1(`${kind}|${ident0.toLowerCase()}`)) {
+      // Cùng nội dung với một nguồn khác (tên / vị trí khác): không nạp lần hai, khỏi mục nhớ đúp.
+      if (move) rmSync(file, { force: true });
+      return { id: same.id, status: 'duplicate', of: same.name };
+    }
     const ident = relPath || name;
     const key = sha1(`${kind}|${ident.toLowerCase()}`);
     const existing = Object.values(this.cat.sources).find((s) => s.key === key);
@@ -511,6 +521,15 @@ export class Engine {
 
   /** Gọi sau khi mở app, khi thêm nguồn, khi tiếp tục: chạy các nguồn đang chờ, lần lượt từng cái. */
   kick() {
+    // Nguồn đang xoá dở (app chết giữa chừng) → làm nốt.
+    for (const s of Object.values(this.cat.sources)) {
+      if (s.status === 'removing' && !this.#finishing.has(s.id)) {
+        this.#finishing.add(s.id);
+        void this.removeSource(s.id)
+          .catch((err) => this.ctx.log(`Xoá dở "${s.name}" chưa xong: ${err.message}`, 'warn'))
+          .finally(() => this.#finishing.delete(s.id));
+      }
+    }
     if (this.loop || this.cat.queuePaused) return;
     // Nguồn đang "chạy" mà tiến trình đã chết (đóng app giữa chừng) → xếp lại hàng đợi.
     for (const s of Object.values(this.cat.sources))
@@ -893,6 +912,16 @@ export class Engine {
       d.publish = { done: {} };
       this.saveDerived(src.id, d);
     }
+    // Đề xuất của chính nguồn này đã nằm sẵn trong hộp duyệt (app chết sau khi đề xuất mà chưa kịp ghi
+    // "đã làm") → chạy tiếp không đề xuất lại, tránh mục nhớ đúp.
+    const alreadyPending = new Set(
+      (await mem.pending({ subBranch: sub }))
+        .filter((p) => p.tags.includes(srcTag))
+        .map(
+          (p) =>
+            `${p.tags.find((t) => t.startsWith('kb:loc:'))?.slice(7)}|${p.tags.find((t) => t.startsWith('kb:h:'))?.slice(5)}`,
+        ),
+    );
     let n = 0;
     const flagged = [];
     for (const item of items) {
@@ -903,6 +932,10 @@ export class Engine {
       const key = `${item.loc}|${h}`;
       n++;
       if (d.publish.done[key]) continue;
+      if (alreadyPending.has(key)) {
+        d.publish.done[key] = 'đã chờ duyệt';
+        continue;
+      }
       const old = byLoc.get(item.loc);
       if (old && tagVal(old, 'kb:h:') === h) {
         d.publish.done[key] = 'giữ nguyên';
@@ -967,6 +1000,11 @@ export class Engine {
       src.status = 'cancelled';
       await this.idle();
     }
+    // Ghi nhật ký TRƯỚC: app chết giữa chừng thì lần mở sau làm nốt (kick → removeSource), không để
+    // nguồn nửa vời và không mất mã hoàn tác của các mục đã gỡ.
+    src.status = 'removing';
+    src.removing ??= { undo: [], entries: 0 };
+    this.save();
     const mem = this.ctx.memory;
     const srcTag = `kb:src:${id}`;
     const entries = (await mem.entries({ subBranch: src.collection, limit: 2000 })).filter((e) =>
@@ -975,7 +1013,14 @@ export class Engine {
     for (const p of await mem.pending({ subBranch: src.collection })) {
       if (p.tags.includes(srcTag)) await mem.reject(p.id).catch(() => undefined);
     }
-    const { undo } = entries.length ? await mem.remove(entries.map((e) => e.id)) : { undo: [] };
+    if (entries.length) {
+      const r = await mem.remove(entries.map((e) => e.id));
+      src.removing.undo.push(...r.undo);
+      src.removing.entries += entries.length;
+      this.save();
+    }
+    const undo = src.removing.undo;
+    const removedCount = src.removing.entries;
     // Giữ file gốc trong thùng để hoàn tác được.
     const trashDir = join(this.dir, 'trash', id);
     rmSync(trashDir, { recursive: true, force: true });
@@ -986,14 +1031,14 @@ export class Engine {
       source: src,
       undo,
       at: this.now().toISOString(),
-      entries: entries.length,
+      entries: removedCount,
     });
     delete this.cat.sources[id];
     this.cat.order = this.cat.order.filter((x) => x !== id);
     for (const old of this.cat.trash.splice(TRASH_KEEP))
       rmSync(join(this.dir, 'trash', old.id), { recursive: true, force: true });
     this.save();
-    return { removed: entries.length, canUndo: true };
+    return { removed: removedCount, canUndo: true };
   }
 
   async undoRemove() {
@@ -1002,10 +1047,49 @@ export class Engine {
     if (item.undo.length) await this.ctx.memory.restore(item.undo);
     const trashDir = join(this.dir, 'trash', item.id);
     if (existsSync(trashDir)) renameSync(trashDir, this.sourceDir(item.id));
+    delete item.source.removing;
+    if (item.source.status === 'removing') item.source.status = 'ingested';
     this.cat.sources[item.id] = item.source;
     this.cat.order.unshift(item.id);
     this.save();
     return { id: item.id, name: item.source.name, restored: item.entries };
+  }
+
+  /**
+   * Kiểm tra toàn vẹn kho Knowledge Base: mục nhớ / đề xuất mồ côi (nguồn đã mất), nguồn mất file gốc,
+   * thư mục dư. `fix`: gỡ mục mồ côi (hoàn tác được), bỏ đề xuất mồ côi, xoá thư mục dư.
+   */
+  async integrity({ fix = false } = {}) {
+    const mem = this.ctx.memory;
+    const srcOf = (tags) => (tags.find((t) => t.startsWith('kb:src:')) ?? '').slice(7);
+    const entries = (await mem.entries({ limit: 2000 })).filter((e) => e.tags.includes('kb'));
+    const pending = (await mem.pending()).filter((p) => p.tags.includes('kb'));
+    const known = (id) => id && this.cat.sources[id] && this.cat.sources[id].status !== 'removing';
+    const orphanEntries = entries.filter((e) => !known(srcOf(e.tags)));
+    const orphanPending = pending.filter((p) => !known(srcOf(p.tags)));
+    const missingOriginals = Object.values(this.cat.sources)
+      .filter((s) => s.status === 'ingested' && !existsSync(this.original(s)))
+      .map((s) => s.name);
+    const filesDir = join(this.dir, 'files');
+    const strayDirs = existsSync(filesDir)
+      ? readdirSync(filesDir).filter((n) => !this.cat.sources[n])
+      : [];
+    if (fix) {
+      for (const p of orphanPending) await mem.reject(p.id).catch(() => undefined);
+      if (orphanEntries.length) {
+        const r = await mem.remove(orphanEntries.map((e) => e.id));
+        this.cat.integrityUndo = r.undo;
+      }
+      for (const n of strayDirs) rmSync(join(filesDir, n), { recursive: true, force: true });
+      this.save();
+    }
+    return {
+      orphanEntries: orphanEntries.map((e) => ({ id: e.id, title: e.title })),
+      orphanPending: orphanPending.length,
+      missingOriginals,
+      strayDirs,
+      fixed: fix,
+    };
   }
 
   // ------------------------------------------------------------ hộp duyệt riêng

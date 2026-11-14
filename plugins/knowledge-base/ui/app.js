@@ -624,7 +624,7 @@
         return uploadOne(item)
           .then(
             function (r) {
-              results.push(r.status);
+              results.push(r.status === 'duplicate' ? 'unchanged' : r.status);
             },
             function (err) {
               results.push('lỗi: ' + (err.message || err));

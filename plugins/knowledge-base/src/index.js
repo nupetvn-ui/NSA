@@ -154,6 +154,7 @@ export default {
     remove: (p) => need().removeSource(String(p.id)),
     undoRemove: () => need().undoRemove(),
     undoStale: (p) => need().undoStale(String(p.id)),
+    integrity: (p) => need().integrity({ fix: Boolean(p && p.fix) }),
     downloadModel: (p) => need().downloadModel(p && p.name),
 
     accept: async (p, ctx) => {

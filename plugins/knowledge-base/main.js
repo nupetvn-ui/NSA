@@ -41274,6 +41274,7 @@ var Engine = class {
     atomicWrite(this.#catalogFile, JSON.stringify(this.cat));
     this.#changed();
   }
+  #finishing = /* @__PURE__ */ new Set();
   #changedAt = 0;
   #changed() {
     const t2 = Date.now();
@@ -41342,6 +41343,14 @@ var Engine = class {
     if (kind === "doc" && stat.size > MAX_DOC_BYTES)
       throw new Error(`T\xE0i li\u1EC7u "${name}" l\u1EDBn qu\xE1 120 MB.`);
     const hash = await fileHash(file);
+    const same = Object.values(this.cat.sources).find(
+      (s2) => s2.hash === hash && s2.kind === kind && s2.status !== "removing"
+    );
+    const ident0 = relPath || name;
+    if (same && same.key !== sha1(`${kind}|${ident0.toLowerCase()}`)) {
+      if (move) rmSync2(file, { force: true });
+      return { id: same.id, status: "duplicate", of: same.name };
+    }
     const ident = relPath || name;
     const key = sha1(`${kind}|${ident.toLowerCase()}`);
     const existing = Object.values(this.cat.sources).find((s2) => s2.key === key);
@@ -41606,6 +41615,12 @@ var Engine = class {
   }
   /** Gọi sau khi mở app, khi thêm nguồn, khi tiếp tục: chạy các nguồn đang chờ, lần lượt từng cái. */
   kick() {
+    for (const s2 of Object.values(this.cat.sources)) {
+      if (s2.status === "removing" && !this.#finishing.has(s2.id)) {
+        this.#finishing.add(s2.id);
+        void this.removeSource(s2.id).catch((err2) => this.ctx.log(`Xo\xE1 d\u1EDF "${s2.name}" ch\u01B0a xong: ${err2.message}`, "warn")).finally(() => this.#finishing.delete(s2.id));
+      }
+    }
     if (this.loop || this.cat.queuePaused) return;
     for (const s2 of Object.values(this.cat.sources))
       if (s2.status === "running") s2.status = "queued";
@@ -41946,6 +41961,11 @@ ${ocr}`);
       d2.publish = { done: {} };
       this.saveDerived(src.id, d2);
     }
+    const alreadyPending = new Set(
+      (await mem.pending({ subBranch: sub })).filter((p2) => p2.tags.includes(srcTag)).map(
+        (p2) => `${p2.tags.find((t2) => t2.startsWith("kb:loc:"))?.slice(7)}|${p2.tags.find((t2) => t2.startsWith("kb:h:"))?.slice(5)}`
+      )
+    );
     let n2 = 0;
     const flagged = [];
     for (const item of items) {
@@ -41956,6 +41976,10 @@ ${ocr}`);
       const key = `${item.loc}|${h2}`;
       n2++;
       if (d2.publish.done[key]) continue;
+      if (alreadyPending.has(key)) {
+        d2.publish.done[key] = "\u0111\xE3 ch\u1EDD duy\u1EC7t";
+        continue;
+      }
       const old = byLoc.get(item.loc);
       if (old && tagVal(old, "kb:h:") === h2) {
         d2.publish.done[key] = "gi\u1EEF nguy\xEAn";
@@ -42018,6 +42042,9 @@ ${ocr}`);
       src.status = "cancelled";
       await this.idle();
     }
+    src.status = "removing";
+    src.removing ??= { undo: [], entries: 0 };
+    this.save();
     const mem = this.ctx.memory;
     const srcTag = `kb:src:${id}`;
     const entries = (await mem.entries({ subBranch: src.collection, limit: 2e3 })).filter(
@@ -42026,7 +42053,14 @@ ${ocr}`);
     for (const p2 of await mem.pending({ subBranch: src.collection })) {
       if (p2.tags.includes(srcTag)) await mem.reject(p2.id).catch(() => void 0);
     }
-    const { undo } = entries.length ? await mem.remove(entries.map((e2) => e2.id)) : { undo: [] };
+    if (entries.length) {
+      const r2 = await mem.remove(entries.map((e2) => e2.id));
+      src.removing.undo.push(...r2.undo);
+      src.removing.entries += entries.length;
+      this.save();
+    }
+    const undo = src.removing.undo;
+    const removedCount = src.removing.entries;
     const trashDir = join2(this.dir, "trash", id);
     rmSync2(trashDir, { recursive: true, force: true });
     mkdirSync2(join2(this.dir, "trash"), { recursive: true });
@@ -42036,14 +42070,14 @@ ${ocr}`);
       source: src,
       undo,
       at: this.now().toISOString(),
-      entries: entries.length
+      entries: removedCount
     });
     delete this.cat.sources[id];
     this.cat.order = this.cat.order.filter((x3) => x3 !== id);
     for (const old of this.cat.trash.splice(TRASH_KEEP))
       rmSync2(join2(this.dir, "trash", old.id), { recursive: true, force: true });
     this.save();
-    return { removed: entries.length, canUndo: true };
+    return { removed: removedCount, canUndo: true };
   }
   async undoRemove() {
     const item = this.cat.trash.shift();
@@ -42051,10 +42085,44 @@ ${ocr}`);
     if (item.undo.length) await this.ctx.memory.restore(item.undo);
     const trashDir = join2(this.dir, "trash", item.id);
     if (existsSync2(trashDir)) renameSync2(trashDir, this.sourceDir(item.id));
+    delete item.source.removing;
+    if (item.source.status === "removing") item.source.status = "ingested";
     this.cat.sources[item.id] = item.source;
     this.cat.order.unshift(item.id);
     this.save();
     return { id: item.id, name: item.source.name, restored: item.entries };
+  }
+  /**
+   * Kiểm tra toàn vẹn kho Knowledge Base: mục nhớ / đề xuất mồ côi (nguồn đã mất), nguồn mất file gốc,
+   * thư mục dư. `fix`: gỡ mục mồ côi (hoàn tác được), bỏ đề xuất mồ côi, xoá thư mục dư.
+   */
+  async integrity({ fix = false } = {}) {
+    const mem = this.ctx.memory;
+    const srcOf = (tags) => (tags.find((t2) => t2.startsWith("kb:src:")) ?? "").slice(7);
+    const entries = (await mem.entries({ limit: 2e3 })).filter((e2) => e2.tags.includes("kb"));
+    const pending = (await mem.pending()).filter((p2) => p2.tags.includes("kb"));
+    const known = (id) => id && this.cat.sources[id] && this.cat.sources[id].status !== "removing";
+    const orphanEntries = entries.filter((e2) => !known(srcOf(e2.tags)));
+    const orphanPending = pending.filter((p2) => !known(srcOf(p2.tags)));
+    const missingOriginals = Object.values(this.cat.sources).filter((s2) => s2.status === "ingested" && !existsSync2(this.original(s2))).map((s2) => s2.name);
+    const filesDir = join2(this.dir, "files");
+    const strayDirs = existsSync2(filesDir) ? readdirSync2(filesDir).filter((n2) => !this.cat.sources[n2]) : [];
+    if (fix) {
+      for (const p2 of orphanPending) await mem.reject(p2.id).catch(() => void 0);
+      if (orphanEntries.length) {
+        const r2 = await mem.remove(orphanEntries.map((e2) => e2.id));
+        this.cat.integrityUndo = r2.undo;
+      }
+      for (const n2 of strayDirs) rmSync2(join2(filesDir, n2), { recursive: true, force: true });
+      this.save();
+    }
+    return {
+      orphanEntries: orphanEntries.map((e2) => ({ id: e2.id, title: e2.title })),
+      orphanPending: orphanPending.length,
+      missingOriginals,
+      strayDirs,
+      fixed: fix
+    };
   }
   // ------------------------------------------------------------ hộp duyệt riêng
   async overview() {
@@ -42321,6 +42389,7 @@ var index_default = {
     remove: (p2) => need().removeSource(String(p2.id)),
     undoRemove: () => need().undoRemove(),
     undoStale: (p2) => need().undoStale(String(p2.id)),
+    integrity: (p2) => need().integrity({ fix: Boolean(p2 && p2.fix) }),
     downloadModel: (p2) => need().downloadModel(p2 && p2.name),
     accept: async (p2, ctx) => {
       const edits = {};

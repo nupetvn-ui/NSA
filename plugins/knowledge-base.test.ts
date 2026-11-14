@@ -402,7 +402,7 @@ describe('Engine — ảnh (model nhìn ảnh GIẢ)', () => {
     await w.engine.idle();
     expect(w.engine.src(a.id).status).toBe('ingested');
     const b = await w.engine.addFile({
-      file: writeFile('b.png', png.subarray(0, png.length)),
+      file: writeFile('b.png', Buffer.concat([png, Buffer.from('b')])),
       name: 'b.png',
     });
     w.engine.cancel(b.id);
@@ -581,5 +581,93 @@ describe('tiện ích', () => {
     expect(
       readFileSync(join(import.meta.dirname, 'knowledge-base', 'nsa-plugin.json'), 'utf8'),
     ).toContain('"knowledge-base"');
+  });
+});
+
+describe('Engine — an toàn dữ liệu khi ngắt giữa chừng, trùng lặp, mồ côi', () => {
+  const text = 'Quy định đổi trả trong 7 ngày.\n\nHoàn tiền trong 3 ngày làm việc.\n';
+
+  it('cùng nội dung ở file tên khác → không nạp lần hai (không mục nhớ đúp)', async () => {
+    const w = await world();
+    const a = await w.engine.addFile({ file: writeFile('a.txt', text), name: 'a.txt' });
+    await w.engine.idle();
+    const before = (await w.engine.pendingList()).length;
+    const b = await w.engine.addFile({ file: writeFile('ban-sao.txt', text), name: 'ban-sao.txt' });
+    expect(b).toMatchObject({ status: 'duplicate', id: a.id, of: 'a.txt' });
+    await w.engine.idle();
+    expect(Object.keys(w.engine.cat.sources)).toHaveLength(1);
+    expect((await w.engine.pendingList()).length).toBe(before);
+  });
+
+  it('app chết sau khi đề xuất mà chưa ghi "đã làm": chạy tiếp không tạo đề xuất đúp', async () => {
+    const w = await world();
+    const { id } = await w.engine.addFile({ file: writeFile('a.txt', text), name: 'a.txt' });
+    await w.engine.idle();
+    const before = (await w.engine.pendingList()).length;
+    expect(before).toBeGreaterThan(0);
+    // Giả lập: nhật ký "đã đề xuất" chưa kịp lưu, nguồn bị xếp lại hàng đợi sau khi mở lại app.
+    const d = w.engine.derived(id);
+    d.publish = { done: {} };
+    w.engine.saveDerived(id, d);
+    w.engine.src(id).status = 'queued';
+    w.engine.save();
+    w.engine.kick();
+    await w.engine.idle();
+    expect(w.engine.src(id).status).toBe('ingested');
+    expect((await w.engine.pendingList()).length).toBe(before);
+  });
+
+  it('xoá nguồn bị ngắt sau khi gỡ mục nhớ: mở lại làm nốt, vẫn hoàn tác được đủ mục', async () => {
+    const memRoot = tempDir('kb-mem-');
+    const dataDir = tempDir('kb-data-');
+    const a = await world({ memRoot, dataDir });
+    const { id } = await a.engine.addFile({ file: writeFile('a.txt', text), name: 'a.txt' });
+    await a.engine.idle();
+    for (const p of await a.engine.pendingList()) await a.mem.accept(p.id);
+    const ids = a.mem.listEntries('plugin/knowledge-base').map((e) => e.id);
+    expect(ids.length).toBeGreaterThan(0);
+    // Chết giữa chừng: đã ghi nhật ký "removing" và đã gỡ mục nhớ, nhưng chưa dọn nguồn.
+    const { undo } = await a.engine.ctx.memory.remove(ids);
+    const src = a.engine.src(id);
+    src.status = 'removing';
+    src.removing = { undo, entries: ids.length };
+    a.engine.save();
+
+    const b = await world({ memRoot, dataDir });
+    b.engine.kick();
+    await new Promise((r) => setTimeout(r, 500));
+    await b.engine.idle();
+    expect(Object.keys(b.engine.cat.sources)).toHaveLength(0);
+    expect(b.mem.listEntries('plugin/knowledge-base')).toHaveLength(0);
+    expect(b.engine.cat.trash[0].entries).toBe(ids.length);
+    const back = await b.engine.undoRemove();
+    expect(back.restored).toBe(ids.length);
+    expect(b.mem.listEntries('plugin/knowledge-base')).toHaveLength(ids.length);
+    expect(b.engine.src(id).status).toBe('ingested');
+  });
+
+  it('kiểm tra toàn vẹn: phát hiện và gỡ mục nhớ / đề xuất mồ côi, thư mục dư; không đụng nguồn còn nguyên', async () => {
+    const w = await world();
+    const a = await w.engine.addFile({ file: writeFile('a.txt', text), name: 'a.txt' });
+    const b = await w.engine.addFile({
+      file: writeFile('b.txt', 'Nội dung khác hẳn về giờ mở cửa.\n'),
+      name: 'b.txt',
+    });
+    await w.engine.idle();
+    const pending = await w.engine.pendingList();
+    await w.mem.accept(pending.find((p: { sourceId: string }) => p.sourceId === a.id).id);
+    // Mồ côi: nguồn b biến khỏi danh mục mà mục / thư mục của nó còn; thêm một thư mục lạ.
+    delete w.engine.cat.sources[b.id];
+    mkdirSync(join(w.dataDir, 'files', 's-deadbeef'), { recursive: true });
+    const report = await w.engine.integrity();
+    expect(report.orphanPending).toBeGreaterThan(0);
+    expect(report.strayDirs).toContain('s-deadbeef');
+    expect(report.orphanEntries).toHaveLength(0); // mục của a vẫn có nguồn
+    const fixed = await w.engine.integrity({ fix: true });
+    expect(fixed.fixed).toBe(true);
+    const after = await w.engine.integrity();
+    expect(after.orphanPending).toBe(0);
+    expect(after.strayDirs).toHaveLength(0);
+    expect(w.mem.listEntries('plugin/knowledge-base')).toHaveLength(1); // mục của a còn nguyên
   });
 });
