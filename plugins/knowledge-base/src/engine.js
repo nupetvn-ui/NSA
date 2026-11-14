@@ -21,6 +21,8 @@ import { IMAGE_MIME, extractDocument, kindOf } from './extract.js';
 import { htmlToBlocks } from './html.js';
 import {
   buildWindows,
+  cleanSegments,
+  windowConfidence,
   extractAudio,
   extractFrames,
   probe,
@@ -64,6 +66,7 @@ export function imagePrompt(note) {
     'Trả lời đúng hai phần:',
     'MÔ TẢ: 2–5 câu — ảnh là gì, chi tiết quan trọng, số liệu, tên, ngày.',
     'CHỮ TRONG ẢNH: chép NGUYÊN VĂN mọi chữ và số đọc được, giữ từng dòng; ghi "không có" nếu không có chữ.',
+    'KHÔNG bịa: chữ hoặc số không rõ thì ghi [không đọc được] thay vì đoán. Dòng cuối cùng ghi đúng một lần: ĐỘ CHẮC CHẮN: cao | vừa | thấp.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -74,18 +77,37 @@ export function framePrompt(name, time, note) {
     `Đây là khung hình tại ${clock(time)} của video "${name}".`,
     note ? `Lời dặn của người dùng: "${note}".` : '',
     'Mô tả ngắn (1–3 câu) điều đang diễn ra, rồi chép nguyên văn chữ hiện trên màn hình nếu có (ghi sau "Chữ:").',
+    'KHÔNG bịa: chữ hoặc số không rõ thì ghi [không đọc được] thay vì đoán. Dòng cuối cùng ghi đúng một lần: ĐỘ CHẮC CHẮN: cao | vừa | thấp.',
   ]
     .filter(Boolean)
     .join('\n');
 }
 
 /** Tách trả lời của model nhìn ảnh thành mô tả + chữ. */
+/** Độ chắc chắn model tự báo → độ tin cậy của mục nhớ. Không báo / không hiểu = thận trọng (vừa). */
+export const CERTAINTY = { cao: 0.8, vừa: 0.6, thấp: 0.4 };
+
+/** Tách dòng "ĐỘ CHẮC CHẮN: …" khỏi trả lời; trả { text, certainty: 'cao'|'vừa'|'thấp'|null }. */
+export function splitCertainty(raw) {
+  const text = String(raw ?? '');
+  const m = /ĐỘ\s+CHẮC\s+CHẮN\s*:\s*(cao|vừa|thấp)/iu.exec(text);
+  return {
+    text: text.replace(/^.*ĐỘ\s+CHẮC\s+CHẮN\s*:.*$/gimu, '').trim(),
+    certainty: m ? m[1].toLowerCase() : null,
+  };
+}
+
 export function parseImageReply(text) {
-  const t = String(text ?? '').trim();
+  const cert = splitCertainty(text);
+  const t = cert.text;
   const m = /CH[ỮỪ]\s+TRONG\s+ẢNH\s*:/i.exec(t);
   const describe = (m ? t.slice(0, m.index) : t).replace(/^M[ÔO]\s*T[ẢA]\s*:\s*/i, '').trim();
   const ocr = m ? t.slice(m.index + m[0].length).trim() : '';
-  return { describe, ocr: /^(không có|none|n\/a|-)\.?$/i.test(ocr) ? '' : ocr };
+  return {
+    describe,
+    ocr: /^(không có|none|n\/a|-)\.?$/i.test(ocr) ? '' : ocr,
+    certainty: cert.certainty,
+  };
 }
 
 const tagVal = (entry, prefix) => {
@@ -661,12 +683,25 @@ export class Engine {
       d.vision = parseImageReply(text);
       this.saveDerived(src.id, d);
     }
-    const { describe, ocr } = d.vision;
+    const { describe, ocr, certainty } = d.vision;
     const parts = [];
     if (src.note) parts.push(`Lời dặn của người dùng: ${src.note}`);
     if (describe) parts.push(`Mô tả: ${describe}`);
     if (ocr) parts.push(`Chữ trong ảnh:\n${ocr}`);
-    await this.#publish(src, [{ loc: 'ảnh', text: parts.join('\n\n'), confidence: 0.8 }]);
+    if (!describe && !ocr) {
+      throw new Error(
+        'Model không mô tả được ảnh này (không đọc được gì) — không ghi nhớ điều gì.',
+      );
+    }
+    const unreadable = /\[không đọc được\]/i.test(ocr);
+    if (certainty === 'thấp' || unreadable) {
+      src.warnings.push(
+        'Model không chắc / có chỗ không đọc được trong ảnh: mục nhớ đã hạ độ tin cậy, hãy đối chiếu với ảnh gốc khi duyệt.',
+      );
+      parts.push('⚠ Model không chắc hoặc có chữ không đọc được — hãy đối chiếu với ảnh gốc.');
+    }
+    const confidence = Math.min(CERTAINTY[certainty ?? 'vừa'] ?? 0.6, unreadable ? 0.5 : 1);
+    await this.#publish(src, [{ loc: 'ảnh', text: parts.join('\n\n'), confidence }]);
   }
 
   async #needBudget(task) {
@@ -719,14 +754,15 @@ export class Engine {
         await extractAudio(cli, file, wav);
         this.#check(src);
         this.#progress(src, 2, 4, 'Nhận dạng giọng nói (có thể mất vài phút)');
-        d.segments = await transcribe(
-          cli,
-          wav,
-          model,
-          join(dir, 'asr'),
-          this.cat.settings.language,
-        );
+        const raw = await transcribe(cli, wav, model, join(dir, 'asr'), this.cat.settings.language);
         rmSync(wav, { force: true });
+        const cleaned = cleanSegments(raw);
+        d.segments = cleaned.segments;
+        if (cleaned.dropped > 0) {
+          src.warnings.push(
+            `Đã bỏ ${cleaned.dropped} dòng phụ đề nghi là nhận dạng sai (lặp lại nhiều lần hoặc câu chèn quen thuộc khi im lặng).`,
+          );
+        }
         if (d.segments.length === 0) src.warnings.push('Không nhận ra lời nói nào trong file.');
       }
       save();
@@ -768,13 +804,15 @@ export class Engine {
             if (i === undefined) return;
             const f = d.frames[i];
             const bytes = readFileSync(f.file);
-            f.description = (
+            const reply = splitCertainty(
               await this.ctx.model.vision(
                 framePrompt(src.name, f.time, src.note),
                 [{ mimeType: 'image/jpeg', base64: bytes.toString('base64') }],
                 { system: VISION_SYSTEM },
-              )
-            ).trim();
+              ),
+            );
+            f.certainty = reply.certainty;
+            f.description = reply.text;
             done++;
             save();
             this.#progress(src, done, total, `Model mô tả khung hình ${done}/${total}`);
@@ -801,7 +839,11 @@ export class Engine {
     }
     await this.#publish(
       src,
-      windows.map((w) => ({ loc: windowLoc(w), text: windowText(w), confidence: 0.75 })),
+      windows.map((w) => ({
+        loc: windowLoc(w),
+        text: windowText(w),
+        confidence: windowConfidence(w),
+      })),
     );
   }
 

@@ -22,11 +22,17 @@ import { afterEach, describe, expect, it } from 'vitest';
 // @ts-expect-error mã JS không có kiểu
 import { makeChunks, splitText } from './knowledge-base/src/chunk.js';
 // @ts-expect-error mã JS không có kiểu
-import { parseImageReply } from './knowledge-base/src/engine.js';
+import { CERTAINTY, parseImageReply, splitCertainty } from './knowledge-base/src/engine.js';
 // @ts-expect-error mã JS không có kiểu
 import { extractDocument, kindOf, parseCsv } from './knowledge-base/src/extract.js';
 // @ts-expect-error mã JS không có kiểu
-import { buildWindows, parseShowinfo, parseWhisperJson } from './knowledge-base/src/media.js';
+import {
+  buildWindows,
+  cleanSegments,
+  parseShowinfo,
+  parseWhisperJson,
+  windowConfidence,
+} from './knowledge-base/src/media.js';
 // @ts-expect-error mã JS không có kiểu
 import { detectSensitive, maskSensitive } from './knowledge-base/src/sensitive.js';
 
@@ -669,5 +675,87 @@ describe('Engine — an toàn dữ liệu khi ngắt giữa chừng, trùng lặ
     expect(after.orphanPending).toBe(0);
     expect(after.strayDirs).toHaveLength(0);
     expect(w.mem.listEntries('plugin/knowledge-base')).toHaveLength(1); // mục của a còn nguyên
+  });
+});
+
+describe('Không học sai trong im lặng: độ chắc chắn, chữ không đọc được, phụ đề rác', () => {
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  );
+
+  it('tách dòng ĐỘ CHẮC CHẮN khỏi nội dung; ánh xạ sang độ tin cậy; không báo thì thận trọng', () => {
+    expect(splitCertainty('MÔ TẢ: Bảng giá.\nĐỘ CHẮC CHẮN: thấp')).toEqual({
+      text: 'MÔ TẢ: Bảng giá.',
+      certainty: 'thấp',
+    });
+    expect(splitCertainty('không có dòng này').certainty).toBeNull();
+    expect(CERTAINTY).toEqual({ cao: 0.8, vừa: 0.6, thấp: 0.4 });
+  });
+
+  it('ảnh model báo "thấp" hoặc có [không đọc được]: hạ độ tin cậy, ghi cảnh báo vào mục và nguồn — không tự nhận dù bật tự nhận', async () => {
+    const w = await world({
+      priceIn: 0,
+      vision: () =>
+        'MÔ TẢ: Một bảng giá mờ.\nCHỮ TRONG ẢNH: Cà phê [không đọc được]\nTrà đào 45.000đ\nĐỘ CHẮC CHẮN: thấp',
+    });
+    w.engine.saveSettings({ autoApprove: true, minConfidence: 0.3 });
+    const r = await w.engine.addFile({ file: writeFile('mo.png', png), name: 'mo.png' });
+    await w.engine.idle();
+    const [p] = await w.engine.pendingList();
+    expect(p.confidence).toBeLessThanOrEqual(0.4);
+    expect(p.body).toContain('[không đọc được]');
+    expect(p.body).toContain('Model không chắc');
+    expect(p.body).not.toContain('ĐỘ CHẮC CHẮN');
+    expect(w.engine.src(r.id).warnings.join(' ')).toContain('đối chiếu với ảnh gốc');
+  });
+
+  it('model trả rỗng cho ảnh: nạp lỗi rõ ràng, KHÔNG ghi nhớ gì (không bịa)', async () => {
+    const w = await world({ priceIn: 0, vision: () => 'MÔ TẢ:\nCHỮ TRONG ẢNH: không có' });
+    const r = await w.engine.addFile({ file: writeFile('trang.png', png), name: 'trang.png' });
+    await w.engine.idle();
+    expect(w.engine.src(r.id).status).toBe('failed');
+    expect(w.engine.src(r.id).error).toContain('không ghi nhớ');
+    expect(await w.engine.pendingList()).toHaveLength(0);
+  });
+
+  it('phụ đề: bỏ dòng lặp từ lần thứ 3 và câu "ảo giác" quen thuộc; lời nói hạ độ tin cậy cửa sổ', () => {
+    const segs = [
+      { start: 0, end: 2, text: 'Xin chào' },
+      { start: 2, end: 4, text: 'Hãy subscribe cho kênh' },
+      { start: 4, end: 6, text: 'ừ ừ' },
+      { start: 6, end: 8, text: 'ừ ừ' },
+      { start: 8, end: 10, text: 'ừ ừ' },
+      { start: 10, end: 12, text: 'ừ ừ' },
+      { start: 12, end: 13, text: 'a' },
+    ];
+    const { segments, dropped } = cleanSegments(segs);
+    expect(segments.map((s: { text: string }) => s.text)).toEqual(['Xin chào', 'ừ ừ', 'ừ ừ']);
+    expect(dropped).toBe(4);
+    expect(windowConfidence({ visuals: [{ certainty: 'cao' }], speech: '' })).toBe(0.75);
+    expect(windowConfidence({ visuals: [{ certainty: 'cao' }], speech: 'x' })).toBe(0.6);
+    expect(windowConfidence({ visuals: [{ certainty: 'thấp' }], speech: '' })).toBe(0.4);
+  });
+
+  it('mâu thuẫn với mục đã có nằm lại hộp duyệt kể cả khi bật tự nhận', async () => {
+    const w = await world();
+    w.engine.saveSettings({ autoApprove: true, minConfidence: 0.5 });
+    await w.engine.addFile({
+      file: writeFile('gia.md', '# Giá\nCà phê muối giá 32000 đồng một ly.\n'),
+      name: 'gia.md',
+      relPath: 'a/gia.md',
+    });
+    await w.engine.idle();
+    expect(w.mem.listEntries('plugin/knowledge-base')).toHaveLength(1); // tự nhận vì không mâu thuẫn
+    await w.engine.addFile({
+      file: writeFile('gia.md', '# Giá\nCà phê muối giá 35000 đồng một ly.\n'),
+      name: 'gia.md',
+      relPath: 'b/gia.md',
+    });
+    await w.engine.idle();
+    const pending = await w.engine.pendingList();
+    expect(pending).toHaveLength(1);
+    expect(pending[0].reasons.join(' ')).toContain('Mâu thuẫn');
+    expect(w.mem.listEntries('plugin/knowledge-base')).toHaveLength(1); // mục cũ không đổi
   });
 });

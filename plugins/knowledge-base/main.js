@@ -41079,12 +41079,42 @@ function buildWindows(duration, segments, frames, options = {}) {
         end: gEnd,
         speech: g2.map((s2) => s2.text).join(" "),
         lines: g2.map((s2) => ({ start: s2.start, text: s2.text })),
-        visuals: i3 === 0 ? fr2.filter((f2) => f2.description).map((f2) => ({ time: f2.time, text: f2.description })) : [],
+        visuals: i3 === 0 ? fr2.filter((f2) => f2.description).map((f2) => ({ time: f2.time, text: f2.description, certainty: f2.certainty ?? null })) : [],
         frames: i3 === 0 ? fr2.map((f2) => f2.file) : []
       });
     });
   }
   return windows.filter((w2) => w2.speech || w2.visuals.length);
+}
+function cleanSegments(segments) {
+  const HALLUCINATION = /hãy (đăng ký|subscribe)|đăng ký kênh|subscribe cho kênh|thanks for watching|thank you for watching|subtitles? by|amara\.org|cảm ơn các bạn đã (xem|theo dõi)/i;
+  const out = [];
+  let run2 = 0;
+  let dropped = 0;
+  for (const s2 of segments) {
+    const text = String(s2.text ?? "").trim();
+    if (text.length < 2 || HALLUCINATION.test(text)) {
+      dropped++;
+      continue;
+    }
+    const prev = out[out.length - 1];
+    if (prev && prev.text.toLowerCase() === text.toLowerCase()) {
+      run2++;
+      if (run2 >= 2) {
+        dropped++;
+        continue;
+      }
+    } else run2 = 0;
+    out.push({ ...s2, text });
+  }
+  return { segments: out, dropped };
+}
+function windowConfidence(w2) {
+  const level = { cao: 0.8, v\u1EEBa: 0.6, th\u1EA5p: 0.4 };
+  let c2 = 0.75;
+  for (const v2 of w2.visuals) c2 = Math.min(c2, level[v2.certainty ?? "v\u1EEBa"] ?? 0.6);
+  if (w2.speech) c2 = Math.min(c2, 0.6);
+  return c2;
 }
 var windowLoc = (w2) => `${clock(w2.start)}\u2013${clock(w2.end)}`;
 function windowText(w2) {
@@ -41199,22 +41229,38 @@ function imagePrompt(note) {
     note ? `L\u1EDDi d\u1EB7n c\u1EE7a ng\u01B0\u1EDDi d\xF9ng cho \u1EA3nh n\xE0y: "${note}".` : "",
     "Tr\u1EA3 l\u1EDDi \u0111\xFAng hai ph\u1EA7n:",
     "M\xD4 T\u1EA2: 2\u20135 c\xE2u \u2014 \u1EA3nh l\xE0 g\xEC, chi ti\u1EBFt quan tr\u1ECDng, s\u1ED1 li\u1EC7u, t\xEAn, ng\xE0y.",
-    'CH\u1EEE TRONG \u1EA2NH: ch\xE9p NGUY\xCAN V\u0102N m\u1ECDi ch\u1EEF v\xE0 s\u1ED1 \u0111\u1ECDc \u0111\u01B0\u1EE3c, gi\u1EEF t\u1EEBng d\xF2ng; ghi "kh\xF4ng c\xF3" n\u1EBFu kh\xF4ng c\xF3 ch\u1EEF.'
+    'CH\u1EEE TRONG \u1EA2NH: ch\xE9p NGUY\xCAN V\u0102N m\u1ECDi ch\u1EEF v\xE0 s\u1ED1 \u0111\u1ECDc \u0111\u01B0\u1EE3c, gi\u1EEF t\u1EEBng d\xF2ng; ghi "kh\xF4ng c\xF3" n\u1EBFu kh\xF4ng c\xF3 ch\u1EEF.',
+    "KH\xD4NG b\u1ECBa: ch\u1EEF ho\u1EB7c s\u1ED1 kh\xF4ng r\xF5 th\xEC ghi [kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c] thay v\xEC \u0111o\xE1n. D\xF2ng cu\u1ED1i c\xF9ng ghi \u0111\xFAng m\u1ED9t l\u1EA7n: \u0110\u1ED8 CH\u1EAEC CH\u1EAEN: cao | v\u1EEBa | th\u1EA5p."
   ].filter(Boolean).join("\n");
 }
 function framePrompt(name, time, note) {
   return [
     `\u0110\xE2y l\xE0 khung h\xECnh t\u1EA1i ${clock(time)} c\u1EE7a video "${name}".`,
     note ? `L\u1EDDi d\u1EB7n c\u1EE7a ng\u01B0\u1EDDi d\xF9ng: "${note}".` : "",
-    'M\xF4 t\u1EA3 ng\u1EAFn (1\u20133 c\xE2u) \u0111i\u1EC1u \u0111ang di\u1EC5n ra, r\u1ED3i ch\xE9p nguy\xEAn v\u0103n ch\u1EEF hi\u1EC7n tr\xEAn m\xE0n h\xECnh n\u1EBFu c\xF3 (ghi sau "Ch\u1EEF:").'
+    'M\xF4 t\u1EA3 ng\u1EAFn (1\u20133 c\xE2u) \u0111i\u1EC1u \u0111ang di\u1EC5n ra, r\u1ED3i ch\xE9p nguy\xEAn v\u0103n ch\u1EEF hi\u1EC7n tr\xEAn m\xE0n h\xECnh n\u1EBFu c\xF3 (ghi sau "Ch\u1EEF:").',
+    "KH\xD4NG b\u1ECBa: ch\u1EEF ho\u1EB7c s\u1ED1 kh\xF4ng r\xF5 th\xEC ghi [kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c] thay v\xEC \u0111o\xE1n. D\xF2ng cu\u1ED1i c\xF9ng ghi \u0111\xFAng m\u1ED9t l\u1EA7n: \u0110\u1ED8 CH\u1EAEC CH\u1EAEN: cao | v\u1EEBa | th\u1EA5p."
   ].filter(Boolean).join("\n");
 }
+var CERTAINTY = { cao: 0.8, v\u1EEBa: 0.6, th\u1EA5p: 0.4 };
+function splitCertainty(raw) {
+  const text = String(raw ?? "");
+  const m2 = /ĐỘ\s+CHẮC\s+CHẮN\s*:\s*(cao|vừa|thấp)/iu.exec(text);
+  return {
+    text: text.replace(/^.*ĐỘ\s+CHẮC\s+CHẮN\s*:.*$/gimu, "").trim(),
+    certainty: m2 ? m2[1].toLowerCase() : null
+  };
+}
 function parseImageReply(text) {
-  const t2 = String(text ?? "").trim();
+  const cert = splitCertainty(text);
+  const t2 = cert.text;
   const m2 = /CH[ỮỪ]\s+TRONG\s+ẢNH\s*:/i.exec(t2);
   const describe = (m2 ? t2.slice(0, m2.index) : t2).replace(/^M[ÔO]\s*T[ẢA]\s*:\s*/i, "").trim();
   const ocr = m2 ? t2.slice(m2.index + m2[0].length).trim() : "";
-  return { describe, ocr: /^(không có|none|n\/a|-)\.?$/i.test(ocr) ? "" : ocr };
+  return {
+    describe,
+    ocr: /^(không có|none|n\/a|-)\.?$/i.test(ocr) ? "" : ocr,
+    certainty: cert.certainty
+  };
 }
 var tagVal = (entry, prefix) => {
   const t2 = entry.tags.find((x3) => x3.startsWith(prefix));
@@ -41735,13 +41781,26 @@ var Engine = class {
       d2.vision = parseImageReply(text);
       this.saveDerived(src.id, d2);
     }
-    const { describe, ocr } = d2.vision;
+    const { describe, ocr, certainty } = d2.vision;
     const parts = [];
     if (src.note) parts.push(`L\u1EDDi d\u1EB7n c\u1EE7a ng\u01B0\u1EDDi d\xF9ng: ${src.note}`);
     if (describe) parts.push(`M\xF4 t\u1EA3: ${describe}`);
     if (ocr) parts.push(`Ch\u1EEF trong \u1EA3nh:
 ${ocr}`);
-    await this.#publish(src, [{ loc: "\u1EA3nh", text: parts.join("\n\n"), confidence: 0.8 }]);
+    if (!describe && !ocr) {
+      throw new Error(
+        "Model kh\xF4ng m\xF4 t\u1EA3 \u0111\u01B0\u1EE3c \u1EA3nh n\xE0y (kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c g\xEC) \u2014 kh\xF4ng ghi nh\u1EDB \u0111i\u1EC1u g\xEC."
+      );
+    }
+    const unreadable = /\[không đọc được\]/i.test(ocr);
+    if (certainty === "th\u1EA5p" || unreadable) {
+      src.warnings.push(
+        "Model kh\xF4ng ch\u1EAFc / c\xF3 ch\u1ED7 kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c trong \u1EA3nh: m\u1EE5c nh\u1EDB \u0111\xE3 h\u1EA1 \u0111\u1ED9 tin c\u1EADy, h\xE3y \u0111\u1ED1i chi\u1EBFu v\u1EDBi \u1EA3nh g\u1ED1c khi duy\u1EC7t."
+      );
+      parts.push("\u26A0 Model kh\xF4ng ch\u1EAFc ho\u1EB7c c\xF3 ch\u1EEF kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c \u2014 h\xE3y \u0111\u1ED1i chi\u1EBFu v\u1EDBi \u1EA3nh g\u1ED1c.");
+    }
+    const confidence = Math.min(CERTAINTY[certainty ?? "v\u1EEBa"] ?? 0.6, unreadable ? 0.5 : 1);
+    await this.#publish(src, [{ loc: "\u1EA3nh", text: parts.join("\n\n"), confidence }]);
   }
   async #needBudget(task) {
     if (!this.ctx.model) return;
@@ -41786,14 +41845,15 @@ ${ocr}`);
         await extractAudio(cli, file, wav);
         this.#check(src);
         this.#progress(src, 2, 4, "Nh\u1EADn d\u1EA1ng gi\u1ECDng n\xF3i (c\xF3 th\u1EC3 m\u1EA5t v\xE0i ph\xFAt)");
-        d2.segments = await transcribe(
-          cli,
-          wav,
-          model,
-          join2(dir, "asr"),
-          this.cat.settings.language
-        );
+        const raw = await transcribe(cli, wav, model, join2(dir, "asr"), this.cat.settings.language);
         rmSync2(wav, { force: true });
+        const cleaned = cleanSegments(raw);
+        d2.segments = cleaned.segments;
+        if (cleaned.dropped > 0) {
+          src.warnings.push(
+            `\u0110\xE3 b\u1ECF ${cleaned.dropped} d\xF2ng ph\u1EE5 \u0111\u1EC1 nghi l\xE0 nh\u1EADn d\u1EA1ng sai (l\u1EB7p l\u1EA1i nhi\u1EC1u l\u1EA7n ho\u1EB7c c\xE2u ch\xE8n quen thu\u1ED9c khi im l\u1EB7ng).`
+          );
+        }
         if (d2.segments.length === 0) src.warnings.push("Kh\xF4ng nh\u1EADn ra l\u1EDDi n\xF3i n\xE0o trong file.");
       }
       save();
@@ -41831,11 +41891,15 @@ ${ocr}`);
             if (i3 === void 0) return;
             const f2 = d2.frames[i3];
             const bytes = readFileSync2(f2.file);
-            f2.description = (await this.ctx.model.vision(
-              framePrompt(src.name, f2.time, src.note),
-              [{ mimeType: "image/jpeg", base64: bytes.toString("base64") }],
-              { system: VISION_SYSTEM }
-            )).trim();
+            const reply = splitCertainty(
+              await this.ctx.model.vision(
+                framePrompt(src.name, f2.time, src.note),
+                [{ mimeType: "image/jpeg", base64: bytes.toString("base64") }],
+                { system: VISION_SYSTEM }
+              )
+            );
+            f2.certainty = reply.certainty;
+            f2.description = reply.text;
             done++;
             save();
             this.#progress(src, done, total, `Model m\xF4 t\u1EA3 khung h\xECnh ${done}/${total}`);
@@ -41860,7 +41924,11 @@ ${ocr}`);
     }
     await this.#publish(
       src,
-      windows.map((w2) => ({ loc: windowLoc(w2), text: windowText(w2), confidence: 0.75 }))
+      windows.map((w2) => ({
+        loc: windowLoc(w2),
+        text: windowText(w2),
+        confidence: windowConfidence(w2)
+      }))
     );
   }
   #whisperModelFile() {

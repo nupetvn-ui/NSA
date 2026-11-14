@@ -241,13 +241,54 @@ export function buildWindows(duration, segments, frames, options = {}) {
         lines: g.map((s) => ({ start: s.start, text: s.text })),
         visuals:
           i === 0
-            ? fr.filter((f) => f.description).map((f) => ({ time: f.time, text: f.description }))
+            ? fr
+                .filter((f) => f.description)
+                .map((f) => ({ time: f.time, text: f.description, certainty: f.certainty ?? null }))
             : [],
         frames: i === 0 ? fr.map((f) => f.file) : [],
       });
     });
   }
   return windows.filter((w) => w.speech || w.visuals.length);
+}
+
+/**
+ * Dọn phụ đề nhận dạng tự động: whisper hay "ảo giác" khi im lặng / tiếng nền — lặp một câu nhiều lần
+ * hoặc chèn câu quen thuộc ("Hãy subscribe cho kênh", "Thanks for watching"…). Bỏ các dòng đó thay vì ghi
+ * nhớ như lời nói thật. Trả { segments, dropped }.
+ */
+export function cleanSegments(segments) {
+  const HALLUCINATION =
+    /hãy (đăng ký|subscribe)|đăng ký kênh|subscribe cho kênh|thanks for watching|thank you for watching|subtitles? by|amara\.org|cảm ơn các bạn đã (xem|theo dõi)/i;
+  const out = [];
+  let run = 0;
+  let dropped = 0;
+  for (const s of segments) {
+    const text = String(s.text ?? '').trim();
+    if (text.length < 2 || HALLUCINATION.test(text)) {
+      dropped++;
+      continue;
+    }
+    const prev = out[out.length - 1];
+    if (prev && prev.text.toLowerCase() === text.toLowerCase()) {
+      run++;
+      if (run >= 2) {
+        dropped++; // lặp từ lần thứ 3 trở đi
+        continue;
+      }
+    } else run = 0;
+    out.push({ ...s, text });
+  }
+  return { segments: out, dropped };
+}
+
+/** Độ tin cậy của một cửa sổ video: thấp nhất trong (độ chắc chắn model tự báo, lời nói tự động 0,6, mặc định 0,75). */
+export function windowConfidence(w) {
+  const level = { cao: 0.8, vừa: 0.6, thấp: 0.4 };
+  let c = 0.75;
+  for (const v of w.visuals) c = Math.min(c, level[v.certainty ?? 'vừa'] ?? 0.6);
+  if (w.speech) c = Math.min(c, 0.6);
+  return c;
 }
 
 export const windowLoc = (w) => `${clock(w.start)}–${clock(w.end)}`;
