@@ -9,6 +9,7 @@ import type {
   PluginsIpcContract,
 } from '@nsa/core';
 import type { ProvidersSetup } from './providers';
+import type { TracesHandlers } from './traces';
 import type { MemoryRuntime } from '@nsa/memory';
 import { cleanCommit, cleanIds, cleanPatch, cleanSource, cleanTeach } from './memory';
 import { getUpdateStatus, installUpdate } from './updater';
@@ -32,12 +33,15 @@ export function registerIpc(
       ) => PluginsIpcContract[C]['result'] | Promise<PluginsIpcContract[C]['result']>;
     };
   },
+  /** Kênh của các màn hình thêm sau (Traces, Đội…): cắm vào đây thay vì sửa danh sách bên dưới. */
+  extra: TracesHandlers,
 ): void {
   const mem = memory.runtime.service;
   const runtime = memory.runtime;
   const handlers: Handlers = {
     ...providers.handlers,
     ...memory.plugins,
+    ...extra,
     'core:ping': (message) => core.ping(message),
     'app:info': () => ({ name: app.getName(), version: app.getVersion() }),
     'app:updateStatus': () => getUpdateStatus(),

@@ -24,6 +24,7 @@ import { registerIpc } from './ipc';
 import { setupMemory } from './memory';
 import { registerPluginScheme, setupPlugins, type PluginsSetup } from './plugins';
 import { createFileStore } from './store';
+import { setupTraces } from './traces';
 import { setupAutoUpdate } from './updater';
 import icon from '../../resources/icon.png?asset';
 
@@ -265,11 +266,25 @@ if (!app.requestSingleInstanceLock()) {
       })
       .catch((err: unknown) => console.error('[cli-watch]', err));
 
-    registerIpc(core, chat, () => cliChanges, providers, {
-      runtime: memory.runtime,
-      mcpUrl: plugins.gateway?.url ?? null,
-      plugins: plugins.handlers,
+    const traces = setupTraces({
+      userData,
+      redact: (text) => providers.hub.redact(text),
+      monthCostUsd: () => providers.hub.budget().spentUsd,
     });
+    app.on('will-quit', () => traces.close());
+
+    registerIpc(
+      core,
+      chat,
+      () => cliChanges,
+      providers,
+      {
+        runtime: memory.runtime,
+        mcpUrl: plugins.gateway?.url ?? null,
+        plugins: plugins.handlers,
+      },
+      traces.handlers,
+    );
     const win = createWindow();
     win.webContents.on('did-finish-load', () => {
       rendererReady = true;

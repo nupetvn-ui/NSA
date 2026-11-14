@@ -94,6 +94,10 @@ CLI chưa có adapter riêng: khai báo trong `%APPDATA%\NSA\custom-clis.json`, 
 
 Cuộc trò chuyện được lưu ở `%APPDATA%\NSA\conversations.json`, nhật ký (ai ra lệnh, chính sách quyết gì, agent làm gì, lùi tầng / đổi agent) ở `%APPDATA%\NSA\audit\`. Key mã hoá ở `secrets.json`, cài đặt nhà cung cấp (không có key) ở `providers.json`, sổ chi phí ở `usage\`. Bản cập nhật danh sách hãng/model đặt ở `provider-catalog.json` (NSA dùng nếu mới hơn bản kèm app).
 
+### Traces (xem lại từng lượt chạy)
+
+Mục **Traces** ở thanh bên cho xem lại mọi lượt agent đã chạy: ai ra lệnh, agent nào (kể cả lần lùi tầng / đổi agent), từng lần gọi tool kèm đầu vào / kết quả (bấm "Mở rộng" để xem đủ), quyết định của chính sách, thời lượng, token, chi phí ước tính, lỗi. Lọc theo ngày, agent, plugin, trạng thái; tìm theo chữ (không cần gõ dấu). Dữ liệu đọc từ nhật ký sẵn có (`%APPDATA%NSAaudit`), không ghi thêm gì; chỉ mục tìm nhanh (`tracesindex.sqlite`) xoá đi thì NSA tự dựng lại. Key không bao giờ hiện ở đây. Chi phí từng lượt chỉ có khi nguồn báo giá (API key); lượt qua gói thuê bao CLI hiện "—". Xem [ADR-0018](docs/adr/0018-traces.md).
+
 ## Cài đặt môi trường (cho lập trình viên)
 
 Cần:
@@ -141,6 +145,7 @@ apps/desktop          Electron + React (main / preload / renderer)
 packages/core         lõi NSA: hợp đồng IPC, ChatService, định tuyến, ổ cắm, phát hiện thay đổi CLI — chỉ import adapter-sdk và plugin-sdk ([ADR-0015](docs/adr/0015-ranh-gioi-goi.md); lint chặn vi phạm, bảng ở `package-boundaries.js`)
 packages/adapter-sdk  hợp đồng adapter, trình chạy CLI, cổng chặn lệnh, bộ test hợp đồng
 packages/adapters/*   claude, codex, opencode, gemini, antigravity, pty, api (gọi thẳng bằng API key); contract-live (test với CLI thật)
+packages/traces         Traces: chỉ mục SQLite (dựng lại được) đọc từ nhật ký để xem lại từng lượt chạy (ADR-0018)
 packages/adapter-host   cập nhật adapter / file dữ liệu hãng độc lập với app: gói ký, quay về bản kèm app (ADR-0016)
 packages/providers    file dữ liệu hãng/model, kho khoá, chọn model theo việc, chi phí, cấp key cho CLI
 packages/mcp-gateway  cổng MCP (khung)

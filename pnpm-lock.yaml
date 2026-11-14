@@ -99,6 +99,9 @@ importers:
       '@nsa/providers':
         specifier: workspace:*
         version: link:../../packages/providers
+      '@nsa/traces':
+        specifier: workspace:*
+        version: link:../../packages/traces
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
@@ -322,6 +325,12 @@ importers:
       '@nsa/adapter-sdk':
         specifier: workspace:*
         version: link:../adapter-sdk
+      '@nsa/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/traces:
+    dependencies:
       '@nsa/core':
         specifier: workspace:*
         version: link:../core

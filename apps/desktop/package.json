@@ -39,6 +39,7 @@
     "@nsa/plugin-host": "workspace:*",
     "@nsa/plugin-sdk": "workspace:*",
     "@nsa/providers": "workspace:*",
+    "@nsa/traces": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.2.0",

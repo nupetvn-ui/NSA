@@ -12,6 +12,7 @@ import { ConfirmSheet } from './ConfirmSheet';
 import { ProvidersScreen } from './ProvidersScreen';
 import { MemoryView } from './MemoryView';
 import { StoreView } from './StoreView';
+import { TracesView } from './TracesView';
 import { TurnView } from './TurnView';
 import { UpdateBanner } from './UpdateBanner';
 import { VendorLogo, vendorOfAgent } from './VendorLogo';
@@ -41,7 +42,7 @@ export function App() {
   const [sending, setSending] = useState(false);
   /** Yêu cầu đang chờ người dùng xác nhận (chính sách trả lời "hỏi"). */
   const [confirm, setConfirm] = useState<{ reason: string; request: SendRequest } | null>(null);
-  const [view, setView] = useState<'chat' | 'memory' | 'providers' | 'store'>('chat');
+  const [view, setView] = useState<'chat' | 'memory' | 'providers' | 'store' | 'traces'>('chat');
   /** Số đề xuất ghi nhớ chờ duyệt + bộ đếm để màn hình Bộ nhớ tải lại. */
   const [memPending, setMemPending] = useState(0);
   const [memVersion, setMemVersion] = useState(0);
@@ -273,6 +274,23 @@ export function App() {
           </button>
           <button
             type="button"
+            className={`nav-item ${view === 'traces' ? 'active' : ''}`}
+            onClick={() => setView('traces')}
+          >
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M3 10h3l2-5 4 10 2-5h3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Traces</span>
+          </button>
+          <button
+            type="button"
             className={`nav-item ${view === 'providers' ? 'active' : ''}`}
             onClick={() => setView('providers')}
           >
@@ -363,6 +381,8 @@ export function App() {
         <StoreView />
       ) : view === 'memory' ? (
         <MemoryView agents={agents} status={memStatus} version={memVersion} />
+      ) : view === 'traces' ? (
+        <TracesView />
       ) : view === 'providers' ? (
         <ProvidersScreen onClose={() => setView('chat')} />
       ) : (

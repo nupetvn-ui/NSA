@@ -19,3 +19,4 @@ export * from './model-policy.js';
 export * from './providers-ipc.js';
 export * from './plugins-ipc.js';
 export * from './providers-types.js';
+export * from './traces.js';

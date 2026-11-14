@@ -26,6 +26,7 @@ export const PACKAGE_DIRS = {
   'packages/memory': '@nsa/memory',
   'packages/plugin-host': '@nsa/plugin-host',
   'packages/adapter-host': '@nsa/adapter-host',
+  'packages/traces': '@nsa/traces',
 };
 
 /** Gói nào được import gói nào (chỉ tính @nsa/*). `apps/desktop` không bị giới hạn. */
@@ -48,6 +49,8 @@ export const ALLOWED = {
   '@nsa/mcp-gateway': ['@nsa/core', '@nsa/adapter-sdk'],
   '@nsa/memory': ['@nsa/core', '@nsa/adapter-sdk', '@nsa/mcp-gateway'],
   '@nsa/plugin-host': ['@nsa/core', '@nsa/mcp-gateway', '@nsa/plugin-sdk'],
+  // Traces: đọc nhật ký + dựng chỉ mục SQLite; chỉ biết kiểu của lõi (ADR-0018).
+  '@nsa/traces': ['@nsa/core'],
   // Cập nhật adapter độc lập với app: dùng lại định dạng gói ký của plugin-host (ADR-0016).
   '@nsa/adapter-host': ['@nsa/core', '@nsa/adapter-sdk', '@nsa/plugin-host', '@nsa/plugin-sdk'],
   // Gói test với CLI thật: ghép mọi thứ như apps/desktop.

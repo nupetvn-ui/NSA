@@ -45,6 +45,7 @@ packages/adapters/*   claude, codex, opencode, gemini, pty, api (gọi thẳng b
 packages/mcp-gateway
 packages/memory       NSA Mem
 packages/plugin-sdk   manifest, quyền, API giao diện
+packages/traces       Traces: đọc nhật ký, chỉ mục SQLite dựng lại được (ADR-0018)
 plugins/*             telegram, discord, zalo-oa, zalo-ca-nhan, lark, google-workspace, kiotviet, knowledge-base, ghi-chu-nhanh (mẫu); sắp có: scheduler, browser, content-factory
 docs/                 PLAN.md, ADR, đặc tả
 ```
@@ -108,7 +109,7 @@ Mỗi loại việc có model mặc định và model dự phòng, người dùn
 - Yêu cầu tới từ chat trong app hoặc từ kênh chat (ví dụ nhắc `@lead` trong nhóm); kết quả trả về đúng nơi hỏi.
 - Mẫu đội dựng sẵn theo bộ phận (bán hàng, vận hành, chăm sóc khách), gồm agent + kênh + tool + hàng rào, cài từ App Store.
 
-**Traces.** Một màn hình xem lại từng lượt chạy: ai ra lệnh, agent nào, model nào, từng lần gọi tool và kết quả, quyết định của chính sách, lần lùi tầng / đổi agent, số token và chi phí. Dữ liệu lấy từ nhật ký và sổ chi phí đã có; không ghi thêm nguồn mới. Traces là nền cho vòng tự sửa lỗi và cho nhật ký kiểm toán của bản Doanh nghiệp.
+**Traces.** Một màn hình xem lại từng lượt chạy: ai ra lệnh, agent nào, model nào, từng lần gọi tool và kết quả, quyết định của chính sách, lần lùi tầng / đổi agent, số token và chi phí. Dữ liệu lấy từ nhật ký (các dòng cùng mã lượt `turnId`) và sổ chi phí đã có; không ghi thêm nguồn mới. Đã làm (14/11/2026, ADR-0018): màn hình Traces có lọc theo ngày / agent / plugin / trạng thái, tìm chữ, mở rộng từng bước; chỉ mục SQLite dựng lại được từ file nhật ký; key bị che. Chi phí từng lượt cộng từ sự kiện `usage` (sổ chi phí chỉ có số gộp theo tháng nên chỉ dùng cho tổng tháng). Traces là nền cho vòng tự sửa lỗi và cho nhật ký kiểm toán của bản Doanh nghiệp.
 
 ## Hai bản đóng gói: Cá nhân và Doanh nghiệp
 
@@ -167,7 +168,7 @@ Lõi chỉ định nghĩa ổ cắm, không chứa nghiệp vụ của bản nà
 | 4. Kênh chat | Telegram, Discord, Zalo OA, Zalo cá nhân; nhớ theo nhóm/nick; canh nhóm theo lô. Làm thêm ngoài kế hoạch ban đầu: Lark, Google Workspace, KiotViet. Kênh nên thêm sau: Pancake (ưu tiên, cho người bán hàng ở Việt Nam), Messenger, Slack, WhatsApp, Bitrix24; chuyển cho nhân viên khi bot không nên tự trả lời | Bot trả lời đúng nội quy từng nhóm |
 | 5. Knowledge Base | Dạy bằng tài liệu, ảnh, video; giao diện duyệt | Dạy bằng 1 video, hỏi lại trả lời đúng |
 | 6. Tự động hoá | Hẹn giờ, điều khiển trình duyệt (Playwright); agent tự hẹn việc theo sau ("thứ Năm 9:00 nhắc lại nếu khách im lặng") | Việc theo lịch chạy khi không ai ngồi máy |
-| 6b. Đội agent + Traces | Agent trưởng + agent chuyên trách, bảng việc chung, cột chờ duyệt do chính sách quyết, màn hình Traces, mẫu đội theo bộ phận | Một yêu cầu trong nhóm chat được tách thành hai việc cho hai agent khác hãng, gộp lại, chờ người duyệt rồi mới gửi; xem lại được toàn bộ trong Traces |
+| 6b. Đội agent + Traces | Agent trưởng + agent chuyên trách, bảng việc chung, cột chờ duyệt do chính sách quyết, màn hình Traces, mẫu đội theo bộ phận | Một yêu cầu trong nhóm chat được tách thành hai việc cho hai agent khác hãng, gộp lại, chờ người duyệt rồi mới gửi; xem lại được toàn bộ trong Traces. **Tình trạng (14/11/2026): Traces xong (PR 1); đội agent + bảng việc đang làm (PR 2)** |
 | 7. Content Factory | Slide, video motion, SVG, case study | Ra được 1 slide + 1 video từ một yêu cầu |
 | 8. Thương mại (bản Cá nhân) | License, thanh toán, kho plugin trực tuyến, tài liệu, macOS; changelog công khai. Mô hình giá cần quyết: cài và dựng agent miễn phí, thu phí theo năm để mở khoá kênh chat | Người lạ mua, cài, dùng được không cần hỗ trợ |
 | 9. Bản Doanh nghiệp | Gói `enterprise-*`: SSO + vai trò, chính sách do quản trị đặt, nhật ký kiểm toán, hộp cát agent, bộ nhớ nhóm mã hoá, kho plugin riêng, bản cài cho IT; hợp đồng và kiểm thử xâm nhập; gói cài tận nơi kèm quy trình làm riêng và bảo trì theo năm | Một công ty triển khai cho cả nhóm, quản trị khoá được chính sách và xuất được nhật ký |
