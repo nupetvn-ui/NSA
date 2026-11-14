@@ -115,17 +115,18 @@ Lần chạy đầu, Electron tự tải file chạy của nó (~100 MB).
 
 ## Lệnh thường dùng
 
-| Lệnh                                  | Việc                                                                            |
-| ------------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm dev`                            | Mở app desktop ở chế độ dev (sửa giao diện là thấy ngay)                        |
-| `pnpm lint`                           | ESLint + kiểm định dạng Prettier                                                |
-| `pnpm format`                         | Tự định dạng lại mã                                                             |
-| `pnpm typecheck`                      | Kiểm kiểu TypeScript cho mọi gói                                                |
-| `pnpm test`                           | Chạy test (Vitest)                                                              |
-| `pnpm test:live`                      | Test hợp đồng với CLI thật — cần `NSA_LIVE_CONTRACT=1` (tốn token)              |
-| `pnpm --filter @nsa/desktop test:e2e` | Bài mở app tự động (Playwright + agent giả); đích chọn bằng `NSA_E2E_TARGET=dev | build | packaged` — [ADR-0014](docs/adr/0014-bai-mo-app-tu-dong-ci-windows.md) |
-| `pnpm build`                          | Build mọi gói thư viện và app desktop                                           |
-| `pnpm dist:win`                       | Tạo bộ cài Windows ở `apps/desktop/release/<version>/NSA-Setup-<version>.exe`   |
+| Lệnh                                          | Việc                                                                                                                                                  |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                    | Mở app desktop ở chế độ dev (sửa giao diện là thấy ngay)                                                                                              |
+| `pnpm lint`                                   | ESLint + kiểm định dạng Prettier                                                                                                                      |
+| `pnpm format`                                 | Tự định dạng lại mã                                                                                                                                   |
+| `pnpm typecheck`                              | Kiểm kiểu TypeScript cho mọi gói                                                                                                                      |
+| `pnpm test`                                   | Chạy test (Vitest)                                                                                                                                    |
+| `pnpm test:live`                              | Test hợp đồng với CLI thật — cần `NSA_LIVE_CONTRACT=1` (tốn token)                                                                                    |
+| `pnpm --filter @nsa/desktop test:e2e`         | Bài mở app tự động (Playwright + agent giả); đích chọn bằng `NSA_E2E_TARGET=dev                                                                       | build | packaged` — [ADR-0014](docs/adr/0014-bai-mo-app-tu-dong-ci-windows.md) |
+| `pnpm adapters:pack` / `pnpm adapters:keygen` | Đóng gói + ký adapter và file dữ liệu hãng để phát hành độc lập với app; tạo cặp khoá — [ADR-0016](docs/adr/0016-adapter-cap-nhat-doc-lap-voi-app.md) |
+| `pnpm build`                                  | Build mọi gói thư viện và app desktop                                                                                                                 |
+| `pnpm dist:win`                               | Tạo bộ cài Windows ở `apps/desktop/release/<version>/NSA-Setup-<version>.exe`                                                                         |
 
 Logo gốc ở [`apps/desktop/build/icon.svg`](apps/desktop/build/icon.svg). Sửa xong thì xuất lại các file PNG:
 
@@ -140,6 +141,7 @@ apps/desktop          Electron + React (main / preload / renderer)
 packages/core         lõi NSA: hợp đồng IPC, ChatService, định tuyến, ổ cắm, phát hiện thay đổi CLI — chỉ import adapter-sdk và plugin-sdk ([ADR-0015](docs/adr/0015-ranh-gioi-goi.md); lint chặn vi phạm, bảng ở `package-boundaries.js`)
 packages/adapter-sdk  hợp đồng adapter, trình chạy CLI, cổng chặn lệnh, bộ test hợp đồng
 packages/adapters/*   claude, codex, opencode, gemini, antigravity, pty, api (gọi thẳng bằng API key); contract-live (test với CLI thật)
+packages/adapter-host   cập nhật adapter / file dữ liệu hãng độc lập với app: gói ký, quay về bản kèm app (ADR-0016)
 packages/providers    file dữ liệu hãng/model, kho khoá, chọn model theo việc, chi phí, cấp key cho CLI
 packages/mcp-gateway  cổng MCP (khung)
 packages/memory       NSA Mem: kho Markdown + git, chỉ mục FTS5, hộp duyệt, chắt lọc, nhập lịch sử, MCP tạm

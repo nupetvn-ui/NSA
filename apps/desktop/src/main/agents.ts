@@ -1,43 +1,22 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentAdapter, AgentEvent } from '@nsa/adapter-sdk';
-import type { CliAdapterFactories } from '@nsa/providers';
-import { createAntigravityAdapter } from '@nsa/adapter-antigravity';
-import { createClaudeAdapter } from '@nsa/adapter-claude';
-import { createCodexAdapter } from '@nsa/adapter-codex';
-import { createGeminiAdapter } from '@nsa/adapter-gemini';
-import { createOpenCodeAdapter } from '@nsa/adapter-opencode';
+import type { AdapterManager } from '@nsa/adapter-host';
 import { createCustomCliAdapter, type CustomCliConfig } from '@nsa/adapter-pty';
+import { UPDATABLE_ADAPTERS } from './adapters';
 import { createE2eAgent } from './e2e-agent';
-
-/**
- * Cách tạo adapter của ba CLI có thể ghép với key của hãng (ProviderHub không import adapter,
- * ADR-0015): lắp ghép ở đây.
- */
-export const cliAdapterFactories: CliAdapterFactories = {
-  claude: (params) =>
-    createClaudeAdapter({
-      ...(params.command ? { command: params.command } : {}),
-      ...(params.prefixArgs ? { prefixArgs: params.prefixArgs } : {}),
-    }),
-  codex: (params) => createCodexAdapter(params),
-  opencode: (params) => createOpenCodeAdapter(params),
-};
 
 /**
  * Danh sách agent của bản Cá nhân. Thêm CLI mới: một gói adapter + một dòng ở đây.
  * CLI chưa có adapter riêng thì người dùng khai báo trong `custom-clis.json` (thư mục dữ liệu
  * của app) và NSA chạy nó qua adapter PTY chung.
  */
-export function createAgents(userData: string): AgentAdapter[] {
+export function createAgents(userData: string, manager: AdapterManager): AgentAdapter[] {
   // Bài mở app tự động (ADR-0014): chỉ có agent giả, không đụng CLI thật trên máy.
   if (process.env['NSA_E2E_FAKE_AGENT'] === '1') return [createE2eAgent()];
   const adapters: AgentAdapter[] = [
-    createClaudeAdapter(),
-    createCodexAdapter(),
-    createOpenCodeAdapter(),
-    createGeminiAdapter(),
-    createAntigravityAdapter(),
+    // Qua bộ quản lý: bản tải về nếu có và dùng được, nếu không thì bản kèm app (ADR-0016).
+    ...UPDATABLE_ADAPTERS.map((id) => manager.create(id)),
     ...loadCustomClis(join(userData, 'custom-clis.json')),
   ];
   return applySimulation(adapters, process.env['NSA_SIMULATE_BROKEN']);

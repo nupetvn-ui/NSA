@@ -19,6 +19,7 @@ const PACKAGES: Record<string, string> = {
   '@nsa/memory': 'packages/memory',
   '@nsa/plugin-sdk': 'packages/plugin-sdk',
   '@nsa/plugin-host': 'packages/plugin-host',
+  '@nsa/adapter-host': 'packages/adapter-host',
 };
 
 export function workspaceAliases(repoRoot: string): Record<string, string> {

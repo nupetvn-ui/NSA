@@ -12,6 +12,7 @@ import { prepareFakeCli, type AgentAdapter } from '@nsa/adapter-sdk';
 import { startFakeApiServer, type FakeServer } from '@nsa/adapter-api';
 import { ChatService, localIdentity, personalPolicy, type ChatEvent } from '@nsa/core';
 import { bundledCatalog, secretForms, type OsCipher } from '@nsa/providers';
+import { bundledCliAdapterFactories } from './adapters';
 import { createFileAuditLog } from './audit';
 import { setupProviders } from './providers';
 import { createFileStore } from './store';
@@ -80,6 +81,7 @@ describe('quét key trong mọi thứ app ghi ra', () => {
     // ChatService tạo sau, nhưng nhà cung cấp cần báo cho nó khi danh sách agent đổi.
     const ref: { chat?: ChatService } = {};
     const providers = setupProviders({
+      cliAdapters: bundledCliAdapterFactories,
       userData,
       cipher,
       identity,
