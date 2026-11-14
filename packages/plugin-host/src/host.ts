@@ -94,6 +94,7 @@ export interface PluginMemoryBridge {
     branch: string,
     query: string,
     limit: number,
+    options?: { semantic?: boolean },
   ): Promise<{ mode: 'semantic' | 'keyword'; hits: MemoryHit[] }>;
   entries(branch: string, limit: number): Promise<MemoryEntryInfo[]>;
   pending(branch: string): Promise<MemoryPendingInfo[]>;
@@ -997,6 +998,7 @@ export class PluginHost {
             branch,
             String(p['query'] ?? ''),
             Math.min(20, Number(p['limit']) || 8),
+            { semantic: p['semantic'] !== false },
           );
         }
         if (method === 'memory.entries') {

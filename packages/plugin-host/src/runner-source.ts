@@ -139,7 +139,7 @@ function makeContext() {
         list: (options) => request('memory.list', options || {}),
         propose: (input) => request('memory.propose', input),
         searchSemantic: (query, options) =>
-          request('memory.semantic', { query, limit: options && options.limit, subBranch: options && options.subBranch }),
+          request('memory.semantic', { query, limit: options && options.limit, subBranch: options && options.subBranch, semantic: options && options.semantic }),
         entries: (options) => request('memory.entries', options || {}),
         pending: (options) => request('memory.pending', options || {}),
         accept: (proposalId, edits) => request('memory.accept', { proposalId, edits: edits || {} }),

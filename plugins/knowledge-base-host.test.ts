@@ -244,6 +244,12 @@ describe('Knowledge Base đã đóng gói, chạy trong plugin host thật', () 
     );
     await s.waitIdle();
     await s.ui('acceptMany', { ids: (await s.ui<{ id: string }[]>('pending')).map((p) => p.id) });
+    // Mặc định TẮT dù có model embedding (chưa đo chất lượng thật): vẫn tìm từ khoá, không gọi embedding.
+    expect(await s.tool('kb_search', { query: 'miễn phí giao hàng' })).toContain(
+      'tìm theo từ khoá',
+    );
+    expect(s.embedCalls).toHaveLength(0);
+    await s.ui('settings', { semantic: true });
     const out = await s.tool('kb_search', { query: 'miễn phí giao hàng' });
     expect(out).toContain('tìm theo nghĩa');
     expect(out).toContain('ship.md');

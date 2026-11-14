@@ -41182,7 +41182,9 @@ var DEFAULT_SETTINGS = {
   whisperModel: "",
   /** Tự nhận mục khi đủ tin cậy (quy tắc tự duyệt của NSA Mem). Mặc định TẮT: mọi thứ chờ người duyệt. */
   autoApprove: false,
-  minConfidence: 0.85
+  minConfidence: 0.85,
+  /** Tìm theo nghĩa (embedding): thử nghiệm, mặc định TẮT vì chưa đo chất lượng bằng model thật. */
+  semantic: false
 };
 var MAX_DOC_BYTES = 120 * 1024 * 1024;
 var MAX_CHUNKS = 2e3;
@@ -41321,6 +41323,7 @@ var Engine = class {
       s2.autoApprove = patch.autoApprove;
       this.cat.collections = {};
     }
+    if (typeof patch.semantic === "boolean") s2.semantic = patch.semantic;
     if (typeof patch.minConfidence === "number")
       s2.minConfidence = Math.min(1, Math.max(0.5, patch.minConfidence));
     this.save();
@@ -42285,7 +42288,10 @@ async function kbSearch(args, ctx) {
   const query = String(args.query ?? "").trim();
   if (!query) throw new Error("Thi\u1EBFu c\xE2u h\u1ECFi.");
   const limit = Math.min(12, Math.max(1, Number(args.limit) || 6));
-  const { mode, hits } = await ctx.memory.searchSemantic(query, { limit });
+  const { mode, hits } = await ctx.memory.searchSemantic(query, {
+    limit,
+    semantic: need().settings().semantic === true
+  });
   if (hits.length === 0) {
     return `Kh\xF4ng t\xECm th\u1EA5y g\xEC trong Knowledge Base cho "${query}" (\u0111\xE3 t\xECm theo ${mode === "semantic" ? "ngh\u0129a" : "t\u1EEB kho\xE1"}). C\xF3 th\u1EC3 ng\u01B0\u1EDDi d\xF9ng ch\u01B0a d\u1EA1y \u0111i\u1EC1u n\xE0y, ho\u1EB7c m\u1EE5c c\xF2n n\u1EB1m trong h\u1ED9p duy\u1EC7t ch\u01B0a nh\u1EADn.`;
   }

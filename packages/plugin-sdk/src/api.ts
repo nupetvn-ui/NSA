@@ -57,7 +57,7 @@ export interface PluginMemory {
    */
   searchSemantic(
     query: string,
-    options?: { limit?: number; subBranch?: string },
+    options?: { limit?: number; subBranch?: string; semantic?: boolean },
   ): Promise<{ mode: 'semantic' | 'keyword'; hits: MemoryHit[] }>;
   /** Mục nhớ (đã duyệt) kèm thẻ và nguồn — để plugin biết mục nào sinh ra từ nguồn nào. */
   entries(options?: { subBranch?: string; limit?: number }): Promise<MemoryEntryInfo[]>;

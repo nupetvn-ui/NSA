@@ -80,7 +80,17 @@ export function createMemoryBridge(service: MemoryServiceLike): PluginMemoryBrid
         .search(query, { limit, branch })
         .filter((h) => inBranch(h.entry.branch, branch))
         .map((h) => ({ id: h.entry.id, title: h.entry.title, snippet: h.snippet })),
-    searchSemantic: async (branch, query, limit) => {
+    searchSemantic: async (branch, query, limit, options) => {
+      // Tìm theo nghĩa chỉ chạy khi plugin bật (mặc định tắt vì chưa đo bằng model thật): không thì FTS5.
+      if (options?.semantic === false) {
+        return {
+          mode: 'keyword',
+          hits: service
+            .search(query, { limit, branch })
+            .filter((h) => inBranch(h.entry.branch, branch) && !h.entry.sensitive)
+            .map((h) => ({ id: h.entry.id, title: h.entry.title, snippet: h.snippet })),
+        };
+      }
       const result = await service.searchHybrid(query, { limit, branch });
       return {
         mode: result.mode,

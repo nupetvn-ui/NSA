@@ -960,6 +960,7 @@
       $('setFrames').value = s.maxFrames;
       $('setLang').value = s.language;
       $('setAuto').checked = s.autoApprove;
+      $('setSemantic').checked = s.semantic === true;
       $('setMin').value = s.minConfidence;
     }, fail);
   }
@@ -970,6 +971,7 @@
         maxFrames: Number($('setFrames').value),
         language: $('setLang').value.trim(),
         autoApprove: $('setAuto').checked,
+        semantic: $('setSemantic').checked,
         minConfidence: Number($('setMin').value),
       })
       .then(function () {

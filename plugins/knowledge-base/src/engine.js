@@ -40,6 +40,8 @@ export const DEFAULT_SETTINGS = {
   /** Tự nhận mục khi đủ tin cậy (quy tắc tự duyệt của NSA Mem). Mặc định TẮT: mọi thứ chờ người duyệt. */
   autoApprove: false,
   minConfidence: 0.85,
+  /** Tìm theo nghĩa (embedding): thử nghiệm, mặc định TẮT vì chưa đo chất lượng bằng model thật. */
+  semantic: false,
 };
 
 const MAX_DOC_BYTES = 120 * 1024 * 1024;
@@ -207,6 +209,7 @@ export class Engine {
       s.autoApprove = patch.autoApprove;
       this.cat.collections = {}; // áp lại cho từng bộ ở lần nạp kế tiếp
     }
+    if (typeof patch.semantic === 'boolean') s.semantic = patch.semantic;
     if (typeof patch.minConfidence === 'number')
       s.minConfidence = Math.min(1, Math.max(0.5, patch.minConfidence));
     this.save();

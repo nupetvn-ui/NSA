@@ -40,7 +40,10 @@ async function kbSearch(args, ctx) {
   const query = String(args.query ?? '').trim();
   if (!query) throw new Error('Thiếu câu hỏi.');
   const limit = Math.min(12, Math.max(1, Number(args.limit) || 6));
-  const { mode, hits } = await ctx.memory.searchSemantic(query, { limit });
+  const { mode, hits } = await ctx.memory.searchSemantic(query, {
+    limit,
+    semantic: need().settings().semantic === true,
+  });
   if (hits.length === 0) {
     return `Không tìm thấy gì trong Knowledge Base cho "${query}" (đã tìm theo ${mode === 'semantic' ? 'nghĩa' : 'từ khoá'}). Có thể người dùng chưa dạy điều này, hoặc mục còn nằm trong hộp duyệt chưa nhận.`;
   }
